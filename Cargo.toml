@@ -10,5 +10,5 @@ oorandom = "11.1.4"
 
 [[bin]]
 name = "transport-io-ggez"
-path = "main.rs"
+path = "src/main.rs"
 
