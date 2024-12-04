@@ -15,8 +15,8 @@
 
 mod grid;
 mod path;
+use path::PathGrid;
 use grid::GridPosition;
-use grid::Direction;
 use grid::GRID_SIZE;
 mod food;
 mod snake;
@@ -48,22 +48,17 @@ const DESIRED_FPS: u32 = 8;
 /// will implement ggez's `EventHandler` trait and will therefore drive
 /// everything else that happens in our game.
 struct GameState {
-    /// First we need a Snake
-    snake: snake::Snake,
-    /// A piece of food
-    food: food::Food,
-    /// Whether the game is over or not
+    path_grid: PathGrid,
+    snakes: Vec<snake::Snake>,
+    food: food::Station,
     gameover: bool,
-    /// Our RNG state
     rng: Rand32,
 }
 
 impl GameState {
-    /// Our new function will set up the initial state of our game.
+
     pub fn new() -> Self {
-        // First we put our snake a quarter of the way across our grid in the x axis
-        // and half way down the y axis. This works well since we start out moving to the right.
-        let snake_pos = (GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into();
+
         // And we seed our RNG with the system RNG.
         let mut seed: [u8; 8] = [0; 8];
         getrandom::getrandom(&mut seed[..]).expect("Could not create RNG seed");
@@ -72,12 +67,25 @@ impl GameState {
         // earlier.
         let food_pos = GridPosition::random(&mut rng, GRID_SIZE.0, GRID_SIZE.1);
 
+        let path_grid = PathGrid::new();
+
         GameState {
-            snake: snake::Snake::new(snake_pos),
-            food: food::Food::new(food_pos),
+            path_grid: path_grid,
+
+            snakes: Vec::new(),
+            food: food::Station::new(food_pos),
             gameover: false,
             rng,
         }
+    }
+
+    pub fn load_level(&mut self) {
+
+        let snake_pos = (GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into();
+
+        let new_snake = snake::Snake::new(snake_pos, &mut self.path_grid);
+
+        self.snakes.push(new_snake);
     }
 }
 
@@ -95,24 +103,27 @@ impl event::EventHandler<ggez::GameError> for GameState {
             if !self.gameover {
                 // Here we do the actual updating of our game world. First we tell the snake to update itself,
                 // passing in a reference to our piece of food.
-                self.snake.update(&self.food);
-                // Next we check if the snake ate anything as it updated.
-                if let Some(ate) = self.snake.ate {
-                    // If it did, we want to know what it ate.
-                    match ate {
-                        // If it ate a piece of food, we randomly select a new position for our piece of food
-                        // and move it to this new position.
-                        snake::Ate::Food => {
-                            let new_food_pos =
-                                GridPosition::random(&mut self.rng, GRID_SIZE.0, GRID_SIZE.1);
-                            self.food.pos = new_food_pos;
-                        }
-                        // If it ate itself, we set our gameover state to true.
-                        snake::Ate::Itself => {
-                            self.gameover = true;
+                for s in self.snakes.iter_mut() {
+                    s.update(&self.food, &mut self.path_grid);
+                    // Next we check if the snake ate anything as it updated.
+                    if let Some(ate) = s.ate {
+                        // If it did, we want to know what it ate.
+                        match ate {
+                            // If it ate a piece of food, we randomly select a new position for our piece of food
+                            // and move it to this new position.
+                            snake::Ate::Food => {
+                                let new_food_pos =
+                                    GridPosition::random(&mut self.rng, GRID_SIZE.0, GRID_SIZE.1);
+                                self.food.pos = new_food_pos;
+                            }
+                            // If it ate itself, we set our gameover state to true.
+                            snake::Ate::Itself => {
+                                self.gameover = true;
+                            }
                         }
                     }
                 }
+                
             }
         }
 
@@ -126,7 +137,9 @@ impl event::EventHandler<ggez::GameError> for GameState {
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.0, 0.0, 0.0, 1.0]));
 
         // Then we tell the snake and the food to draw themselves
-        self.snake.draw(&mut canvas);
+        for s in self.snakes.iter() {
+            s.draw(&mut canvas);
+        }
         self.food.draw(&mut canvas);
 
         // Finally, we "flush" the draw commands.
@@ -141,12 +154,12 @@ impl event::EventHandler<ggez::GameError> for GameState {
     }
 
     /// `key_down_event` gets fired when a key gets pressed.
-    fn key_down_event(&mut self, _ctx: &mut Context, input: KeyInput, _repeat: bool) -> GameResult {
+    fn key_down_event(&mut self, _ctx: &mut Context, _input: KeyInput, _repeat: bool) -> GameResult {
         // Here we attempt to convert the Keycode into a Direction using the helper
         // we defined earlier.
-        if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
-            self.snake.keydir(dir);
-        }
+        // if let Some(dir) = input.keycode.and_then(Direction::from_keycode) {
+        //     self.snake.keydir(dir);
+        // }
         Ok(())
     }
 }
@@ -163,7 +176,9 @@ fn main() -> GameResult {
         .build()?;
 
     // Next we create a new instance of our GameState struct, which implements EventHandler
-    let state = GameState::new();
+    let mut state = GameState::new();
+
+    state.load_level();
     // And finally we actually run our game, passing in our context and state.
     event::run(ctx, events_loop, state)
 }

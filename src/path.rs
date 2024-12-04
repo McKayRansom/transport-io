@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 
 use crate::grid::GridPosition as Pos;
 
@@ -8,6 +7,11 @@ const GRID_COST: u32 = 1;
 
 type GridPathCost = u32;
 pub type GridPath = Option<(Vec<Pos>, GridPathCost)>;
+
+pub struct PathGrid {
+    occupied: Vec<Pos>,
+}
+
 
 impl Pos {
     fn distance(&self, other: &Pos) -> u32 {
@@ -40,14 +44,33 @@ impl Pos {
     }
 }
 
-pub fn find_path(start: Pos, end: Pos, blocked: &Vec<Pos>) -> GridPath {
-    let result = astar(
-        &start,
-        |p| p.successors(&blocked),
-        |p| p.distance(&end) / 3,
-        |p| *p == end,
-    );
-    // assert_eq!(result.expect("no path found").1, 4);
+impl PathGrid {
 
-    result
+    pub fn new() -> Self {
+        PathGrid {
+            occupied: Vec::new(),
+        }
+    }
+
+    pub fn find_path(&self, start: Pos, end: Pos) -> GridPath {
+        let result = astar(
+            &start,
+            |p| p.successors(&self.occupied),
+            |p| p.distance(&end) / 3,
+            |p| *p == end,
+        );
+        // assert_eq!(result.expect("no path found").1, 4);
+
+        result
+    }
+
+    pub fn add_blocked(&mut self, pos: Pos) {
+        self.occupied.push(pos);
+    }
+
+    pub fn remove_blocked(&mut self, pos: Pos) {
+        if let Some(index) = self.occupied.iter().position(|value| *value == pos) {
+            self.occupied.swap_remove(index);
+        }
+    }
 }

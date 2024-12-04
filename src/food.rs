@@ -5,13 +5,13 @@ use ggez::graphics;
 
 /// This is again an abstraction over a `GridPosition` that represents
 /// a piece of food the snake can eat. It can draw itself.
-pub struct Food {
+pub struct Station {
     pub pos: GridPosition,
 }
 
-impl Food {
+impl Station {
     pub fn new(pos: GridPosition) -> Self {
-        Food { pos }
+        Station { pos }
     }
 
     /// Here is the first time we see what drawing looks like with ggez.

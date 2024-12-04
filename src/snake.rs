@@ -2,7 +2,7 @@
 
 use crate::grid::Direction;
 use crate::grid::GridPosition;
-use crate::path::{find_path, GridPath};
+use crate::path::{PathGrid, GridPath};
 use crate::food;
 
 use std::collections::VecDeque;
@@ -48,14 +48,21 @@ pub struct Snake {
     pub ate: Option<Ate>,
 
     path: GridPath,
+
+    // grid: &'a mut PathGrid,
 }
 
 impl Snake {
-    pub fn new(pos: GridPosition) -> Self {
+    pub fn new(pos: GridPosition, path_grid: &mut PathGrid) -> Self {
         let mut body = VecDeque::new();
         // Our snake will initially have a head and one body segment,
         // and will be moving to the right.
-        body.push_back(Segment::new((pos.x - 1, pos.y).into()));
+        let first_segment = Segment::new((pos.x - 1, pos.y).into());
+        body.push_back(first_segment);
+            
+        path_grid.add_blocked(pos);
+        path_grid.add_blocked(first_segment.pos);
+
         Snake {
             head: Segment::new(pos),
             dir: Direction::Right,
@@ -68,7 +75,7 @@ impl Snake {
     /// A helper function that determines whether
     /// the snake eats a given piece of Food based
     /// on its current position
-    fn eats(&self, food: &food::Food) -> bool {
+    fn eats(&self, food: &food::Station) -> bool {
         self.head.pos == food.pos
     }
 
@@ -83,15 +90,12 @@ impl Snake {
         false
     }
 
-    fn update_path(&mut self, food: &food::Food) {
+    fn update_path(&mut self, food: &food::Station, path_grid: &PathGrid) {
         // find path
         if self.path.is_none() {
-            let segments: Vec<GridPosition> = self.body
-                .iter()
-                .map(|segment| segment.pos)
-                .collect();
 
-            self.path = find_path(self.head.pos, food.pos, &segments);
+
+            self.path = path_grid.find_path(self.head.pos, food.pos);
             if self.path.is_none() {
                 // couldn't find path
                 println!("Couldn't find path!");
@@ -131,10 +135,10 @@ impl Snake {
 
     /// The main update function for our snake which gets called every time
     /// we want to update the game state.
-    pub fn update(&mut self, food: &food::Food) {
+    pub fn update(&mut self, food: &food::Station, path_grid: &mut PathGrid) {
 
 
-        self.update_path(food);
+        self.update_path(food, path_grid);
 
 
         // First we get a new head position by using our `new_from_move` helper
@@ -144,6 +148,7 @@ impl Snake {
         // Next we create a new segment will be our new head segment using the
         // new position we just made.
         let new_head = Segment::new(new_head_pos);
+        path_grid.add_blocked(new_head.pos);
         // Then we push our current head Segment onto the front of our body
         self.body.push_front(self.head);
         // And finally make our actual head the new Segment we created. This has
@@ -164,10 +169,17 @@ impl Snake {
         // stationary, we just add a segment to the front and remove one from the back. If we eat
         // a piece of food, then we leave the last segment so that we extend our body by one.
         if self.ate.is_none() {
-            self.body.pop_back();
+            if let Some(last_segment)  = self.body.pop_back() {
+                path_grid.remove_blocked(last_segment.pos);
+            }
+            
+            // update the grid
+            // let segments: Vec<GridPosition> = self.body
+            //     .iter()
+            //     .map(|segment| segment.pos)
+            //     .collect();
         }
     }
-
     /// Here we have the Snake draw itself. This is very similar to how we saw the Food
     /// draw itself earlier.
     ///
@@ -183,7 +195,7 @@ impl Snake {
                 &graphics::Quad,
                 graphics::DrawParam::new()
                     .dest_rect(seg.pos.into())
-                    .color([0.3, 0.6, 0.0, 1.0]),
+                    .color([0.6, 0.6, 0.0, 1.0]),
             );
         }
         // And then we do the same for the head, instead making it fully red to distinguish it.
@@ -202,21 +214,10 @@ impl Snake {
                     &graphics::Quad,
                     graphics::DrawParam::new()
                         .dest_rect(seg.clone().into())
-                        .color([0.1, 0.9, 0.0, 0.5]),
+                        .color([0.0, 0.3, 0.0, 0.5]),
                 ); 
             }
 
         }
-    }
-
-    pub fn keydir(&mut self, dir: Direction)
-    {
-        // If it succeeds, we check if a new direction has already been set
-        // and make sure the new direction is different then `snake.dir`
-
-        // If no new direction has been set and the direction is not the inverse
-        // of the `last_update_dir`, then set the snake's new direction to be the
-        // direction the user pressed.
-        self.dir = dir;
     }
 }
