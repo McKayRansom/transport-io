@@ -2,6 +2,7 @@
 
 use crate::grid::Direction;
 use crate::grid::GridPosition;
+use crate::path::{find_path, GridPath};
 use crate::food;
 
 use std::collections::VecDeque;
@@ -45,14 +46,8 @@ pub struct Snake {
     /// that was performed. The snake could have eaten nothing (None), Food (Some(Ate::Food)),
     /// or Itself (Some(Ate::Itself))
     pub ate: Option<Ate>,
-    /// Finally we store the direction that the snake was traveling the last
-    /// time that `update` was called, which we will use to determine valid
-    /// directions that it could move the next time update is called.
-    last_update_dir: Direction,
-    /// Store the direction that will be used in the `update` after the next `update`
-    /// This is needed so a user can press two directions (eg. left then up)
-    /// before one `update` has happened. It sort of queues up key press input
-    next_dir: Option<Direction>,
+
+    path: GridPath,
 }
 
 impl Snake {
@@ -64,10 +59,9 @@ impl Snake {
         Snake {
             head: Segment::new(pos),
             dir: Direction::Right,
-            last_update_dir: Direction::Right,
             body,
             ate: None,
-            next_dir: None,
+            path: None,
         }
     }
 
@@ -89,20 +83,58 @@ impl Snake {
         false
     }
 
+    fn update_path(&mut self, food: &food::Food) {
+        // find path
+        if self.path.is_none() {
+            let segments: Vec<GridPosition> = self.body
+                .iter()
+                .map(|segment| segment.pos)
+                .collect();
+
+            self.path = find_path(self.head.pos, food.pos, &segments);
+            if self.path.is_none() {
+                // couldn't find path
+                println!("Couldn't find path!");
+            }
+        }
+
+        if let Some(path) = &mut self.path {
+
+            if path.0.is_empty() {
+                return;
+            }
+
+            let mut next_pos = path.0[0];
+
+            if next_pos == self.head.pos {
+                path.0.remove(0);
+            }
+
+            if path.0.is_empty() {
+                return;
+            }
+
+            next_pos = path.0[0];
+
+            // set dir
+            if next_pos.x > self.head.pos.x {
+                self.dir = Direction::Right;
+            } else if next_pos.x < self.head.pos.x {
+                self.dir = Direction::Left; 
+            } else if next_pos.y < self.head.pos.y {
+                self.dir = Direction::Up;
+            } else if next_pos.y > self.head.pos.y {
+                self.dir = Direction::Down;
+            }
+        }
+    }
+
     /// The main update function for our snake which gets called every time
     /// we want to update the game state.
     pub fn update(&mut self, food: &food::Food) {
 
-        // set dir
-        if food.pos.x > self.head.pos.x {
-            self.dir = Direction::Right;
-        } else if food.pos.x < self.head.pos.x {
-            self.dir = Direction::Left; 
-        } else if food.pos.y < self.head.pos.y {
-            self.dir = Direction::Up;
-        } else if food.pos.y > self.head.pos.y {
-            self.dir = Direction::Down;
-        }
+
+        self.update_path(food);
 
 
         // First we get a new head position by using our `new_from_move` helper
@@ -123,6 +155,7 @@ impl Snake {
             self.ate = Some(Ate::Itself);
         } else if self.eats(food) {
             self.ate = Some(Ate::Food);
+            self.path = None;
         } else {
             self.ate = None;
         }
@@ -133,8 +166,6 @@ impl Snake {
         if self.ate.is_none() {
             self.body.pop_back();
         }
-        // And set our last_update_dir to the direction we just moved.
-        self.last_update_dir = self.dir;
     }
 
     /// Here we have the Snake draw itself. This is very similar to how we saw the Food
@@ -152,7 +183,7 @@ impl Snake {
                 &graphics::Quad,
                 graphics::DrawParam::new()
                     .dest_rect(seg.pos.into())
-                    .color([0.3, 0.3, 0.0, 1.0]),
+                    .color([0.3, 0.6, 0.0, 1.0]),
             );
         }
         // And then we do the same for the head, instead making it fully red to distinguish it.
@@ -162,19 +193,30 @@ impl Snake {
                 .dest_rect(self.head.pos.into())
                 .color([1.0, 0.5, 0.0, 1.0]),
         );
+
+        // draw the path
+        if let Some(path) = &self.path {
+            for seg in &path.0 {
+                // and then draw the Rect that we convert that Segment's position into
+                canvas.draw(
+                    &graphics::Quad,
+                    graphics::DrawParam::new()
+                        .dest_rect(seg.clone().into())
+                        .color([0.1, 0.9, 0.0, 0.5]),
+                ); 
+            }
+
+        }
     }
 
     pub fn keydir(&mut self, dir: Direction)
     {
         // If it succeeds, we check if a new direction has already been set
         // and make sure the new direction is different then `snake.dir`
-        if self.dir != self.last_update_dir && dir.inverse() != self.dir {
-            self.next_dir = Some(dir);
-        } else if dir.inverse() != self.last_update_dir {
-            // If no new direction has been set and the direction is not the inverse
-            // of the `last_update_dir`, then set the snake's new direction to be the
-            // direction the user pressed.
-            self.dir = dir;
-        } 
+
+        // If no new direction has been set and the direction is not the inverse
+        // of the `last_update_dir`, then set the snake's new direction to be the
+        // direction the user pressed.
+        self.dir = dir;
     }
 }

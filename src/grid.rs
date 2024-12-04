@@ -16,7 +16,7 @@ pub const GRID_CELL_SIZE: (i16, i16) = (32, 32);
 /// or grid which we defined above. We'll use signed integers because we only want
 /// to store whole numbers, and we need them to be signed so that they work properly
 /// with our modulus arithmetic later.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
 pub struct GridPosition {
     pub x: i16,
     pub y: i16,
