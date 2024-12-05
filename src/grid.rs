@@ -29,6 +29,10 @@ impl GridPosition {
         GridPosition { x, y }
     }
 
+    pub fn from_screen(x: f32, y: f32) -> Self {
+        GridPosition {x: x as i16/GRID_CELL_SIZE.0, y: y as i16/GRID_CELL_SIZE.1}
+    }
+
     pub fn valid(&self) -> bool {
         self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
     }

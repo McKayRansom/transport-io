@@ -23,7 +23,7 @@ impl Segment {
 }
 /// Now we make a struct that contains all the information needed to describe the
 /// state of the Snake itself.
-pub struct Snake {
+pub struct Vehicle {
     head: Segment,
     _dir: Direction,
     body: VecDeque<Segment>,
@@ -31,7 +31,7 @@ pub struct Snake {
     station_id: usize,
 }
 
-impl Snake {
+impl Vehicle {
     pub fn new(pos: GridPosition, path_grid: &mut PathGrid) -> Self {
         let mut body = VecDeque::new();
         // Our snake will initially have a head and one body segment,
@@ -45,7 +45,7 @@ impl Snake {
         path_grid.add_occupied(pos);
         path_grid.add_occupied(first_segment.pos);
 
-        Snake {
+        Vehicle {
             head: Segment::new(pos),
             _dir: Direction::Right,
             body,

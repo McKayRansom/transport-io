@@ -15,18 +15,21 @@
 
 mod grid;
 mod path;
+use ggez::event::MouseButton;
 use ggez::input::keyboard::KeyCode;
 use path::PathGrid;
 use grid::GridPosition;
 use grid::GRID_SIZE;
 mod station;
-mod snake;
+mod vehicle;
 
 use ggez::{
     event, graphics,
     input::keyboard::KeyInput,
     Context, GameResult,
 };
+use station::Station;
+use vehicle::Vehicle;
 
 use std::env;
 
@@ -54,14 +57,23 @@ F: Build Road
 ";
 
 
+enum BuildMode {
+    None,
+    Vehicle,
+    Station,
+    Road,
+    Delete,
+}
+
 /// Now we have the heart of our game, the `GameState`. This struct
 /// will implement ggez's `EventHandler` trait and will therefore drive
 /// everything else that happens in our game.
 struct GameState {
     path_grid: PathGrid,
-    snakes: Vec<snake::Snake>,
+    snakes: Vec<vehicle::Vehicle>,
     stations: Vec<station::Station>,
-    gameover: bool,
+    mouse_down: bool,
+    build_mode: BuildMode,
 }
 
 impl GameState {
@@ -74,7 +86,8 @@ impl GameState {
             path_grid: path_grid,
             snakes: Vec::new(),
             stations: Vec::new(),
-            gameover: false,
+            mouse_down: false,
+            build_mode: BuildMode::None,
         }
     }
 
@@ -104,7 +117,7 @@ impl GameState {
         let new_station = station::Station::new(station_pos);
         let new_station2 = station::Station::new(station_pos2);
 
-        let new_snake = snake::Snake::new(station_pos2, &mut self.path_grid);
+        let new_snake = vehicle::Vehicle::new(station_pos2, &mut self.path_grid);
         self.snakes.push(new_snake);
 
         self.stations.push(new_station);
@@ -122,14 +135,9 @@ impl event::EventHandler<ggez::GameError> for GameState {
         // If the update is early, there will be no cycles, otherwises, the logic will run once for each
         // frame fitting in the time since the last update.
         while ctx.time.check_update_time(DESIRED_FPS) {
-            // We check to see if the game is over. If not, we'll update. If so, we'll just do nothing.
-            if !self.gameover {
-                // Here we do the actual updating of our game world. First we tell the snake to update itself,
-                // passing in a reference to our piece of food.
-                for s in self.snakes.iter_mut() {
-                    s.update(&self.stations, &mut self.path_grid);
-                }
-                
+
+            for s in self.snakes.iter_mut() {
+                s.update(&self.stations, &mut self.path_grid);
             }
         }
 
@@ -141,6 +149,20 @@ impl event::EventHandler<ggez::GameError> for GameState {
         // First we create a canvas that renders to the frame, and clear it to a black
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.0, 0.0, 0.0, 1.0]));
+
+        for i in 0..GRID_SIZE.0 {
+            for j in 0..GRID_SIZE.1 {
+                let pos = GridPosition {x: i, y: j};
+                if self.path_grid.is_allowed(pos) {
+                    canvas.draw(
+                        &graphics::Quad,
+                        graphics::DrawParam::new()
+                            .dest_rect(pos.into())
+                            .color([0.3, 0.3, 0.3, 0.5]),
+                    ); 
+                }
+            }
+        }
 
         // Then we tell the snake and the food to draw themselves
         for s in self.snakes.iter() {
@@ -178,13 +200,143 @@ impl event::EventHandler<ggez::GameError> for GameState {
         // Here we attempt to convert the Keycode into a Direction using the helper
         // we defined earlier.
         if let Some(keycode) = input.keycode {
-            if keycode == KeyCode::Q {
-                ctx.request_quit();
+            match keycode {
+                KeyCode::Q => {
+                    ctx.request_quit();
+                }
+                KeyCode::A => {
+                    self.build_mode = BuildMode::Vehicle;
+                }
+                KeyCode::S => {
+                    self.build_mode = BuildMode::Station;
+                }
+                KeyCode::D => {
+                    self.build_mode = BuildMode::Delete;
+                }
+                KeyCode::F => {
+                    self.build_mode = BuildMode::Road;
+                }
+                _ => {
+
+                }
             }
         }
 
         Ok(())
     }
+
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) -> GameResult {
+        self.mouse_down = true;
+        let pos = GridPosition::from_screen(x, y);
+        println!("Mouse button pressed: {button:?}, pos: {pos:?} x: {x}, y: {y}");
+        match self.build_mode {
+
+            BuildMode::Vehicle => {
+                if self.path_grid.is_allowed(pos) {
+                    self.snakes.push(Vehicle::new(pos, &mut self.path_grid))
+                }
+            }
+            BuildMode::Station => {
+                if !self.path_grid.is_allowed(pos) {
+                    self.path_grid.add_allowed(pos);
+                }
+                self.stations.push(Station::new(pos))
+
+            }
+            BuildMode::Road => {
+                if !self.path_grid.is_allowed(pos) {
+                    self.path_grid.add_allowed(pos);
+                }
+            }
+            BuildMode::Delete => {
+                if self.path_grid.is_allowed(pos) {
+                    self.path_grid.remove_allowed(pos);
+                }
+            }
+            _ => {
+
+            }
+        }
+        Ok(())
+    }
+
+
+    fn mouse_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) -> GameResult {
+        self.mouse_down = false;
+        println!("Mouse button released: {button:?}, x: {x}, y: {y}");
+        Ok(())
+    }
+
+    fn mouse_motion_event(
+        &mut self,
+        _ctx: &mut Context,
+        x: f32,
+        y: f32,
+        xrel: f32,
+        yrel: f32,
+    ) -> GameResult {
+        if self.mouse_down {
+            // Mouse coordinates are PHYSICAL coordinates, but here we want logical coordinates.
+
+            // If you simply use the initial coordinate system, then physical and logical
+            // coordinates are identical.
+            // self.pos_x = x;
+            // self.pos_y = y;
+
+            // If you change your screen coordinate system you need to calculate the
+            // logical coordinates like this:
+            /*
+            let screen_rect = graphics::screen_coordinates(_ctx);
+            let size = graphics::window(_ctx).inner_size();
+            self.pos_x = (x / (size.width  as f32)) * screen_rect.w + screen_rect.x;
+            self.pos_y = (y / (size.height as f32)) * screen_rect.h + screen_rect.y;
+            */
+
+            let pos = GridPosition::from_screen(x, y);
+            match self.build_mode {
+
+                // BuildMode::Vehicle => {
+                    // if self.path_grid.is_allowed(pos) {
+                        // self.snakes.push(Vehicle::new(pos, &mut self.path_grid))
+                    // }
+                // }
+                // BuildMode::Station => {
+                    // if !self.path_grid.is_allowed(pos) {
+                    // }
+                    // self.stations.push(Station::new(pos))
+
+                // }
+                BuildMode::Road => {
+                    if !self.path_grid.is_allowed(pos) {
+                        self.path_grid.add_allowed(pos);
+                    }
+                }
+                BuildMode::Delete => {
+                    if self.path_grid.is_allowed(pos) {
+                        self.path_grid.remove_allowed(pos);
+                    }
+                }
+                _ => {
+
+                }
+            }
+        }
+        println!("Mouse motion, x: {x}, y: {y}, relative x: {xrel}, relative y: {yrel}");
+        Ok(())
+    }
+
 }
 
 fn main() -> GameResult {
