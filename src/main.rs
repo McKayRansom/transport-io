@@ -17,6 +17,7 @@ mod grid;
 mod path;
 use ggez::event::MouseButton;
 use ggez::input::keyboard::KeyCode;
+use grid::Direction;
 use path::PathGrid;
 use grid::GridPosition;
 use grid::GRID_SIZE;
@@ -54,6 +55,7 @@ A: Add vehicle
 S: Build station
 D: Delete Road
 F: Build Road
+R: Rotate
 ";
 
 
@@ -74,6 +76,8 @@ struct GameState {
     stations: Vec<station::Station>,
     mouse_down: bool,
     build_mode: BuildMode,
+    build_direction: Direction,
+    delivered: u32,
 }
 
 impl GameState {
@@ -88,6 +92,8 @@ impl GameState {
             stations: Vec::new(),
             mouse_down: false,
             build_mode: BuildMode::None,
+            build_direction: Direction::Right,
+            delivered: 0,
         }
     }
 
@@ -106,12 +112,22 @@ impl GameState {
         let mut pos: GridPosition = station_pos;
         for i in 10..21 {
             pos.x = i;
-            self.path_grid.add_allowed(pos);
+            self.path_grid.add_allowed(pos, grid::Direction::Right);
         }
 
         for i in 10..16 {
             pos.y = i;
-            self.path_grid.add_allowed(pos);
+            self.path_grid.add_allowed(pos, grid::Direction::Down);
+        }
+        
+        for i in (10..21).rev() {
+            pos.x = i;
+            self.path_grid.add_allowed(pos, grid::Direction::Left);
+        }
+    
+        for i in (10..16).rev() {
+            pos.y = i;
+            self.path_grid.add_allowed(pos, grid::Direction::Up);
         }
 
         let new_station = station::Station::new(station_pos);
@@ -137,7 +153,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
         while ctx.time.check_update_time(DESIRED_FPS) {
 
             for s in self.snakes.iter_mut() {
-                s.update(&self.stations, &mut self.path_grid);
+                self.delivered += s.update(&self.stations, &mut self.path_grid);
             }
         }
 
@@ -154,26 +170,67 @@ impl event::EventHandler<ggez::GameError> for GameState {
             for j in 0..GRID_SIZE.1 {
                 let pos = GridPosition {x: i, y: j};
                 if self.path_grid.is_allowed(pos) {
+
+                    let mut rect: graphics::Rect = pos.into();
+                    rect.x += 4.0;
+                    rect.y += 4.0;
+                    rect.w -= 8.0;
+                    rect.h -= 8.0;
                     canvas.draw(
                         &graphics::Quad,
                         graphics::DrawParam::new()
-                            .dest_rect(pos.into())
+                            .dest_rect(rect)
                             .color([0.3, 0.3, 0.3, 0.5]),
                     ); 
+                    
+                    for new_pos in self.path_grid.get_dirs(pos) {
+
+                        let mut rect_new: graphics::Rect = new_pos.into();
+                        rect_new.x += ((rect.x - rect_new.x) * 0.85) + 8.0;
+                        rect_new.y += ((rect.y - rect_new.y) * 0.85) + 8.0;
+                        rect_new.h -= 20.0;
+                        rect_new.w -= 20.0;
+
+                        canvas.draw(
+                            &graphics::Quad,
+                            graphics::DrawParam::new()
+                                .dest_rect(rect_new)
+                                .color([0.7, 0.7, 0.7, 0.7]),
+                        ); 
+                    }
                 }
             }
         }
 
-        // Then we tell the snake and the food to draw themselves
-        for s in self.snakes.iter() {
-            s.draw(&mut canvas);
-        }
         for s in self.stations.iter() {
             s.draw(&mut canvas);
         }
 
+        for s in self.snakes.iter() {
+            s.draw(&mut canvas);
+        }
+
+
         let offset: f32 = 10.0;
-        let dest_point = ggez::glam::Vec2::new(offset, offset);
+        let mut dest_point = ggez::glam::Vec2::new(offset, offset);
+        let delivered = self.delivered;
+        canvas.draw(
+            graphics::Text::new(format!("Delivered: {delivered:?}"))
+                .set_font("LiberationMono")
+                .set_scale(32.),
+            dest_point,
+        );
+
+        dest_point.y += 32.0;
+        let direction = self.build_direction;
+        canvas.draw(
+            graphics::Text::new(format!("Direction: {direction:?}"))
+                .set_font("LiberationMono")
+                .set_scale(32.),
+            dest_point,
+        );
+
+        dest_point.y += 32.0;
         canvas.draw(
             graphics::Text::new(HELP_TEXT)
                 .set_font("LiberationMono")
@@ -216,6 +273,9 @@ impl event::EventHandler<ggez::GameError> for GameState {
                 KeyCode::F => {
                     self.build_mode = BuildMode::Road;
                 }
+                KeyCode::R => {
+                    self.build_direction = self.build_direction.rotate();
+                }
                 _ => {
 
                 }
@@ -244,15 +304,18 @@ impl event::EventHandler<ggez::GameError> for GameState {
             }
             BuildMode::Station => {
                 if !self.path_grid.is_allowed(pos) {
-                    self.path_grid.add_allowed(pos);
+                    // self.path_grid.add_allowed(pos);
+                    println!("Not allowed here");
                 }
-                self.stations.push(Station::new(pos))
+                else {
+                    self.stations.push(Station::new(pos))
+                }
 
             }
             BuildMode::Road => {
-                if !self.path_grid.is_allowed(pos) {
-                    self.path_grid.add_allowed(pos);
-                }
+                // if !self.path_grid.is_allowed(pos) {
+                    self.path_grid.add_allowed(pos, self.build_direction);
+                // }
             }
             BuildMode::Delete => {
                 if self.path_grid.is_allowed(pos) {
@@ -320,7 +383,7 @@ impl event::EventHandler<ggez::GameError> for GameState {
                 // }
                 BuildMode::Road => {
                     if !self.path_grid.is_allowed(pos) {
-                        self.path_grid.add_allowed(pos);
+                        self.path_grid.add_allowed(pos, self.build_direction);
                     }
                 }
                 BuildMode::Delete => {
@@ -350,9 +413,9 @@ fn main() -> GameResult {
     };
 
     // Here we use a ContextBuilder to setup metadata about our game. First the title and author
-    let (mut ctx, events_loop) = ggez::ContextBuilder::new("snake", "Gray Olson")
+    let (mut ctx, events_loop) = ggez::ContextBuilder::new("transport-io", "McKay Ransom")
         // Next we set up the window. This title will be displayed in the title bar of the window.
-        .window_setup(ggez::conf::WindowSetup::default().title("Snake!"))
+        .window_setup(ggez::conf::WindowSetup::default().title("Transport IO"))
         // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with
         .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
         // And finally we attempt to build the context and create the window. If it fails, we panic with the message

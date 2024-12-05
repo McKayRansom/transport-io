@@ -1,11 +1,12 @@
 
 
+use crate::grid;
 use crate::grid::Direction;
 use crate::grid::GridPosition;
 use crate::path::{PathGrid, GridPath};
 use crate::station;
 
-use std::collections::VecDeque;
+// use std::collections::VecDeque;
 use ggez::graphics;
 
 /// This is mostly just a semantic abstraction over a `GridPosition` to represent
@@ -25,30 +26,30 @@ impl Segment {
 /// state of the Snake itself.
 pub struct Vehicle {
     head: Segment,
-    _dir: Direction,
-    body: VecDeque<Segment>,
+    dir: Direction,
+    // body: VecDeque<Segment>,
     path: GridPath,
     station_id: usize,
 }
 
 impl Vehicle {
     pub fn new(pos: GridPosition, path_grid: &mut PathGrid) -> Self {
-        let mut body = VecDeque::new();
+        // let mut body = VecDeque::new();
         // Our snake will initially have a head and one body segment,
         // and will be moving to the right.
-        let first_segment = Segment::new((pos.x - 1, pos.y).into());
-        body.push_back(first_segment);
+        // let first_segment = Segment::new((pos.x - 1, pos.y).into());
+        // body.push_back(first_segment);
 
         assert!(path_grid.is_allowed(pos) == true);
         assert!(path_grid.is_occupied(pos) == false);
             
         path_grid.add_occupied(pos);
-        path_grid.add_occupied(first_segment.pos);
+        // path_grid.add_occupied(first_segment.pos);
 
         Vehicle {
             head: Segment::new(pos),
-            _dir: Direction::Right,
-            body,
+            dir: Direction::Right,
+            // body,
             path: None,
             station_id: 0,
         }
@@ -67,7 +68,7 @@ impl Vehicle {
 
     /// The main update function for our snake which gets called every time
     /// we want to update the game state.
-    pub fn update(&mut self, stations: &Vec<station::Station>, path_grid: &mut PathGrid) {
+    pub fn update(&mut self, stations: &Vec<station::Station>, path_grid: &mut PathGrid) -> u32 {
 
         let destination = &stations[self.station_id];
 
@@ -78,7 +79,7 @@ impl Vehicle {
         if let Some(path) = &mut self.path {
 
             if path.0.is_empty() || path.0.len() < 2 {
-                return;
+                return 0;
             }
 
             let mut next_pos = path.0[0];
@@ -90,18 +91,19 @@ impl Vehicle {
             }
 
             if path_grid.is_occupied(next_pos) {
-                return;
+                return 0;
             }
 
             // update position
             path_grid.add_occupied(next_pos);
-            let mut prev_pos = self.head.pos;
+            let prev_pos = self.head.pos;
             self.head.pos = next_pos;
-            for segment in self.body.iter_mut() {
-                let temp = segment.pos;
-                segment.pos = prev_pos;
-                prev_pos = temp;
-            }
+            // for segment in self.body.iter_mut() {
+            //     let temp = segment.pos;
+            //     segment.pos = prev_pos;
+            //     prev_pos = temp;
+            // }
+            self.dir = Direction::from_position(prev_pos, next_pos);
             path_grid.remove_occupied(prev_pos);
 
             // check destination
@@ -111,9 +113,11 @@ impl Vehicle {
                 if self.station_id >= stations.len() {
                     self.station_id = 0;
                 }
+                return 1;
             }
         }
 
+        0
     }
     /// Here we have the Snake draw itself. This is very similar to how we saw the Food
     /// draw itself earlier.
@@ -123,36 +127,43 @@ impl Vehicle {
     /// using `InstanceArray` or something similar that batches draw calls.
     pub fn draw(&self, canvas: &mut graphics::Canvas) {
         // We first iterate through the body segments and draw them.
-        for seg in &self.body {
-            // Again we set the color (in this case an orangey color)
-            // and then draw the Rect that we convert that Segment's position into
-            canvas.draw(
-                &graphics::Quad,
-                graphics::DrawParam::new()
-                    .dest_rect(seg.pos.into())
-                    .color([0.6, 0.6, 0.0, 1.0]),
-            );
-        }
+        // for seg in &self.body {
+        //     // Again we set the color (in this case an orangey color)
+        //     // and then draw the Rect that we convert that Segment's position into
+        //     canvas.draw(
+        //         &graphics::Quad,
+        //         graphics::DrawParam::new()
+        //             .dest_rect(seg.pos.into())
+        //             .color([0.6, 0.6, 0.0, 1.0]),
+        //     );
+        // }
         // And then we do the same for the head, instead making it fully red to distinguish it.
+        let mut rect: graphics::Rect = self.head.pos.into();
+        if self.dir == Direction::Right || self.dir == Direction::Left {
+            rect.h *= 0.75;
+            rect.y += grid::GRID_CELL_SIZE.1 as f32 * (0.25 / 2.0);
+        } else {
+            rect.w *= 0.75;
+            rect.x += grid::GRID_CELL_SIZE.0 as f32 * (0.25 / 2.0);
+        }
         canvas.draw(
             &graphics::Quad,
             graphics::DrawParam::new()
-                .dest_rect(self.head.pos.into())
-                .color([1.0, 0.5, 0.0, 1.0]),
+                .dest_rect(rect)
+                .color([1.0, 0.1, 0.0, 1.0]),
         );
 
         // draw the path
-        if let Some(path) = &self.path {
-            for seg in &path.0 {
-                // and then draw the Rect that we convert that Segment's position into
-                canvas.draw(
-                    &graphics::Quad,
-                    graphics::DrawParam::new()
-                        .dest_rect(seg.clone().into())
-                        .color([0.0, 0.3, 0.0, 0.5]),
-                ); 
-            }
-
-        }
+        // if let Some(path) = &self.path {
+        //     for seg in &path.0 {
+        //         // and then draw the Rect that we convert that Segment's position into
+        //         canvas.draw(
+        //             &graphics::Quad,
+        //             graphics::DrawParam::new()
+        //                 .dest_rect(seg.clone().into())
+        //                 .color([0.0, 0.3, 0.0, 0.5]),
+        //         ); 
+        //     }
+        // }
     }
 }

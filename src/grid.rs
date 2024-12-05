@@ -1,10 +1,6 @@
-
 use oorandom::Rand32;
 
-use ggez::{
-    graphics,
-    input::keyboard::KeyCode,
-};
+use ggez::{graphics, input::keyboard::KeyCode};
 
 // Here we define the size of our game board in terms of how many grid
 // cells it will take up. We choose to make a 30 x 20 game board.
@@ -30,7 +26,10 @@ impl GridPosition {
     }
 
     pub fn from_screen(x: f32, y: f32) -> Self {
-        GridPosition {x: x as i16/GRID_CELL_SIZE.0, y: y as i16/GRID_CELL_SIZE.1}
+        GridPosition {
+            x: x as i16 / GRID_CELL_SIZE.0,
+            y: y as i16 / GRID_CELL_SIZE.1,
+        }
     }
 
     pub fn valid(&self) -> bool {
@@ -92,10 +91,10 @@ impl From<(i16, i16)> for GridPosition {
 /// directions that our snake could move.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
+    Up = 1,
+    Down = 2,
+    Left = 4,
+    Right = 8,
 }
 
 impl Direction {
@@ -108,6 +107,27 @@ impl Direction {
             Direction::Down => Direction::Up,
             Direction::Left => Direction::Right,
             Direction::Right => Direction::Left,
+        }
+    }
+
+    pub fn rotate(self) -> Self {
+        match self {
+            Direction::Up => Direction::Right,
+            Direction::Right => Direction::Down,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+        }
+    }
+
+    pub fn from_position(pos1: GridPosition, pos2: GridPosition) -> Self {
+        if pos2.x > pos1.x {
+            Direction::Right
+        } else if pos2.y > pos1.y {
+            Direction::Down
+        } else if pos2.y < pos1.y {
+            Direction::Down
+        } else {
+            Direction::Left
         }
     }
 
@@ -125,4 +145,3 @@ impl Direction {
         }
     }
 }
-

@@ -1,4 +1,6 @@
 use crate::grid::GridPosition as Pos;
+use crate::grid::GRID_SIZE;
+use crate::grid::Direction;
 
 use pathfinding::prelude::astar;
 
@@ -8,9 +10,89 @@ const OCCUPIED_COST: u32 = 2;
 type GridPathCost = u32;
 pub type GridPath = Option<(Vec<Pos>, GridPathCost)>;
 
+
+pub struct PathTileIter {
+    start_pos: Pos,
+    connections: u32,
+}
+
+impl Iterator for PathTileIter {
+    // We can refer to this type using Self::Item
+    type Item = Pos;
+
+    // Here, we define the sequence using `.curr` and `.next`.
+    // The return type is `Option<T>`:
+    //     * When the `Iterator` is finished, `None` is returned.
+    //     * Otherwise, the next value is wrapped in `Some` and returned.
+    // We use Self::Item in the return type, so we can change
+    // the type without having to update the function signatures.
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.connections & Direction::Up as u32 != 0 {
+            self.connections -= Direction::Up as u32;
+            Some(Pos {
+                x: self.start_pos.x,
+                y: self.start_pos.y - 1,
+            })
+        } else if self.connections & Direction::Down as u32 != 0 {
+            self.connections -= Direction::Down as u32;
+            Some(Pos {
+                x: self.start_pos.x,
+                y: self.start_pos.y + 1,
+            })
+        } else if self.connections & Direction::Right as u32 != 0 {
+            self.connections -= Direction::Right as u32;
+            Some(Pos {
+                x: self.start_pos.x + 1,
+                y: self.start_pos.y,
+            })
+        } else if self.connections & Direction::Left as u32 != 0 {
+            self.connections -= Direction::Left as u32;
+            Some(Pos {
+                x: self.start_pos.x - 1,
+                y: self.start_pos.y,
+            })
+        }
+        else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct PathTile {
+    allowed: bool,
+    occupied: bool,
+    connections: u32,
+}
+
+impl PathTile {
+    fn new() -> PathTile {
+        PathTile {
+            allowed: false,
+            occupied: false,
+            connections: 0,
+        }
+    }
+
+    fn connect(&mut self, dir: Direction) {
+        self.connections |= dir as u32;
+    }
+
+    fn is_connected(&self, dir: Direction) -> bool {
+        self.connections & (dir as u32) != 0
+    }
+
+
+    fn connections_as_iter(&self, start_pos: Pos) -> PathTileIter {
+        PathTileIter {
+            connections: self.connections,
+            start_pos,
+        }
+    }
+}
+
 pub struct PathGrid {
-    allowed: Vec<Pos>,
-    occupied: Vec<Pos>,
+    tiles: Vec<Vec<PathTile>>,
 }
 
 impl Pos {
@@ -22,8 +104,7 @@ impl Pos {
 impl PathGrid {
     pub fn new() -> Self {
         PathGrid {
-            allowed: Vec::new(),
-            occupied: Vec::new(),
+            tiles: vec![vec![PathTile::new(); GRID_SIZE.1 as usize]; GRID_SIZE.0 as usize],
         }
     }
 
@@ -40,64 +121,49 @@ impl PathGrid {
     }
 
     fn successors(&self, pos: Pos) -> Vec<(Pos, u32)> {
-        vec![
-            Pos {
-                x: pos.x + 1,
-                y: pos.y,
-            },
-            Pos {
-                x: pos.x - 1,
-                y: pos.y,
-            },
-            Pos {
-                x: pos.x,
-                y: pos.y + 1,
-            },
-            Pos {
-                x: pos.x,
-                y: pos.y - 1,
-            },
-        ]
-        .into_iter()
-        .filter(|x| self.allowed.contains(x) && x.valid())
-        .map(|p| {
-            (
-                p,
-                if self.occupied.contains(&p) {
-                    OCCUPIED_COST
-                } else {
-                    DEFAULT_COST
-                },
-            )
-        })
-        .collect()
+        self.tiles[pos.x as usize][pos.y as usize]
+            .connections_as_iter(pos)
+            // .filter(|x| self.allowed.contains(x) && x.valid())
+            .map(|p| {
+                (
+                    p,
+                    // if self.occupied.contains(&p) {
+                        // OCCUPIED_COST
+                    // } else {
+                        DEFAULT_COST
+                    // },
+                )
+            })
+            .collect()
     }
 
     pub fn is_allowed(&self, pos: Pos) -> bool {
-        self.allowed.contains(&pos)
+        self.tiles[pos.x as usize][pos.y as usize].allowed
     }
 
-    pub fn add_allowed(&mut self, pos: Pos) {
-        self.allowed.push(pos);
+    pub fn get_dirs(&self, pos: Pos) -> PathTileIter {
+        self.tiles[pos.x as usize][pos.y as usize].connections_as_iter(pos)
+    }
+
+    pub fn add_allowed(&mut self, pos: Pos, direction: Direction) {
+        self.tiles[pos.x as usize][pos.y as usize].allowed = true;
+        self.tiles[pos.x as usize][pos.y as usize].connect(direction);
     }
 
     pub fn remove_allowed(&mut self, pos: Pos) {
-        if let Some(index) = self.allowed.iter().position(|value| *value == pos) {
-            self.allowed.swap_remove(index);
-        }
+        self.tiles[pos.x as usize][pos.y as usize].allowed = false;
+        self.tiles[pos.x as usize][pos.y as usize].connections = 0;
     }
 
     pub fn is_occupied(&self, pos: Pos) -> bool {
-        self.occupied.contains(&pos)
+        self.tiles[pos.x as usize][pos.y as usize].occupied
     }
 
     pub fn add_occupied(&mut self, pos: Pos) {
-        self.occupied.push(pos);
+        self.tiles[pos.x as usize][pos.y as usize].occupied = true
     }
 
     pub fn remove_occupied(&mut self, pos: Pos) {
-        if let Some(index) = self.occupied.iter().position(|value| *value == pos) {
-            self.occupied.swap_remove(index);
-        }
+        self.tiles[pos.x as usize][pos.y as usize].occupied = false
     }
 }
