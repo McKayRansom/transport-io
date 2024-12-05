@@ -29,6 +29,10 @@ impl GridPosition {
         GridPosition { x, y }
     }
 
+    pub fn valid(&self) -> bool {
+        self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
+    }
+
     /// As well as a helper function that will give us a random `GridPosition` from
     /// `(0, 0)` to `(max_x, max_y)`
     pub fn random(rng: &mut Rand32, max_x: i16, max_y: i16) -> Self {

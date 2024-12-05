@@ -3,7 +3,7 @@
 use crate::grid::Direction;
 use crate::grid::GridPosition;
 use crate::path::{PathGrid, GridPath};
-use crate::food;
+use crate::station;
 
 use std::collections::VecDeque;
 use ggez::graphics;
@@ -21,35 +21,14 @@ impl Segment {
         Segment { pos }
     }
 }
-
-/// Here we define an enum of the possible things that the snake could have "eaten"
-/// during an update of the game. It could have either eaten a piece of `Food`, or
-/// it could have eaten `Itself` if the head ran into its body.
-#[derive(Clone, Copy, Debug)]
-pub enum Ate {
-    Itself,
-    Food,
-}
-
 /// Now we make a struct that contains all the information needed to describe the
 /// state of the Snake itself.
 pub struct Snake {
-    /// First we have the head of the snake, which is a single `Segment`.
     head: Segment,
-    /// Then we have the current direction the snake is moving. This is
-    /// the direction it will move when `update` is called on it.
-    dir: Direction,
-    /// Next we have the body, which we choose to represent as a `VecDeque`
-    /// of `Segment`s.
+    _dir: Direction,
     body: VecDeque<Segment>,
-    /// Now we have a property that represents the result of the last update
-    /// that was performed. The snake could have eaten nothing (None), Food (Some(Ate::Food)),
-    /// or Itself (Some(Ate::Itself))
-    pub ate: Option<Ate>,
-
     path: GridPath,
-
-    // grid: &'a mut PathGrid,
+    station_id: usize,
 }
 
 impl Snake {
@@ -59,126 +38,82 @@ impl Snake {
         // and will be moving to the right.
         let first_segment = Segment::new((pos.x - 1, pos.y).into());
         body.push_back(first_segment);
+
+        assert!(path_grid.is_allowed(pos) == true);
+        assert!(path_grid.is_occupied(pos) == false);
             
-        path_grid.add_blocked(pos);
-        path_grid.add_blocked(first_segment.pos);
+        path_grid.add_occupied(pos);
+        path_grid.add_occupied(first_segment.pos);
 
         Snake {
             head: Segment::new(pos),
-            dir: Direction::Right,
+            _dir: Direction::Right,
             body,
-            ate: None,
             path: None,
+            station_id: 0,
         }
     }
+   
 
-    /// A helper function that determines whether
-    /// the snake eats a given piece of Food based
-    /// on its current position
-    fn eats(&self, food: &food::Station) -> bool {
-        self.head.pos == food.pos
-    }
+    fn update_path(&mut self, station: &station::Station, path_grid: &PathGrid) {
 
-    /// A helper function that determines whether
-    /// the snake eats itself based on its current position
-    fn eats_self(&self) -> bool {
-        for seg in &self.body {
-            if self.head.pos == seg.pos {
-                return true;
-            }
+        self.path = path_grid.find_path(self.head.pos, station.pos);
+        if self.path.is_none() {
+            // couldn't find path
+            println!("Couldn't find path!");
         }
-        false
+
     }
 
-    fn update_path(&mut self, food: &food::Station, path_grid: &PathGrid) {
-        // find path
-        // if self.path.is_none() {
+    /// The main update function for our snake which gets called every time
+    /// we want to update the game state.
+    pub fn update(&mut self, stations: &Vec<station::Station>, path_grid: &mut PathGrid) {
 
+        let destination = &stations[self.station_id];
 
-            self.path = path_grid.find_path(self.head.pos, food.pos);
-            if self.path.is_none() {
-                // couldn't find path
-                println!("Couldn't find path!");
-            }
-        // }
+        // always update path for now
+        self.update_path(&destination, path_grid);
+
 
         if let Some(path) = &mut self.path {
 
-            if path.0.is_empty() {
+            if path.0.is_empty() || path.0.len() < 2 {
                 return;
             }
 
             let mut next_pos = path.0[0];
 
             if next_pos == self.head.pos {
-                path.0.remove(0);
+                // path.0.remove(0);
+                // println!("REMOVE");
+                next_pos = path.0[1];
             }
 
-            if path.0.is_empty() {
+            if path_grid.is_occupied(next_pos) {
                 return;
             }
 
-            next_pos = path.0[0];
+            // update position
+            path_grid.add_occupied(next_pos);
+            let mut prev_pos = self.head.pos;
+            self.head.pos = next_pos;
+            for segment in self.body.iter_mut() {
+                let temp = segment.pos;
+                segment.pos = prev_pos;
+                prev_pos = temp;
+            }
+            path_grid.remove_occupied(prev_pos);
 
-            // set dir
-            if next_pos.x > self.head.pos.x {
-                self.dir = Direction::Right;
-            } else if next_pos.x < self.head.pos.x {
-                self.dir = Direction::Left; 
-            } else if next_pos.y < self.head.pos.y {
-                self.dir = Direction::Up;
-            } else if next_pos.y > self.head.pos.y {
-                self.dir = Direction::Down;
+            // check destination
+            if self.head.pos == destination.pos {
+                // we made it! head to next station
+                self.station_id += 1;
+                if self.station_id >= stations.len() {
+                    self.station_id = 0;
+                }
             }
         }
-    }
 
-    /// The main update function for our snake which gets called every time
-    /// we want to update the game state.
-    pub fn update(&mut self, food: &food::Station, path_grid: &mut PathGrid) {
-
-
-        self.update_path(food, path_grid);
-
-
-        // First we get a new head position by using our `new_from_move` helper
-        // function from earlier. We move our head in the direction we are currently
-        // heading.
-        let new_head_pos = GridPosition::new_from_move(self.head.pos, self.dir);
-        // Next we create a new segment will be our new head segment using the
-        // new position we just made.
-        let new_head = Segment::new(new_head_pos);
-        path_grid.add_blocked(new_head.pos);
-        // Then we push our current head Segment onto the front of our body
-        self.body.push_front(self.head);
-        // And finally make our actual head the new Segment we created. This has
-        // effectively moved the snake in the current direction.
-        self.head = new_head;
-        // Next we check whether the snake eats itself or some food, and if so,
-        // we set our `ate` member to reflect that state.
-        if self.eats_self() {
-            self.ate = Some(Ate::Itself);
-        } else if self.eats(food) {
-            self.ate = Some(Ate::Food);
-            self.path = None;
-        } else {
-            self.ate = None;
-        }
-        // If we didn't eat anything this turn, we remove the last segment from our body,
-        // which gives the illusion that the snake is moving. In reality, all the segments stay
-        // stationary, we just add a segment to the front and remove one from the back. If we eat
-        // a piece of food, then we leave the last segment so that we extend our body by one.
-        if self.ate.is_none() {
-            if let Some(last_segment)  = self.body.pop_back() {
-                path_grid.remove_blocked(last_segment.pos);
-            }
-            
-            // update the grid
-            // let segments: Vec<GridPosition> = self.body
-            //     .iter()
-            //     .map(|segment| segment.pos)
-            //     .collect();
-        }
     }
     /// Here we have the Snake draw itself. This is very similar to how we saw the Food
     /// draw itself earlier.
