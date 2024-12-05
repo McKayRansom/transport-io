@@ -82,10 +82,14 @@ impl GameState {
     pub fn load_level(&mut self) {
 
         let snake_pos = (GRID_SIZE.0 / 4, GRID_SIZE.1 / 2).into();
+        let snake_pos2: GridPosition = (GRID_SIZE.0 / 2, GRID_SIZE.1 / 2).into();
 
         let new_snake = snake::Snake::new(snake_pos, &mut self.path_grid);
 
+        let new_snake2  = snake::Snake::new(snake_pos2, &mut self.path_grid);
+
         self.snakes.push(new_snake);
+        self.snakes.push(new_snake2);
     }
 }
 

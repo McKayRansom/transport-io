@@ -92,7 +92,7 @@ impl Snake {
 
     fn update_path(&mut self, food: &food::Station, path_grid: &PathGrid) {
         // find path
-        if self.path.is_none() {
+        // if self.path.is_none() {
 
 
             self.path = path_grid.find_path(self.head.pos, food.pos);
@@ -100,7 +100,7 @@ impl Snake {
                 // couldn't find path
                 println!("Couldn't find path!");
             }
-        }
+        // }
 
         if let Some(path) = &mut self.path {
 
