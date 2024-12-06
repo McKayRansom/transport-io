@@ -134,7 +134,7 @@ impl Direction {
         } else if pos2.y > pos1.y {
             Direction::Down
         } else if pos2.y < pos1.y {
-            Direction::Down
+            Direction::Up
         } else {
             Direction::Left
         }

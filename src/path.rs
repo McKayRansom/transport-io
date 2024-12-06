@@ -4,8 +4,8 @@ use crate::grid::Direction;
 
 use pathfinding::prelude::astar;
 
-const DEFAULT_COST: u32 = 1;
-const OCCUPIED_COST: u32 = 2;
+const DEFAULT_COST: u32 = 2;
+const OCCUPIED_COST: u32 = 3;
 
 type GridPathCost = u32;
 pub type GridPath = Option<(Vec<Pos>, GridPathCost)>;
@@ -82,6 +82,9 @@ impl PathTile {
         self.connections & (dir as u32) != 0
     }
 
+    fn connections_count(&self) -> u32 {
+        self.connections.count_ones()
+    }
 
     fn connections_as_iter(&self, start_pos: Pos) -> PathTileIter {
         PathTileIter {
@@ -127,14 +130,18 @@ impl PathGrid {
             .map(|p| {
                 (
                     p,
-                    // if self.occupied.contains(&p) {
-                        // OCCUPIED_COST
-                    // } else {
+                    if self.is_occupied(p) {
+                        OCCUPIED_COST
+                    } else {
                         DEFAULT_COST
-                    // },
+                    },
                 )
             })
             .collect()
+    }
+
+    pub fn connection_count(&self, pos: Pos) -> u32 {
+        self.tiles[pos.x as usize][pos.y as usize].connections_count()
     }
 
     pub fn is_allowed(&self, pos: Pos) -> bool {

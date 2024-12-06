@@ -50,7 +50,7 @@ enum BuildMode {
 /// everything else that happens in our game.
 struct GameState {
     path_grid: PathGrid,
-    snakes: Vec<vehicle::Vehicle>,
+    vehicles: Vec<vehicle::Vehicle>,
     stations: Vec<station::Station>,
     mouse_down: bool,
     build_mode: BuildMode,
@@ -67,7 +67,7 @@ impl GameState {
 
         GameState {
             path_grid: path_grid,
-            snakes: Vec::new(),
+            vehicles: Vec::new(),
             stations: Vec::new(),
             mouse_down: false,
             build_mode: BuildMode::None,
@@ -114,23 +114,16 @@ impl GameState {
         let new_station2 = station::Station::new(station_pos2);
 
         let new_snake = vehicle::Vehicle::new(station_pos2, &mut self.path_grid);
-        self.snakes.push(new_snake);
+        self.vehicles.push(new_snake);
 
         self.stations.push(new_station);
         self.stations.push(new_station2);
     }
-// }
 
-// impl event::EventHandler<ggez::GameError> for GameState {
     fn update(&mut self) {
-        // while ctx.time.check_update_time(DESIRED_FPS) {
-
-        for s in self.snakes.iter_mut() {
+        for s in self.vehicles.iter_mut() {
             self.delivered += s.update(&self.stations, &mut self.path_grid);
         }
-        // }
-
-        // Ok(())
     }
 
     /// draw is where we should actually render the game's current state.
@@ -166,19 +159,18 @@ impl GameState {
             s.draw();
         }
 
-        for s in self.snakes.iter() {
+        for s in self.vehicles.iter() {
             s.draw();
         }
 
 
         let delivered = self.delivered;
-        draw_text(format!("Delivered: {delivered:?}").as_str(), 10., 10., 43., WHITE);
+        draw_text(format!("Delivered: {delivered:?}").as_str(), 10., 32., 43., WHITE);
 
         let direction = self.build_direction;
-        draw_text(format!("Direction: {direction:?}").as_str(), 10., 10. + 32., 43., WHITE);
+        draw_text(format!("Direction: {direction:?}").as_str(), 10., 32. + 32., 43., WHITE);
 
-
-        draw_multiline_text(HELP_TEXT, 10., 10. + 64., 43., Some(1.0), WHITE);
+        draw_multiline_text(HELP_TEXT, 10., 32. + 64., 43., Some(0.75), WHITE);
 
         // canvas.finish(ctx)?;
 
@@ -237,8 +229,8 @@ impl GameState {
         match self.build_mode {
 
             BuildMode::Vehicle => {
-                if self.path_grid.is_allowed(pos) {
-                    self.snakes.push(Vehicle::new(pos, &mut self.path_grid))
+                if self.path_grid.is_allowed(pos) && !self.path_grid.is_occupied(pos) {
+                    self.vehicles.push(Vehicle::new(pos, &mut self.path_grid))
                 }
             }
             BuildMode::Station => {
