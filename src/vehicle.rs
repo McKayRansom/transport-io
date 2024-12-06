@@ -140,15 +140,16 @@ impl Vehicle {
         //             .color([0.6, 0.6, 0.0, 1.0]),
         //     );
         // }
-        // And then we do the same for the head, instead making it fully red to distinguish it.
-        let mut rect: Rectangle = self.head.pos.into();
+
+        let mut width_fraction : f32= 0.9;
+        let mut height_fraction: f32 = 0.9;
         if self.dir == Direction::Right || self.dir == Direction::Left {
-            rect.h *= 0.75;
-            rect.y += grid::GRID_CELL_SIZE.1 as f32 * (0.25 / 2.0);
+            height_fraction = 0.75;
         } else {
-            rect.w *= 0.75;
-            rect.x += grid::GRID_CELL_SIZE.0 as f32 * (0.25 / 2.0);
+            width_fraction = 0.75;
         }
+
+        let rect: Rectangle = Rectangle::from_pos(self.head.pos, width_fraction, height_fraction);
         rect.draw(Color::from_vec([1.0, 0.1, 0.0, 1.0].into()));
 
         // draw the path

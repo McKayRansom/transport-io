@@ -2,6 +2,7 @@ mod grid;
 mod path;
 use grid::Direction;
 use grid::Rectangle;
+use grid::GRID_CELL_SIZE;
 use path::PathGrid;
 use grid::GridPosition;
 use grid::GRID_SIZE;
@@ -144,22 +145,18 @@ impl GameState {
                 let pos = GridPosition {x: i, y: j};
                 if self.path_grid.is_allowed(pos) {
 
-                    let mut rect: Rectangle = pos.into();
-                    rect.x += 4.0;
-                    rect.y += 4.0;
-                    rect.w -= 8.0;
-                    rect.h -= 8.0;
+                    let rect = Rectangle::from_pos(pos, 0.9, 0.9);
                     rect.draw(Color::from_vec([0.3, 0.3, 0.3, 0.5].into()));
                     
                     for new_pos in self.path_grid.get_dirs(pos) {
 
-                        let mut rect_new: Rectangle = new_pos.into();
-                        rect_new.x += ((rect.x - rect_new.x) * 0.85) + 8.0;
-                        rect_new.y += ((rect.y - rect_new.y) * 0.85) + 8.0;
-                        rect_new.h -= 20.0;
-                        rect_new.w -= 20.0;
+                        let mut rect_new = Rectangle::from_pos(new_pos, 0.4, 0.4);
+                        rect_new.x += (pos.x - new_pos.x) as f32 * GRID_CELL_SIZE.0 * 0.85;
+                        rect_new.y += (pos.y - new_pos.y) as f32 * GRID_CELL_SIZE.1 * 0.85;
 
-                        rect.draw(Color::from_vec([0.7, 0.7, 0.7, 0.7].into()));
+                        // draw_line()
+
+                        rect_new.draw(Color::from_vec([0.7, 0.7, 0.7, 0.7].into()));
                     }
                 }
             }
@@ -276,7 +273,7 @@ impl GameState {
         x: f32,
         y: f32,
     )  {
-        if self.mouse_down {
+        if is_mouse_button_down(MouseButton::Left) {
             // Mouse coordinates are PHYSICAL coordinates, but here we want logical coordinates.
 
             // If you simply use the initial coordinate system, then physical and logical
@@ -308,9 +305,7 @@ impl GameState {
 
                 // }
                 BuildMode::Road => {
-                    if !self.path_grid.is_allowed(pos) {
-                        self.path_grid.add_allowed(pos, self.build_direction);
-                    }
+                    self.path_grid.add_allowed(pos, self.build_direction);
                 }
                 BuildMode::Delete => {
                     if self.path_grid.is_allowed(pos) {

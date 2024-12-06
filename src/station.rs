@@ -1,4 +1,3 @@
-
 use crate::grid::{GridPosition, Rectangle};
 
 /// This is again an abstraction over a `GridPosition` that represents
@@ -26,7 +25,7 @@ impl Station {
         // Then we draw a rectangle with the Fill draw mode, and we convert the
         // Food's position into a `ggez::Rect` using `.into()` which we can do
         // since we implemented `From<GridPosition>` for `Rect` earlier.
-        let rect:Rectangle = self.pos.into();
+        let rect: Rectangle = Rectangle::from_pos(self.pos, 0.5, 0.5);
         rect.draw(macroquad::color::Color::from_vec(color.into()));
     }
 }

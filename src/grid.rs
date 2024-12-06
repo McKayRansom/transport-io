@@ -9,36 +9,9 @@ use macroquad::color::Color;
 // cells it will take up. We choose to make a 30 x 20 game board.
 pub const GRID_SIZE: (i16, i16) = (30, 20);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
-pub const GRID_CELL_SIZE: (i16, i16) = (32, 32);
+pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
-pub struct Rectangle {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
-}
 
-impl Rectangle {
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
-        Rectangle{x, y, w, h}
-    }
-
-    pub fn draw(&self, color: Color) {
-
-        draw_rectangle(
-            self.x,
-            self.y,
-            self.w,
-            self.h,
-            color,
-        );
-    }
-}
-
-/// Now we define a struct that will hold an entity's position on our game board
-/// or grid which we defined above. We'll use signed integers because we only want
-/// to store whole numbers, and we need them to be signed so that they work properly
-/// with our modulus arithmetic later.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
 pub struct GridPosition {
     pub x: i16,
@@ -54,8 +27,8 @@ impl GridPosition {
 
     pub fn from_screen(x: f32, y: f32) -> Self {
         GridPosition {
-            x: x as i16 / GRID_CELL_SIZE.0,
-            y: y as i16 / GRID_CELL_SIZE.1,
+            x: x as i16 / GRID_CELL_SIZE.0 as i16,
+            y: y as i16 / GRID_CELL_SIZE.1 as i16,
         }
     }
 
@@ -79,19 +52,40 @@ impl GridPosition {
     }
 }
 
-/// We implement the `From` trait, which in this case allows us to convert easily between
-/// a `GridPosition` and a ggez `graphics::Rect` which fills that grid cell.
-/// Now we can just call `.into()` on a `GridPosition` where we want a
-/// `Rect` that represents that grid cell.
-impl From<GridPosition> for Rectangle {
-    fn from(pos: GridPosition) -> Self {
+
+pub struct Rectangle {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Rectangle {
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+        Rectangle{x, y, w, h}
+    }
+
+    pub fn from_pos(pos: GridPosition, width_fraction: f32, height_fraction: f32) -> Self {
         Rectangle::new(
-            pos.x as f32 * GRID_CELL_SIZE.0 as f32,
-            pos.y as f32 * GRID_CELL_SIZE.1 as f32,
-            GRID_CELL_SIZE.0 as f32,
-            GRID_CELL_SIZE.1 as f32,
+            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0 * (1.0 - width_fraction)/2.0),
+            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1 * (1.0 - height_fraction)/2.0),
+            (GRID_CELL_SIZE.0 as f32) * width_fraction,
+            (GRID_CELL_SIZE.1 as f32) * height_fraction,
         )
     }
+
+
+    pub fn draw(&self, color: Color) {
+
+        draw_rectangle(
+            self.x,
+            self.y,
+            self.w,
+            self.h,
+            color,
+        );
+    }
+
 }
 
 /// And here we implement `From` again to allow us to easily convert between
