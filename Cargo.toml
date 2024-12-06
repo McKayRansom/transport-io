@@ -4,12 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-getrandom = "0.2.15"
-ggez = "0.9.3"
-oorandom = "11.1.4"
+macroquad = "0.4.13"
 pathfinding = "4.11.0"
 
 [[bin]]
-name = "transport-io-ggez"
+name = "transport-io"
 path = "src/main.rs"
 

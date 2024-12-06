@@ -1,40 +1,17 @@
-//! A small snake game done after watching
-//! <https://www.youtube.com/watch?v=HCwMb0KslX8>
-//! to showcase ggez and how it relates/differs from piston.
-//!
-//! Note that this example is meant to highlight the general
-//! structure of a ggez game. Some of the details may need to
-//! be changed to scale the game. For example, if we needed to
-//! draw hundreds or thousands of shapes, a `SpriteBatch` is going
-//! to offer far better performance than the direct draw calls
-//! that this example uses.
-//!
-//! Author: @termhn
-//! Original repo: <https://github.com/termhn/ggez_snake>
-
-
 mod grid;
 mod path;
-use ggez::event::MouseButton;
-use ggez::input::keyboard::KeyCode;
 use grid::Direction;
+use grid::Rectangle;
 use path::PathGrid;
 use grid::GridPosition;
 use grid::GRID_SIZE;
 mod station;
 mod vehicle;
-
-use ggez::{
-    event, graphics,
-    input::keyboard::KeyInput,
-    Context, GameResult,
-};
 use station::Station;
 use vehicle::Vehicle;
 
-use std::env;
-
-
+use macroquad::ui::{hash, root_ui, widgets};
+use macroquad::prelude::*;
 
 // Next we define how large we want our actual window to be by multiplying
 // the components of our grid size by its corresponding pixel size.
@@ -78,6 +55,7 @@ struct GameState {
     build_mode: BuildMode,
     build_direction: Direction,
     delivered: u32,
+    request_quit: bool,
 }
 
 impl GameState {
@@ -94,6 +72,7 @@ impl GameState {
             build_mode: BuildMode::None,
             build_direction: Direction::Right,
             delivered: 0,
+            request_quit: false,
         }
     }
 
@@ -139,162 +118,125 @@ impl GameState {
         self.stations.push(new_station);
         self.stations.push(new_station2);
     }
-}
+// }
 
-/// Now we implement `EventHandler` for `GameState`. This provides an interface
-/// that ggez will call automatically when different events happen.
-impl event::EventHandler<ggez::GameError> for GameState {
-    /// Update will happen on every frame before it is drawn. This is where we update
-    /// our game state to react to whatever is happening in the game world.
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        // Rely on ggez's built-in timer for deciding when to update the game, and how many times.
-        // If the update is early, there will be no cycles, otherwises, the logic will run once for each
-        // frame fitting in the time since the last update.
-        while ctx.time.check_update_time(DESIRED_FPS) {
+// impl event::EventHandler<ggez::GameError> for GameState {
+    fn update(&mut self) {
+        // while ctx.time.check_update_time(DESIRED_FPS) {
 
-            for s in self.snakes.iter_mut() {
-                self.delivered += s.update(&self.stations, &mut self.path_grid);
-            }
+        for s in self.snakes.iter_mut() {
+            self.delivered += s.update(&self.stations, &mut self.path_grid);
         }
+        // }
 
-        Ok(())
+        // Ok(())
     }
 
     /// draw is where we should actually render the game's current state.
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+    fn draw(&mut self) {
         // First we create a canvas that renders to the frame, and clear it to a black
-        let mut canvas =
-            graphics::Canvas::from_frame(ctx, graphics::Color::from([0.0, 0.0, 0.0, 1.0]));
+        // let mut canvas =
+        //     graphics::Canvas::from_frame(ctx, graphics::Color::from([0.0, 0.0, 0.0, 1.0]));
+        clear_background(BLACK);
 
         for i in 0..GRID_SIZE.0 {
             for j in 0..GRID_SIZE.1 {
                 let pos = GridPosition {x: i, y: j};
                 if self.path_grid.is_allowed(pos) {
 
-                    let mut rect: graphics::Rect = pos.into();
+                    let mut rect: Rectangle = pos.into();
                     rect.x += 4.0;
                     rect.y += 4.0;
                     rect.w -= 8.0;
                     rect.h -= 8.0;
-                    canvas.draw(
-                        &graphics::Quad,
-                        graphics::DrawParam::new()
-                            .dest_rect(rect)
-                            .color([0.3, 0.3, 0.3, 0.5]),
-                    ); 
+                    rect.draw(Color::from_vec([0.3, 0.3, 0.3, 0.5].into()));
                     
                     for new_pos in self.path_grid.get_dirs(pos) {
 
-                        let mut rect_new: graphics::Rect = new_pos.into();
+                        let mut rect_new: Rectangle = new_pos.into();
                         rect_new.x += ((rect.x - rect_new.x) * 0.85) + 8.0;
                         rect_new.y += ((rect.y - rect_new.y) * 0.85) + 8.0;
                         rect_new.h -= 20.0;
                         rect_new.w -= 20.0;
 
-                        canvas.draw(
-                            &graphics::Quad,
-                            graphics::DrawParam::new()
-                                .dest_rect(rect_new)
-                                .color([0.7, 0.7, 0.7, 0.7]),
-                        ); 
+                        rect.draw(Color::from_vec([0.7, 0.7, 0.7, 0.7].into()));
                     }
                 }
             }
         }
 
         for s in self.stations.iter() {
-            s.draw(&mut canvas);
+            s.draw();
         }
 
         for s in self.snakes.iter() {
-            s.draw(&mut canvas);
+            s.draw();
         }
 
 
-        let offset: f32 = 10.0;
-        let mut dest_point = ggez::glam::Vec2::new(offset, offset);
         let delivered = self.delivered;
-        canvas.draw(
-            graphics::Text::new(format!("Delivered: {delivered:?}"))
-                .set_font("LiberationMono")
-                .set_scale(32.),
-            dest_point,
-        );
+        draw_text(format!("Delivered: {delivered:?}").as_str(), 10., 10., 43., WHITE);
 
-        dest_point.y += 32.0;
         let direction = self.build_direction;
-        canvas.draw(
-            graphics::Text::new(format!("Direction: {direction:?}"))
-                .set_font("LiberationMono")
-                .set_scale(32.),
-            dest_point,
-        );
+        draw_text(format!("Direction: {direction:?}").as_str(), 10., 10. + 32., 43., WHITE);
 
-        dest_point.y += 32.0;
-        canvas.draw(
-            graphics::Text::new(HELP_TEXT)
-                .set_font("LiberationMono")
-                .set_scale(32.),
-            dest_point,
-        );
 
-        // Finally, we "flush" the draw commands.
-        // Since we rendered to the frame, we don't need to tell ggez to present anything else,
-        // as ggez will automatically present the frame image unless told otherwise.
-        canvas.finish(ctx)?;
+        draw_multiline_text(HELP_TEXT, 10., 10. + 64., 43., Some(1.0), WHITE);
+
+        // canvas.finish(ctx)?;
 
         // We yield the current thread until the next update
-        ggez::timer::yield_now();
+        // ggez::timer::yield_now();
         // And return success.
-        Ok(())
+        // Ok(())
     }
 
     /// `key_down_event` gets fired when a key gets pressed.
-    fn key_down_event(&mut self, ctx: &mut Context, input: KeyInput, repeat: bool) -> GameResult {
+    fn key_down_event(&mut self, ch: char, repeat: bool) {
         if repeat {
-            return Ok(());
+            return;
         }
         // Here we attempt to convert the Keycode into a Direction using the helper
         // we defined earlier.
-        if let Some(keycode) = input.keycode {
-            match keycode {
-                KeyCode::Q => {
-                    ctx.request_quit();
+        // if let Some(keycode) = input.keycode {
+            match ch {
+                'q' => {
+                    self.request_quit = true;
+                    // ctx.request_quit();
                 }
-                KeyCode::A => {
+                'a' => {
                     self.build_mode = BuildMode::Vehicle;
                 }
-                KeyCode::S => {
+                's' => {
                     self.build_mode = BuildMode::Station;
                 }
-                KeyCode::D => {
+                'd' => {
                     self.build_mode = BuildMode::Delete;
                 }
-                KeyCode::F => {
+                'f' => {
                     self.build_mode = BuildMode::Road;
                 }
-                KeyCode::R => {
+                'r' => {
                     self.build_direction = self.build_direction.rotate();
                 }
                 _ => {
 
                 }
-            }
+            // }
         }
 
-        Ok(())
+        // Ok(())
     }
 
     fn mouse_button_down_event(
         &mut self,
-        _ctx: &mut Context,
-        button: MouseButton,
+        // _ctx: &mut Context,
         x: f32,
         y: f32,
-    ) -> GameResult {
+    )  {
         self.mouse_down = true;
         let pos = GridPosition::from_screen(x, y);
-        println!("Mouse button pressed: {button:?}, pos: {pos:?} x: {x}, y: {y}");
+        println!("Mouse pressed: pos: {pos:?} x: {x}, y: {y}");
         match self.build_mode {
 
             BuildMode::Vehicle => {
@@ -326,30 +268,14 @@ impl event::EventHandler<ggez::GameError> for GameState {
 
             }
         }
-        Ok(())
-    }
-
-
-    fn mouse_button_up_event(
-        &mut self,
-        _ctx: &mut Context,
-        button: MouseButton,
-        x: f32,
-        y: f32,
-    ) -> GameResult {
-        self.mouse_down = false;
-        println!("Mouse button released: {button:?}, x: {x}, y: {y}");
-        Ok(())
     }
 
     fn mouse_motion_event(
         &mut self,
-        _ctx: &mut Context,
+        // _ctx: &mut Context,
         x: f32,
         y: f32,
-        xrel: f32,
-        yrel: f32,
-    ) -> GameResult {
+    )  {
         if self.mouse_down {
             // Mouse coordinates are PHYSICAL coordinates, but here we want logical coordinates.
 
@@ -396,44 +322,64 @@ impl event::EventHandler<ggez::GameError> for GameState {
                 }
             }
         }
-        println!("Mouse motion, x: {x}, y: {y}, relative x: {xrel}, relative y: {yrel}");
-        Ok(())
+        println!("Mouse motion, x: {x}, y: {y}");
     }
 
 }
 
-fn main() -> GameResult {
-
-    let resource_dir = if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
-        let mut path = std::path::PathBuf::from(manifest_dir);
-        path.push("resources");
-        path
-    } else {
-        std::path::PathBuf::from("./resources")
-    };
-
-    // Here we use a ContextBuilder to setup metadata about our game. First the title and author
-    let (mut ctx, events_loop) = ggez::ContextBuilder::new("transport-io", "McKay Ransom")
-        // Next we set up the window. This title will be displayed in the title bar of the window.
-        .window_setup(ggez::conf::WindowSetup::default().title("Transport IO"))
-        // Now we get to set the size of the window, which we use our SCREEN_SIZE constant from earlier to help with
-        .window_mode(ggez::conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
-        // And finally we attempt to build the context and create the window. If it fails, we panic with the message
-        // "Failed to build ggez context"
-        .add_resource_path(resource_dir)
-        .build()?;
-
-    ctx.gfx.add_font(
-        "LiberationMono",
-        graphics::FontData::from_path(&ctx.fs, "/LiberationMono-Regular.ttf")?,
-    );
+#[macroquad::main("Transport IO")]
+async fn main() {
 
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let mut state = GameState::new();
+    let speed = 0.3;
 
     // state.key_manager.add_handler(KeyHandler {key: KeyCode::Q, func: game_quit, help: "Q: Quit the game"});
 
     state.load_level();
     // And finally we actually run our game, passing in our context and state.
-    event::run(ctx, events_loop, state)
+    // event::run(ctx, events_loop, state)
+
+    let mut last_update = get_time();
+    let mut mouse_pressed = false;
+    let mut last_mouse_pos = mouse_position();
+
+    loop {
+
+        while let Some(key) = get_char_pressed() {
+            println!("Keydown: {key:?}");
+            state.key_down_event(key, false);
+        }
+
+        let new_mouse_pos = mouse_position();
+
+        if is_mouse_button_down(MouseButton::Left) {
+            if !mouse_pressed {
+                state.mouse_button_down_event(new_mouse_pos.0, new_mouse_pos.1);
+            }
+            mouse_pressed = true;
+        } else {
+            mouse_pressed = false;
+        }
+
+        if last_mouse_pos != new_mouse_pos {
+            state.mouse_motion_event(new_mouse_pos.0, new_mouse_pos.1);
+            last_mouse_pos = new_mouse_pos;
+        }
+
+        if get_time() - last_update > speed {
+            last_update = get_time();
+
+            state.update();
+        }
+
+        state.draw();
+
+        // TODO: Take quit request confirmation from example
+        if state.request_quit {
+            break;
+        }
+
+        next_frame().await;
+    }
 }

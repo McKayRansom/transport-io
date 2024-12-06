@@ -1,13 +1,16 @@
 
 
+use macroquad::color::Color;
+
 use crate::grid;
 use crate::grid::Direction;
 use crate::grid::GridPosition;
+use crate::grid::Rectangle;
 use crate::path::{PathGrid, GridPath};
 use crate::station;
 
 // use std::collections::VecDeque;
-use ggez::graphics;
+// use ggez::graphics;
 
 /// This is mostly just a semantic abstraction over a `GridPosition` to represent
 /// a segment of the snake. It could be useful to, say, have each segment contain its
@@ -125,7 +128,7 @@ impl Vehicle {
     /// Again, note that this approach to drawing is fine for the limited scope of this
     /// example, but larger scale games will likely need a more optimized render path
     /// using `InstanceArray` or something similar that batches draw calls.
-    pub fn draw(&self, canvas: &mut graphics::Canvas) {
+    pub fn draw(&self) {
         // We first iterate through the body segments and draw them.
         // for seg in &self.body {
         //     // Again we set the color (in this case an orangey color)
@@ -138,7 +141,7 @@ impl Vehicle {
         //     );
         // }
         // And then we do the same for the head, instead making it fully red to distinguish it.
-        let mut rect: graphics::Rect = self.head.pos.into();
+        let mut rect: Rectangle = self.head.pos.into();
         if self.dir == Direction::Right || self.dir == Direction::Left {
             rect.h *= 0.75;
             rect.y += grid::GRID_CELL_SIZE.1 as f32 * (0.25 / 2.0);
@@ -146,12 +149,7 @@ impl Vehicle {
             rect.w *= 0.75;
             rect.x += grid::GRID_CELL_SIZE.0 as f32 * (0.25 / 2.0);
         }
-        canvas.draw(
-            &graphics::Quad,
-            graphics::DrawParam::new()
-                .dest_rect(rect)
-                .color([1.0, 0.1, 0.0, 1.0]),
-        );
+        rect.draw(Color::from_vec([1.0, 0.1, 0.0, 1.0].into()));
 
         // draw the path
         // if let Some(path) = &self.path {

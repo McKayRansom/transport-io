@@ -1,12 +1,39 @@
-use oorandom::Rand32;
 
-use ggez::{graphics, input::keyboard::KeyCode};
+use macroquad::input::KeyCode;
+use macroquad::shapes::draw_rectangle;
+use macroquad::color::Color;
+
+// use ggez::{graphics, input::keyboard::KeyCode};
 
 // Here we define the size of our game board in terms of how many grid
 // cells it will take up. We choose to make a 30 x 20 game board.
 pub const GRID_SIZE: (i16, i16) = (30, 20);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (i16, i16) = (32, 32);
+
+pub struct Rectangle {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Rectangle {
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+        Rectangle{x, y, w, h}
+    }
+
+    pub fn draw(&self, color: Color) {
+
+        draw_rectangle(
+            self.x,
+            self.y,
+            self.w,
+            self.h,
+            color,
+        );
+    }
+}
 
 /// Now we define a struct that will hold an entity's position on our game board
 /// or grid which we defined above. We'll use signed integers because we only want
@@ -36,18 +63,6 @@ impl GridPosition {
         self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
     }
 
-    /// As well as a helper function that will give us a random `GridPosition` from
-    /// `(0, 0)` to `(max_x, max_y)`
-    pub fn random(rng: &mut Rand32, max_x: i16, max_y: i16) -> Self {
-        // We can use `.into()` to convert from `(i16, i16)` to a `GridPosition` since
-        // we implement `From<(i16, i16)>` for `GridPosition` below.
-        (
-            rng.rand_range(0..(max_x as u32)) as i16,
-            rng.rand_range(0..(max_y as u32)) as i16,
-        )
-            .into()
-    }
-
     /// We'll make another helper function that takes one grid position and returns a new one after
     /// making one move in the direction of `dir`.
     /// We use the [`rem_euclid()`](https://doc.rust-lang.org/std/primitive.i16.html#method.rem_euclid)
@@ -68,13 +83,13 @@ impl GridPosition {
 /// a `GridPosition` and a ggez `graphics::Rect` which fills that grid cell.
 /// Now we can just call `.into()` on a `GridPosition` where we want a
 /// `Rect` that represents that grid cell.
-impl From<GridPosition> for graphics::Rect {
+impl From<GridPosition> for Rectangle {
     fn from(pos: GridPosition) -> Self {
-        graphics::Rect::new_i32(
-            pos.x as i32 * GRID_CELL_SIZE.0 as i32,
-            pos.y as i32 * GRID_CELL_SIZE.1 as i32,
-            GRID_CELL_SIZE.0 as i32,
-            GRID_CELL_SIZE.1 as i32,
+        Rectangle::new(
+            pos.x as f32 * GRID_CELL_SIZE.0 as f32,
+            pos.y as f32 * GRID_CELL_SIZE.1 as f32,
+            GRID_CELL_SIZE.0 as f32,
+            GRID_CELL_SIZE.1 as f32,
         )
     }
 }
