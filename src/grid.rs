@@ -12,9 +12,11 @@ const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
-const EMPTY_ROAD_COLOR: Color = WHITE;
-const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
+// const EMPTY_ROAD_COLOR: Color = WHITE;
+// const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
 // const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
+
+const HOUSE_SPRITE: u32 = (16 * 1) + 0;
 
 const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
@@ -85,8 +87,8 @@ impl Rectangle {
 
     pub fn from_pos(pos: Position) -> Self {
         Rectangle::new(
-            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0) / 2.0,
-            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1) / 2.0,
+            pos.x as f32 * GRID_CELL_SIZE.0,
+            pos.y as f32 * GRID_CELL_SIZE.1,
             GRID_CELL_SIZE.0 as f32,
             GRID_CELL_SIZE.1 as f32,
         )
@@ -235,6 +237,7 @@ impl Iterator for PathTileIter {
 
 #[derive(Clone, Copy)]
 pub struct Tile {
+    house: bool,
     allowed: bool,
     occupied: bool,
     connections: u32,
@@ -243,6 +246,7 @@ pub struct Tile {
 impl Tile {
     fn new() -> Tile {
         Tile {
+            house : false,
             allowed: false,
             occupied: false,
             connections: 0,
@@ -271,11 +275,18 @@ impl Tile {
     }
 
     fn draw(&self, pos: Position, tileset: &Tileset) {
+
+        let rect = Rectangle::from_pos(pos);
+
+        if self.house {
+            tileset.draw_tile(HOUSE_SPRITE, WHITE, &rect, 0.0);
+            return;
+        }
+
         if !self.allowed {
             return;
         }
 
-        let rect = Rectangle::from_pos(pos);
 
         // let color = if self.occupied {
         //     RESERVED_PATH_COLOR
@@ -357,6 +368,13 @@ impl Grid {
         self.tiles[pos.x as usize][pos.y as usize].connections_as_iter(*pos)
     }
 
+    pub fn add_house(&mut self, pos: &Position) {
+        if !self.is_allowed(pos)
+        {
+            self.tiles[pos.x as usize][pos.y as usize].house = true;
+        }
+    }
+
     pub fn add_allowed(&mut self, pos: &Position, direction: Direction) {
         self.tiles[pos.x as usize][pos.y as usize].allowed = true;
         self.tiles[pos.x as usize][pos.y as usize].connect(direction);
@@ -387,4 +405,5 @@ impl Grid {
             }
         }
     }
+
 }

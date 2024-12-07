@@ -1,10 +1,11 @@
 mod grid;
 use grid::Direction;
 use grid::Position;
-use grid::Grid;
 mod station;
 mod vehicle;
 mod tileset;
+mod map;
+use map::Map;
 use station::Station;
 use tileset::Tileset;
 use vehicle::Vehicle;
@@ -31,9 +32,7 @@ enum BuildMode {
 }
 
 struct GameState {
-    path_grid: Grid,
-    vehicles: Vec<vehicle::Vehicle>,
-    stations: Vec<station::Station>,
+    map: Map,
     mouse_down: bool,
     build_mode: BuildMode,
     build_direction: Direction,
@@ -43,12 +42,10 @@ struct GameState {
 
 impl GameState {
     pub fn new() -> Self {
-        let path_grid = Grid::new();
 
         GameState {
-            path_grid: path_grid,
-            vehicles: Vec::new(),
-            stations: Vec::new(),
+            map: Map::new(),
+
             mouse_down: false,
             build_mode: BuildMode::None,
             build_direction: Direction::Right,
@@ -58,43 +55,12 @@ impl GameState {
     }
 
     pub fn load_level(&mut self) {
-        let station_pos = (10, 10).into();
-        let station_pos2 = (20, 15).into();
-
-        let mut pos: Position = station_pos;
-        for i in 10..21 {
-            pos.x = i;
-            self.path_grid.add_allowed(&pos, grid::Direction::Right);
-        }
-
-        for i in 10..16 {
-            pos.y = i;
-            self.path_grid.add_allowed(&pos, grid::Direction::Down);
-        }
-
-        for i in (10..21).rev() {
-            pos.x = i;
-            self.path_grid.add_allowed(&pos, grid::Direction::Left);
-        }
-
-        for i in (10..16).rev() {
-            pos.y = i;
-            self.path_grid.add_allowed(&pos, grid::Direction::Up);
-        }
-
-        let new_station = station::Station::new(station_pos);
-        let new_station2 = station::Station::new(station_pos2);
-
-        let new_snake = vehicle::Vehicle::new(station_pos2, &mut self.path_grid);
-        self.vehicles.push(new_snake);
-
-        self.stations.push(new_station);
-        self.stations.push(new_station2);
+        self.map.generate();
     }
 
     fn update(&mut self) {
-        for s in self.vehicles.iter_mut() {
-            self.delivered += s.update(&self.stations, &mut self.path_grid);
+        for s in self.map.vehicles.iter_mut() {
+            self.delivered += s.update(&self.map.stations, &mut self.map.path_grid);
         }
     }
 
@@ -102,15 +68,7 @@ impl GameState {
     fn draw(&self, tileset: &Tileset) {
         clear_background(BLACK);
 
-        self.path_grid.draw_tiles(tileset);
-
-        for s in self.stations.iter() {
-            s.draw(tileset);
-        }
-
-        for s in self.vehicles.iter() {
-            s.draw(tileset);
-        }
+        self.map.draw(tileset);
 
         let delivered = self.delivered;
         draw_text(
@@ -177,26 +135,26 @@ impl GameState {
         println!("Mouse pressed: pos: {pos:?} x: {x}, y: {y}");
         match self.build_mode {
             BuildMode::Vehicle => {
-                if self.path_grid.is_allowed(&pos) && !self.path_grid.is_occupied(&pos) {
-                    self.vehicles.push(Vehicle::new(pos, &mut self.path_grid))
+                if self.map.path_grid.is_allowed(&pos) && !self.map.path_grid.is_occupied(&pos) {
+                    self.map.vehicles.push(Vehicle::new(pos, &mut self.map.path_grid))
                 }
             }
             BuildMode::Station => {
-                if !self.path_grid.is_allowed(&pos) {
+                if !self.map.path_grid.is_allowed(&pos) {
                     // self.path_grid.add_allowed(pos);
                     println!("Not allowed here");
                 } else {
-                    self.stations.push(Station::new(pos))
+                    self.map.stations.push(Station::new(pos))
                 }
             }
             BuildMode::Road => {
                 // if !self.path_grid.is_allowed(pos) {
-                self.path_grid.add_allowed(&pos, self.build_direction);
+                self.map.path_grid.add_allowed(&pos, self.build_direction);
                 // }
             }
             BuildMode::Delete => {
-                if self.path_grid.is_allowed(&pos) {
-                    self.path_grid.remove_allowed(&pos);
+                if self.map.path_grid.is_allowed(&pos) {
+                    self.map.path_grid.remove_allowed(&pos);
                 }
             }
             _ => {}
@@ -240,11 +198,11 @@ impl GameState {
 
                 // }
                 BuildMode::Road => {
-                    self.path_grid.add_allowed(&pos, self.build_direction);
+                    self.map.path_grid.add_allowed(&pos, self.build_direction);
                 }
                 BuildMode::Delete => {
-                    if self.path_grid.is_allowed(&pos) {
-                        self.path_grid.remove_allowed(&pos);
+                    if self.map.path_grid.is_allowed(&pos) {
+                        self.map.path_grid.remove_allowed(&pos);
                     }
                 }
                 _ => {}
