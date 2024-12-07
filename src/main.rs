@@ -1,5 +1,4 @@
 mod grid;
-mod path;
 use grid::Direction;
 use grid::Position;
 use grid::Grid;
@@ -9,6 +8,8 @@ use station::Station;
 use vehicle::Vehicle;
 
 use macroquad::prelude::*;
+use macroquad_tiled as tiled;
+
 
 const HELP_TEXT: &'static str = "Transport IO v0.0
 Q: Quit
@@ -260,6 +261,13 @@ async fn main() {
 
     // state.key_manager.add_handler(KeyHandler {key: KeyCode::Q, func: game_quit, help: "Q: Quit the game"});
 
+    let tileset = load_texture("resources/tileset.png").await.unwrap();
+    tileset.set_filter(FilterMode::Nearest);
+
+    let tiled_map_json = load_string("resources/map.json").await.unwrap();
+    let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
+
+
     state.load_level();
     // And finally we actually run our game, passing in our context and state.
     // event::run(ctx, events_loop, state)
@@ -297,6 +305,8 @@ async fn main() {
         }
 
         state.draw();
+
+        tiled_map.spr("tileset", 0, Rect::new(128., 128., 16.0, 16.0));
 
         // TODO: Take quit request confirmation from example
         if state.request_quit {
