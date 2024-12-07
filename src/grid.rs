@@ -1,9 +1,14 @@
-
+use macroquad::color::Color;
 use macroquad::input::KeyCode;
 use macroquad::shapes::draw_rectangle;
-use macroquad::color::Color;
+use pathfinding::prelude::astar;
 
-// use ggez::{graphics, input::keyboard::KeyCode};
+const DEFAULT_COST: u32 = 2;
+const OCCUPIED_COST: u32 = 3;
+
+const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
+const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
+const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
 
 // Here we define the size of our game board in terms of how many grid
 // cells it will take up. We choose to make a 30 x 20 game board.
@@ -11,28 +16,25 @@ pub const GRID_SIZE: (i16, i16) = (30, 20);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
-pub struct GridPosition {
+pub struct Position {
     pub x: i16,
     pub y: i16,
 }
 
-impl GridPosition {
-    /// We make a standard helper function so that we can create a new `GridPosition`
-    /// more easily.
+impl Position {
     pub fn new(x: i16, y: i16) -> Self {
-        GridPosition { x, y }
+        Position { x, y }
     }
 
     pub fn from_screen(x: f32, y: f32) -> Self {
-        GridPosition {
+        Position {
             x: x as i16 / GRID_CELL_SIZE.0 as i16,
             y: y as i16 / GRID_CELL_SIZE.1 as i16,
         }
     }
 
-    pub fn valid(&self) -> bool {
+    pub fn _valid(&self) -> bool {
         self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
     }
 
@@ -42,16 +44,15 @@ impl GridPosition {
     /// API when crossing the top/left limits, as the standard remainder function (`%`) returns a
     /// negative value when the left operand is negative.
     /// Only the Up/Left cases require rem_euclid(); for consistency, it's used for all of them.
-    pub fn new_from_move(pos: GridPosition, dir: Direction) -> Self {
+    pub fn _new_from_move(pos: Position, dir: Direction) -> Self {
         match dir {
-            Direction::Up => GridPosition::new(pos.x, (pos.y - 1).rem_euclid(GRID_SIZE.1)),
-            Direction::Down => GridPosition::new(pos.x, (pos.y + 1).rem_euclid(GRID_SIZE.1)),
-            Direction::Left => GridPosition::new((pos.x - 1).rem_euclid(GRID_SIZE.0), pos.y),
-            Direction::Right => GridPosition::new((pos.x + 1).rem_euclid(GRID_SIZE.0), pos.y),
+            Direction::Up => Position::new(pos.x, (pos.y - 1).rem_euclid(GRID_SIZE.1)),
+            Direction::Down => Position::new(pos.x, (pos.y + 1).rem_euclid(GRID_SIZE.1)),
+            Direction::Left => Position::new((pos.x - 1).rem_euclid(GRID_SIZE.0), pos.y),
+            Direction::Right => Position::new((pos.x + 1).rem_euclid(GRID_SIZE.0), pos.y),
         }
     }
 }
-
 
 pub struct Rectangle {
     pub x: f32,
@@ -62,42 +63,31 @@ pub struct Rectangle {
 
 impl Rectangle {
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
-        Rectangle{x, y, w, h}
+        Rectangle { x, y, w, h }
     }
 
-    pub fn from_pos(pos: GridPosition, width_fraction: f32, height_fraction: f32) -> Self {
+    pub fn from_pos(pos: Position, width_fraction: f32, height_fraction: f32) -> Self {
         Rectangle::new(
-            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0 * (1.0 - width_fraction)/2.0),
-            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1 * (1.0 - height_fraction)/2.0),
+            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0 * (1.0 - width_fraction) / 2.0),
+            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1 * (1.0 - height_fraction) / 2.0),
             (GRID_CELL_SIZE.0 as f32) * width_fraction,
             (GRID_CELL_SIZE.1 as f32) * height_fraction,
         )
     }
 
-
     pub fn draw(&self, color: Color) {
-
-        draw_rectangle(
-            self.x,
-            self.y,
-            self.w,
-            self.h,
-            color,
-        );
+        draw_rectangle(self.x, self.y, self.w, self.h, color);
     }
-
 }
 
 /// And here we implement `From` again to allow us to easily convert between
 /// `(i16, i16)` and a `GridPosition`.
-impl From<(i16, i16)> for GridPosition {
+impl From<(i16, i16)> for Position {
     fn from(pos: (i16, i16)) -> Self {
-        GridPosition { x: pos.0, y: pos.1 }
+        Position { x: pos.0, y: pos.1 }
     }
 }
 
-/// Next we create an enum that will represent all the possible
-/// directions that our snake could move.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
     Up = 1,
@@ -107,10 +97,7 @@ pub enum Direction {
 }
 
 impl Direction {
-    /// We create a helper function that will allow us to easily get the inverse
-    /// of a `Direction` which we can use later to check if the player should be
-    /// able to move the snake in a certain direction.
-    pub fn inverse(self) -> Self {
+    pub fn _inverse(self) -> Self {
         match self {
             Direction::Up => Direction::Down,
             Direction::Down => Direction::Up,
@@ -128,7 +115,7 @@ impl Direction {
         }
     }
 
-    pub fn from_position(pos1: GridPosition, pos2: GridPosition) -> Self {
+    pub fn from_position(pos1: Position, pos2: Position) -> Self {
         if pos2.x > pos1.x {
             Direction::Right
         } else if pos2.y > pos1.y {
@@ -140,17 +127,201 @@ impl Direction {
         }
     }
 
-    /// We also create a helper function that will let us convert between a
-    /// `ggez` `Keycode` and the `Direction` that it represents. Of course,
-    /// not every keycode represents a direction, so we return `None` if this
-    /// is the case.
-    pub fn from_keycode(key: KeyCode) -> Option<Direction> {
+    pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
         match key {
             KeyCode::Up => Some(Direction::Up),
             KeyCode::Down => Some(Direction::Down),
             KeyCode::Left => Some(Direction::Left),
             KeyCode::Right => Some(Direction::Right),
             _ => None,
+        }
+    }
+}
+
+type PathCost = u32;
+pub type Path = Option<(Vec<Position>, PathCost)>;
+
+pub struct PathTileIter {
+    start_pos: Position,
+    connections: u32,
+}
+
+impl Iterator for PathTileIter {
+    // We can refer to this type using Self::Item
+    type Item = Position;
+
+    // Here, we define the sequence using `.curr` and `.next`.
+    // The return type is `Option<T>`:
+    //     * When the `Iterator` is finished, `None` is returned.
+    //     * Otherwise, the next value is wrapped in `Some` and returned.
+    // We use Self::Item in the return type, so we can change
+    // the type without having to update the function signatures.
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.connections & Direction::Up as u32 != 0 {
+            self.connections -= Direction::Up as u32;
+            Some(Position {
+                x: self.start_pos.x,
+                y: self.start_pos.y - 1,
+            })
+        } else if self.connections & Direction::Down as u32 != 0 {
+            self.connections -= Direction::Down as u32;
+            Some(Position {
+                x: self.start_pos.x,
+                y: self.start_pos.y + 1,
+            })
+        } else if self.connections & Direction::Right as u32 != 0 {
+            self.connections -= Direction::Right as u32;
+            Some(Position {
+                x: self.start_pos.x + 1,
+                y: self.start_pos.y,
+            })
+        } else if self.connections & Direction::Left as u32 != 0 {
+            self.connections -= Direction::Left as u32;
+            Some(Position {
+                x: self.start_pos.x - 1,
+                y: self.start_pos.y,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Tile {
+    allowed: bool,
+    occupied: bool,
+    connections: u32,
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile {
+            allowed: false,
+            occupied: false,
+            connections: 0,
+        }
+    }
+
+    fn connect(&mut self, dir: Direction) {
+        self.connections |= dir as u32;
+    }
+
+    fn connections_count(&self) -> u32 {
+        self.connections.count_ones()
+    }
+
+    fn connections_as_iter(&self, start_pos: Position) -> PathTileIter {
+        PathTileIter {
+            connections: self.connections,
+            start_pos,
+        }
+    }
+}
+
+pub struct Grid {
+    tiles: Vec<Vec<Tile>>,
+}
+
+impl Position {
+    fn distance(&self, other: &Position) -> u32 {
+        (self.x.abs_diff(other.x) + self.y.abs_diff(other.y)) as u32
+    }
+}
+
+impl Grid {
+    pub fn new() -> Self {
+        Grid {
+            tiles: vec![vec![Tile::new(); GRID_SIZE.1 as usize]; GRID_SIZE.0 as usize],
+        }
+    }
+
+    pub fn find_path(&self, start: &Position, end: &Position) -> Path {
+        let result = astar(
+            start,
+            |p| self.successors(p),
+            |p| p.distance(end) / 3,
+            |p| p == end,
+        );
+
+        result
+    }
+
+    fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
+        self.tiles[pos.x as usize][pos.y as usize]
+            .connections_as_iter(*pos)
+            // .filter(|x| self.allowed.contains(x) && x.valid())
+            .map(|p| {
+                (
+                    p,
+                    if self.is_occupied(&p) {
+                        OCCUPIED_COST
+                    } else {
+                        DEFAULT_COST
+                    },
+                )
+            })
+            .collect()
+    }
+
+    pub fn connection_count(&self, pos: &Position) -> u32 {
+        self.tiles[pos.x as usize][pos.y as usize].connections_count()
+    }
+
+    pub fn is_allowed(&self, pos: &Position) -> bool {
+        self.tiles[pos.x as usize][pos.y as usize].allowed
+    }
+
+    pub fn get_dirs(&self, pos: &Position) -> PathTileIter {
+        self.tiles[pos.x as usize][pos.y as usize].connections_as_iter(*pos)
+    }
+
+    pub fn add_allowed(&mut self, pos: &Position, direction: Direction) {
+        self.tiles[pos.x as usize][pos.y as usize].allowed = true;
+        self.tiles[pos.x as usize][pos.y as usize].connect(direction);
+    }
+
+    pub fn remove_allowed(&mut self, pos: &Position) {
+        self.tiles[pos.x as usize][pos.y as usize].allowed = false;
+        self.tiles[pos.x as usize][pos.y as usize].connections = 0;
+    }
+
+    pub fn is_occupied(&self, pos: &Position) -> bool {
+        self.tiles[pos.x as usize][pos.y as usize].occupied
+    }
+
+    pub fn add_occupied(&mut self, pos: &Position) {
+        self.tiles[pos.x as usize][pos.y as usize].occupied = true
+    }
+
+    pub fn remove_occupied(&mut self, pos: &Position) {
+        self.tiles[pos.x as usize][pos.y as usize].occupied = false
+    }
+
+    pub fn draw_tiles(&self) {
+        for i in 0..GRID_SIZE.0 {
+            for j in 0..GRID_SIZE.1 {
+                let pos = Position::new(i, j);
+                if self.is_allowed(&pos) {
+                    let rect = Rectangle::from_pos(pos, 0.9, 0.9);
+
+                    let color = if self.is_occupied(&pos) {
+                        RESERVED_PATH_COLOR
+                    } else {
+                        EMPTY_ROAD_COLOR
+                    };
+
+                    rect.draw(color);
+
+                    for new_pos in self.get_dirs(&pos) {
+                        let mut rect_new = Rectangle::from_pos(new_pos, 0.4, 0.4);
+                        rect_new.x += (pos.x - new_pos.x) as f32 * GRID_CELL_SIZE.0 * 0.85;
+                        rect_new.y += (pos.y - new_pos.y) as f32 * GRID_CELL_SIZE.1 * 0.85;
+
+                        rect_new.draw(CONNECTION_INDICATOR_COLOR);
+                    }
+                }
+            }
         }
     }
 }
