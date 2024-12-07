@@ -1,14 +1,24 @@
-use macroquad::color::Color;
+use std::f32::consts::PI;
+
+use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
+use macroquad::math::Rect;
 use macroquad::shapes::draw_rectangle;
 use pathfinding::prelude::astar;
+
+use crate::tileset::Tileset;
 
 const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
 
-const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
+// const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
+const EMPTY_ROAD_COLOR: Color = WHITE;
 const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
-const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
+// const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
+
+const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
+const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
+const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
 // Here we define the size of our game board in terms of how many grid
 // cells it will take up. We choose to make a 30 x 20 game board.
@@ -54,6 +64,7 @@ impl Position {
     }
 }
 
+// TODO: Merge with macroquad::math::Rect
 pub struct Rectangle {
     pub x: f32,
     pub y: f32,
@@ -66,12 +77,18 @@ impl Rectangle {
         Rectangle { x, y, w, h }
     }
 
-    pub fn from_pos(pos: Position, width_fraction: f32, height_fraction: f32) -> Self {
+    pub fn from(&self) -> Rect {
+        Rect {
+            x: self.x, y: self.y, w: self.w, h: self.h,
+        }
+    }
+
+    pub fn from_pos(pos: Position) -> Self {
         Rectangle::new(
-            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0 * (1.0 - width_fraction) / 2.0),
-            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1 * (1.0 - height_fraction) / 2.0),
-            (GRID_CELL_SIZE.0 as f32) * width_fraction,
-            (GRID_CELL_SIZE.1 as f32) * height_fraction,
+            (pos.x as f32 * GRID_CELL_SIZE.0) + (GRID_CELL_SIZE.0) / 2.0,
+            (pos.y as f32 * GRID_CELL_SIZE.1) + (GRID_CELL_SIZE.1) / 2.0,
+            GRID_CELL_SIZE.0 as f32,
+            GRID_CELL_SIZE.1 as f32,
         )
     }
 
@@ -127,6 +144,15 @@ impl Direction {
         }
     }
 
+    pub fn to_radians(self) -> f32 {
+        match self {
+            Direction::Up => 0.,
+            Direction::Right => PI / 2.0,
+            Direction::Down => PI,
+            Direction::Left => PI * 1.5,
+        } 
+    }
+
     pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
         match key {
             KeyCode::Up => Some(Direction::Up),
@@ -141,21 +167,41 @@ impl Direction {
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
+
+pub struct TileDirIter {
+    connections: u32,
+}
+
+impl Iterator for TileDirIter {
+    type Item = Direction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.connections & Direction::Up as u32 != 0 {
+            self.connections -= Direction::Up as u32;
+            Some(Direction::Up)
+        } else if self.connections & Direction::Down as u32 != 0 {
+            self.connections -= Direction::Down as u32;
+            Some(Direction::Down)
+        } else if self.connections & Direction::Right as u32 != 0 {
+            self.connections -= Direction::Right as u32;
+            Some(Direction::Right)
+        } else if self.connections & Direction::Left as u32 != 0 {
+            self.connections -= Direction::Left as u32;
+            Some(Direction::Left)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct PathTileIter {
     start_pos: Position,
     connections: u32,
 }
 
 impl Iterator for PathTileIter {
-    // We can refer to this type using Self::Item
     type Item = Position;
 
-    // Here, we define the sequence using `.curr` and `.next`.
-    // The return type is `Option<T>`:
-    //     * When the `Iterator` is finished, `None` is returned.
-    //     * Otherwise, the next value is wrapped in `Some` and returned.
-    // We use Self::Item in the return type, so we can change
-    // the type without having to update the function signatures.
     fn next(&mut self) -> Option<Self::Item> {
         if self.connections & Direction::Up as u32 != 0 {
             self.connections -= Direction::Up as u32;
@@ -215,6 +261,41 @@ impl Tile {
         PathTileIter {
             connections: self.connections,
             start_pos,
+        }
+    }
+
+    fn directions_as_iter(&self) -> TileDirIter {
+        TileDirIter {
+            connections: self.connections
+        }
+    }
+
+    fn draw(&self, pos: Position, tileset: &Tileset) {
+        if !self.allowed {
+            return;
+        }
+
+        let rect = Rectangle::from_pos(pos);
+
+        // let color = if self.occupied {
+        //     RESERVED_PATH_COLOR
+        // } else {
+        //     EMPTY_ROAD_COLOR
+        // };
+
+        let connection_count = self.connections_count();
+
+        if connection_count != 1 {
+            tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, &rect, 0.0);
+        }
+
+        for dir in self.directions_as_iter() {
+            if connection_count == 1 {
+                tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, &rect, dir.to_radians());
+            }
+            else {
+                tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, &rect, dir.to_radians());
+            }
         }
     }
 }
@@ -298,29 +379,11 @@ impl Grid {
         self.tiles[pos.x as usize][pos.y as usize].occupied = false
     }
 
-    pub fn draw_tiles(&self) {
+    pub fn draw_tiles(&self, tileset: &Tileset) {
         for i in 0..GRID_SIZE.0 {
             for j in 0..GRID_SIZE.1 {
                 let pos = Position::new(i, j);
-                if self.is_allowed(&pos) {
-                    let rect = Rectangle::from_pos(pos, 0.9, 0.9);
-
-                    let color = if self.is_occupied(&pos) {
-                        RESERVED_PATH_COLOR
-                    } else {
-                        EMPTY_ROAD_COLOR
-                    };
-
-                    rect.draw(color);
-
-                    for new_pos in self.get_dirs(&pos) {
-                        let mut rect_new = Rectangle::from_pos(new_pos, 0.4, 0.4);
-                        rect_new.x += (pos.x - new_pos.x) as f32 * GRID_CELL_SIZE.0 * 0.85;
-                        rect_new.y += (pos.y - new_pos.y) as f32 * GRID_CELL_SIZE.1 * 0.85;
-
-                        rect_new.draw(CONNECTION_INDICATOR_COLOR);
-                    }
-                }
+                self.tiles[i as usize][j as usize].draw(pos, tileset);
             }
         }
     }

@@ -4,11 +4,12 @@ use grid::Position;
 use grid::Grid;
 mod station;
 mod vehicle;
+mod tileset;
 use station::Station;
+use tileset::Tileset;
 use vehicle::Vehicle;
 
 use macroquad::prelude::*;
-use macroquad_tiled as tiled;
 
 
 const HELP_TEXT: &'static str = "Transport IO v0.0
@@ -98,17 +99,17 @@ impl GameState {
     }
 
 
-    fn draw(&self) {
+    fn draw(&self, tileset: &Tileset) {
         clear_background(BLACK);
 
-        self.path_grid.draw_tiles();
+        self.path_grid.draw_tiles(tileset);
 
         for s in self.stations.iter() {
-            s.draw();
+            s.draw(tileset);
         }
 
         for s in self.vehicles.iter() {
-            s.draw();
+            s.draw(tileset);
         }
 
         let delivered = self.delivered;
@@ -257,15 +258,17 @@ impl GameState {
 async fn main() {
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let mut state = GameState::new();
-    let speed = 0.3;
+    let speed = 1./8.;
 
     // state.key_manager.add_handler(KeyHandler {key: KeyCode::Q, func: game_quit, help: "Q: Quit the game"});
 
-    let tileset = load_texture("resources/tileset.png").await.unwrap();
-    tileset.set_filter(FilterMode::Nearest);
+    let tileset_texture = load_texture("resources/tileset.png").await.unwrap();
+    tileset_texture.set_filter(FilterMode::Nearest);
 
-    let tiled_map_json = load_string("resources/map.json").await.unwrap();
-    let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
+    // let tiled_map_json = load_string("resources/map.json").await.unwrap();
+    // let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
+
+    let tileset = Tileset::new(tileset_texture, 16);
 
 
     state.load_level();
@@ -304,9 +307,8 @@ async fn main() {
             state.update();
         }
 
-        state.draw();
+        state.draw(&tileset);
 
-        tiled_map.spr("tileset", 0, Rect::new(128., 128., 16.0, 16.0));
 
         // TODO: Take quit request confirmation from example
         if state.request_quit {

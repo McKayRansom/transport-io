@@ -1,4 +1,6 @@
 use macroquad::color::Color;
+use macroquad::color::WHITE;
+use macroquad_tiled::Map;
 
 use crate::grid::Direction;
 use crate::grid::Position;
@@ -6,8 +8,9 @@ use crate::grid::Rectangle;
 use crate::grid::GRID_CELL_SIZE;
 use crate::grid::Grid;
 use crate::station;
+use crate::tileset::Tileset;
 
-const SPEED: i16 = 8;
+const SPEED: i16 = 4;
 
 const OKAY_COLOR: Color = Color::new(0.0, 0.9, 0.1, 1.0);
 const NO_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 1.0);
@@ -126,17 +129,17 @@ impl Vehicle {
         }
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, tileset: &Tileset) {
 
-        let mut width_fraction: f32 = 0.9;
-        let mut height_fraction: f32 = 0.9;
-        if self.dir == Direction::Right || self.dir == Direction::Left {
-            height_fraction = 0.75;
-        } else {
-            width_fraction = 0.75;
-        }
+        // let mut width_fraction: f32 = 0.9;
+        // let mut height_fraction: f32 = 0.9;
+        // if self.dir == Direction::Right || self.dir == Direction::Left {
+        //     height_fraction = 0.75;
+        // } else {
+        //     width_fraction = 0.75;
+        // }
 
-        let mut rect: Rectangle = Rectangle::from_pos(self.pos, width_fraction, height_fraction);
+        let mut rect: Rectangle = Rectangle::from_pos(self.pos);
         match self.dir {
             Direction::Right => rect.x -= self.lag_pos as f32,
             Direction::Left => rect.x += self.lag_pos as f32,
@@ -144,12 +147,23 @@ impl Vehicle {
             Direction::Up => rect.y += self.lag_pos as f32,
         }
 
-        let color = if self.no_path {
-            NO_PATH_COLOR
-        } else {
-            OKAY_COLOR
-        };
-        rect.draw(color);
+        // let color = if self.no_path {
+        //     NO_PATH_COLOR
+        // } else {
+        //     OKAY_COLOR
+        // };
+        // rect.draw(color);
+
+        // tiled_map.spr("tileset", 0, rect.from());
+
+        let sprite = 3;
+        tileset.draw_tile(sprite, WHITE, &rect, self.dir.to_radians());
+
+
+
+        // let tileset = &tiled_map.tilesets["tileset"];
+        // let spr_rect = tileset.sprite_rect(sprite);
+
 
         // draw the path
         // if let Some(path) = &self.path {
