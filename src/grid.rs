@@ -137,12 +137,12 @@ impl Direction {
         }
     }
 
-    pub fn from_position(pos1: Position, pos2: Position) -> Self {
-        if pos2.x > pos1.x {
+    pub fn from_position(prev_pos: Position, new_pos: Position) -> Self {
+        if new_pos.x > prev_pos.x {
             Direction::Right
-        } else if pos2.y > pos1.y {
+        } else if new_pos.y > prev_pos.y {
             Direction::Down
-        } else if pos2.y < pos1.y {
+        } else if new_pos.y < prev_pos.y {
             Direction::Up
         } else {
             Direction::Left
