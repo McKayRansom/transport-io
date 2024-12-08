@@ -11,8 +11,11 @@ use crate::tileset::Tileset;
 
 const SPEED: i16 = 4;
 
-const OKAY_COLOR: Color = Color::new(0.0, 0.9, 0.1, 1.0);
-const NO_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 1.0);
+enum PathStatus {
+    Okay,
+    Waiting,
+    NoPath,
+}
 
 pub struct Vehicle {
     pos: Position,
@@ -21,7 +24,7 @@ pub struct Vehicle {
     // station_id: usize,
     destination: Position,
     reserved: Vec<Position>,
-    no_path: bool,
+    path_status: PathStatus,
 }
 
 impl Vehicle {
@@ -38,7 +41,7 @@ impl Vehicle {
             // station_id: 0,
             destination: destination,
             reserved: vec![pos], // TODO: Safe way to do this?
-            no_path: false,
+            path_status: PathStatus::Okay,
         }
     }
 
@@ -102,8 +105,12 @@ impl Vehicle {
         if let Some(path) = path_grid.find_path(&self.pos, &self.destination) {
             if !self.reserve_path(path_grid, &path.0) {
                 self.reserve(self.pos, path_grid);
+
+                self.path_status = PathStatus::Waiting;
                 return 0;
             }
+
+            self.path_status = PathStatus::Okay;
 
             let positions = &path.0;
             if positions.len() == 0 {
@@ -115,6 +122,7 @@ impl Vehicle {
             self.dir = Direction::from_position(self.pos, next_pos);
             self.pos = next_pos;
         } else {
+            self.path_status = PathStatus::NoPath;
             self.reserve(self.pos, path_grid);
         }
 
@@ -148,23 +156,14 @@ impl Vehicle {
             Direction::Up => rect.y += self.lag_pos as f32,
         }
 
-        // let color = if self.no_path {
-        //     NO_PATH_COLOR
-        // } else {
-        //     OKAY_COLOR
-        // };
-        // rect.draw(color);
+        let color = match self.path_status {
+            PathStatus::NoPath => Color::from_hex(0xf9524c),
+            PathStatus::Okay => Color::from_hex(0xa0dae8),
+            PathStatus::Waiting => Color::from_hex(0xf8c768),
+        };
 
-        // tiled_map.spr("tileset", 0, rect.from());
-
-        let sprite = 2;
-        tileset.draw_tile(sprite, WHITE, &rect, self.dir.to_radians());
-
-
-
-        // let tileset = &tiled_map.tilesets["tileset"];
-        // let spr_rect = tileset.sprite_rect(sprite);
-
+        let sprite = 1;
+        tileset.draw_tile(sprite, color, &rect, self.dir.to_radians());
 
         // draw the path
         // if let Some(path) = &self.path {
