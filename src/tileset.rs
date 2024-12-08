@@ -1,6 +1,6 @@
 use macroquad::{color::Color, math::{vec2, Rect}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
-use crate::grid::{Direction, Rectangle};
+use crate::grid::Rectangle;
 
 const TILE_SIZE: u32 = 16;
 

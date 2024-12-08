@@ -11,15 +11,6 @@ use tileset::Tileset;
 
 use macroquad::prelude::*;
 
-const HELP_TEXT: &'static str = "Transport IO v0.0
-Q: Quit
-A: Add vehicle
-S: Build station
-D: Delete Road
-F: Build Road
-R: Rotate
-";
-
 struct GameState {
     map: Map,
     ui: UiState,
@@ -48,7 +39,7 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        self.ui.draw(self.delivered);
+        self.ui.draw(self.delivered, &self.map);
 
     }
 

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use macroquad::rand::{self, srand, ChooseRandom};
+use macroquad::rand::{self, srand};
 
 use crate::{
-    grid::{Direction, Grid, Position},
+    grid::{Direction, Grid, Position, Tile},
     station::Station,
     tileset::Tileset,
     vehicle::Vehicle,
@@ -31,28 +31,37 @@ impl Map {
         }
     }
 
+    pub fn generate_road(&mut self, pos: Position, dir: Direction) {
+        self.path_grid.add_tile_connection(&pos, dir);
+    }
+
+    pub fn generate_house(&mut self, pos: Position) {
+        if let Some(tile) = self.path_grid.get_tile_mut(&pos) {
+            if *tile == Tile::Empty {
+                *tile = Tile::House;
+            }
+        }
+    }
+
     pub fn generate_block(&mut self, x: i16, y: i16) {
         // top
         for i in 0..CITY_BLOCK_SIZE {
-            self.path_grid
-                .add_allowed(&Position::new(x + i, y), Direction::Right);
-            self.path_grid.add_allowed(
-                &Position::new(x + (CITY_BLOCK_SIZE - 1), y + i),
+            self.generate_road(Position::new(x + i, y), Direction::Right);
+            self.generate_road(
+                Position::new(x + (CITY_BLOCK_SIZE - 1), y + i),
                 Direction::Down,
             );
-            self.path_grid.add_allowed(
-                &Position::new(x + i, y + (CITY_BLOCK_SIZE - 1)),
+            self.generate_road(
+                Position::new(x + i, y + (CITY_BLOCK_SIZE - 1)),
                 Direction::Left,
             );
-            self.path_grid
-                .add_allowed(&Position::new(x, y + i), Direction::Up);
+            self.generate_road(Position::new(x, y + i), Direction::Up);
         }
 
         // houses (all for now)
         for i in 0..CITY_BLOCK_SIZE {
             for j in 0..CITY_BLOCK_SIZE {
-                let pos = Position::new(x + i, y + j);
-                self.path_grid.add_house(&pos);
+                self.generate_house(Position::new(x + i, y + j));
             }
         }
     }
@@ -82,7 +91,13 @@ impl Map {
     fn find_closest_road(&self, pos: Position) -> Position {
         // TEMP: for now just go up
         let mut road_pos = pos;
-        while road_pos.y >= 0 && !self.path_grid.is_allowed(&road_pos) {
+        while road_pos.y >= 0 {
+            if let Some(tile) = self.path_grid.get_tile(&road_pos) {
+                if let Tile::Road(_) = tile {
+                    return road_pos;
+                }
+            }
+
             road_pos.y -= 1;
         }
         if road_pos.y < 0 {
@@ -92,7 +107,6 @@ impl Map {
     }
 
     fn generate_cars(&mut self) {
-
         let start_house = self.random_house();
         let end_house = self.random_house();
 
@@ -101,22 +115,27 @@ impl Map {
         let end_road = self.find_closest_road(end_house);
 
         // TODO: FIX THIS
-        if self.path_grid.is_occupied(&start_road) {
-            return;
+        if let Some(Tile::Road(road)) = self.path_grid.get_tile(&start_road) {
+            if road.reservations.is_reserved(0, 31) {
+                return;
+            }
         }
         println!("Start: {start_house:?} End: {end_house:?}");
-        self.vehicles.insert(
-            self.vehicle_id,
-            Vehicle::new(start_road, end_road, &mut self.path_grid),
-        );
-        self.vehicle_id += 1;
+        if let Some(vehicle ) = Vehicle::new(start_road, end_road, &mut self.path_grid) {
+            self.vehicles.insert(
+                self.vehicle_id,
+                vehicle,
+            );
+
+            self.vehicle_id += 1;
+        }
     }
 
     pub fn update(&mut self) -> u32 {
         let mut delivered = 0;
         let mut to_remove: Vec<u16> = Vec::new();
         for s in self.vehicles.iter_mut() {
-            let finished = s.1.update(&self.stations, &mut self.path_grid);
+            let finished = s.1.update(&mut self.path_grid);
             if finished > 0 {
                 delivered += finished;
                 s.1.clear_reserved(&mut self.path_grid);

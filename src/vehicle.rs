@@ -1,16 +1,19 @@
 use macroquad::color::Color;
-use macroquad::color::WHITE;
 
+use crate::grid::Connections;
 use crate::grid::Direction;
+use crate::grid::Grid;
 use crate::grid::Position;
 use crate::grid::Rectangle;
+use crate::grid::Reservation;
+use crate::grid::ReservationInfo;
 use crate::grid::GRID_CELL_SIZE;
-use crate::grid::Grid;
-use crate::station;
+// use crate::station;
 use crate::tileset::Tileset;
 
 const SPEED: i16 = 4;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum PathStatus {
     Okay,
     Waiting,
@@ -23,32 +26,47 @@ pub struct Vehicle {
     dir: Direction,
     // station_id: usize,
     destination: Position,
-    reserved: Vec<Position>,
+    reserved: Vec<Reservation>,
     path_status: PathStatus,
 }
 
 impl Vehicle {
-    pub fn new(pos: Position, destination: Position, path_grid: &mut Grid) -> Self {
-        assert!(path_grid.is_allowed(&pos) == true);
-        assert!(path_grid.is_occupied(&pos) == false);
+    pub fn new(pos: Position, destination: Position, path_grid: &mut Grid) -> Option<Self> {
+        let res = Reservation {
+            position: pos,
+            start_tick: 0,
+            end_tick: 31,
+        };
+        if let Some((connection, info)) = path_grid.reserve_position(&res) {
+            if !connection.safe_to_block() && !info.later_reservation {
+                return None;
+            }
+        } else {
+            return None;
+        }
 
-        path_grid.add_occupied(&pos);
-
-        Vehicle {
+        Some(Vehicle {
             pos: pos,
             lag_pos: 0,
             dir: Direction::Right,
             // station_id: 0,
             destination: destination,
-            reserved: vec![pos], // TODO: Safe way to do this?
+            reserved: vec![res], // TODO: Safe way to do this?
             path_status: PathStatus::Okay,
-        }
+        })
     }
 
-    fn reserve(&mut self, pos: Position, path_grid: &mut Grid) {
-        assert!(path_grid.is_occupied(&pos) == false);
-        self.reserved.push(pos);
-        path_grid.add_occupied(&pos);
+    fn reserve(
+        &mut self,
+        path_grid: &mut Grid,
+        reservation: &Reservation,
+    ) -> Option<(Connections, ReservationInfo)> {
+        if let Some(info) = path_grid.reserve_position(reservation) {
+            self.reserved.push(*reservation);
+            Some(info)
+        } else {
+            None
+        }
     }
 
     pub fn clear_reserved(&mut self, path_grid: &mut Grid) {
@@ -56,29 +74,37 @@ impl Vehicle {
         // assert!(self.reserved.len() > 0);
 
         for pos in &self.reserved {
-            path_grid.remove_occupied(pos);
+            path_grid.unreserve_position(pos);
         }
         self.reserved.clear();
     }
 
     fn reserve_path(&mut self, path_grid: &mut Grid, positions: &Vec<Position>) -> bool {
-        // reserve our route
+        let mut reservation = Reservation {
+            position: self.pos,
+            start_tick: 0,
+            end_tick: SPEED as u32,
+        };
+
         for pos in positions {
             if *pos == self.pos {
                 continue;
             }
 
-            if path_grid.is_occupied(pos) {
+            reservation.position = *pos;
+
+            if let Some(connection) = self.reserve(path_grid, &reservation) {
+                // find safe place to wait
+                if connection.0.safe_to_block() && !connection.1.later_reservation {
+                    break;
+                }
+            } else {
                 self.clear_reserved(path_grid);
                 return false;
             }
 
-            self.reserve(*pos, path_grid);
-
-            // find non-intersection to wait
-            if path_grid.connection_count(pos) == 1 {
-                break;
-            }
+            // reservation.start_tick += SPEED as u32;
+            // reservation.end_tick += SPEED as u32;
         }
 
         true
@@ -88,9 +114,10 @@ impl Vehicle {
         self.lag_pos -= SPEED;
     }
 
-    fn update_path(&mut self, stations: &Vec<station::Station>, path_grid: &mut Grid) -> u32 {
+    fn update_path(&mut self, path_grid: &mut Grid) -> u32 {
         // check destination
-        if self.pos == self.destination { //stations[self.station_id].pos {
+        if self.pos == self.destination {
+            //stations[self.station_id].pos {
             // we made it! head to next station
             // self.station_id += 1;
             // if self.station_id >= stations.len() {
@@ -104,7 +131,14 @@ impl Vehicle {
 
         if let Some(path) = path_grid.find_path(&self.pos, &self.destination) {
             if !self.reserve_path(path_grid, &path.0) {
-                self.reserve(self.pos, path_grid);
+                self.reserve(
+                    path_grid,
+                    &Reservation {
+                        position: self.pos,
+                        start_tick: 0,
+                        end_tick: 31,
+                    },
+                );
 
                 self.path_status = PathStatus::Waiting;
                 return 0;
@@ -123,23 +157,29 @@ impl Vehicle {
             self.pos = next_pos;
         } else {
             self.path_status = PathStatus::NoPath;
-            self.reserve(self.pos, path_grid);
+            self.reserve(
+                path_grid,
+                &Reservation {
+                    position: self.pos,
+                    start_tick: 0,
+                    end_tick: 31,
+                },
+            );
         }
 
         0
     }
 
-    pub fn update(&mut self, stations: &Vec<station::Station>, path_grid: &mut Grid) -> u32 {
+    pub fn update(&mut self, path_grid: &mut Grid) -> u32 {
         if self.lag_pos > 0 {
             self.update_position();
             0
         } else {
-            self.update_path(stations, path_grid)
+            self.update_path(path_grid)
         }
     }
 
     pub fn draw(&self, tileset: &Tileset) {
-
         // let mut width_fraction: f32 = 0.9;
         // let mut height_fraction: f32 = 0.9;
         // if self.dir == Direction::Right || self.dir == Direction::Left {
@@ -170,5 +210,48 @@ impl Vehicle {
         //     for seg in &path.0 {
         //     }
         // }
+    }
+}
+
+#[cfg(test)]
+mod vehicle_tests {
+    use super::*;
+
+    fn new_grid_from_ascii(ascii: &str) -> Grid {
+        let mut pos= Position::new(0, 0);
+        let mut grid = Grid::new();
+        for chr in ascii.chars() {
+            match chr {
+                '>' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                }
+                '*' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                    grid.add_tile_connection(&pos, Direction::Up);
+                }
+                _ => {
+
+                }
+            }
+            pos.x += 1;
+        }
+
+        grid
+    }
+
+    #[test]
+    fn test_init() {
+        let mut grid = new_grid_from_ascii(">*>>>>>>");
+        let start_pos = Position::new(0, 0);
+        let end_pos = Position::new(4, 0);
+        let mut vehicle = Vehicle::new(start_pos, end_pos, &mut grid).unwrap();
+        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_none());
+
+        vehicle.update(&mut grid);
+
+        assert!(vehicle.path_status == PathStatus::Okay);
+        println!("Reserved: {:?}", vehicle.reserved);
+
+        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_none());
     }
 }

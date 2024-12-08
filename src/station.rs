@@ -1,4 +1,4 @@
-use macroquad::color::{Color, WHITE};
+use macroquad::color::WHITE;
 
 use crate::{grid::{Position, Rectangle}, tileset::Tileset};
 
@@ -10,7 +10,7 @@ pub struct Station {
 const STATION_SPRITE: u32 = (16 * 4) + 0;
 
 impl Station {
-    pub fn new(pos: Position) -> Self {
+    pub fn _new(pos: Position) -> Self {
         Station { pos }
     }
 

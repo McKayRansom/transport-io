@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+use std::fmt;
 
 use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
@@ -13,7 +14,7 @@ const OCCUPIED_COST: u32 = 3;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;
-// const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
+const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
 // const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
 
 const HOUSE_SPRITE: u32 = (16 * 1) + 0;
@@ -50,23 +51,17 @@ impl Position {
         self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
     }
 
-    /// We'll make another helper function that takes one grid position and returns a new one after
-    /// making one move in the direction of `dir`.
-    /// We use the [`rem_euclid()`](https://doc.rust-lang.org/std/primitive.i16.html#method.rem_euclid)
-    /// API when crossing the top/left limits, as the standard remainder function (`%`) returns a
-    /// negative value when the left operand is negative.
-    /// Only the Up/Left cases require rem_euclid(); for consistency, it's used for all of them.
-    pub fn _new_from_move(pos: Position, dir: Direction) -> Self {
+    pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
         match dir {
-            Direction::Up => Position::new(pos.x, (pos.y - 1).rem_euclid(GRID_SIZE.1)),
-            Direction::Down => Position::new(pos.x, (pos.y + 1).rem_euclid(GRID_SIZE.1)),
-            Direction::Left => Position::new((pos.x - 1).rem_euclid(GRID_SIZE.0), pos.y),
-            Direction::Right => Position::new((pos.x + 1).rem_euclid(GRID_SIZE.0), pos.y),
+            Direction::Up => Position::new(pos.x, pos.y - 1),
+            Direction::Down => Position::new(pos.x, pos.y + 1),
+            Direction::Left => Position::new(pos.x - 1, pos.y),
+            Direction::Right => Position::new(pos.x + 1, pos.y),
         }
     }
 }
 
-// TODO: Merge with macroquad::math::Rect
+// LATER: Merge with macroquad::math::Rect
 pub struct Rectangle {
     pub x: f32,
     pub y: f32,
@@ -79,7 +74,7 @@ impl Rectangle {
         Rectangle { x, y, w, h }
     }
 
-    pub fn from(&self) -> Rect {
+    pub fn _from(&self) -> Rect {
         Rect {
             x: self.x,
             y: self.y,
@@ -128,7 +123,7 @@ impl Direction {
         }
     }
 
-    pub fn rotate(self) -> Self {
+    pub fn _rotate(self) -> Self {
         match self {
             Direction::Up => Direction::Right,
             Direction::Right => Direction::Down,
@@ -172,25 +167,61 @@ impl Direction {
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
-pub struct TileDirIter {
-    connections: u32,
+pub struct ConnectionsIterator {
+    connection_bitfield: u32,
 }
 
-impl Iterator for TileDirIter {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Connections {
+    connection_bitfield: u32,
+}
+
+impl Connections {
+    pub fn new(dir: Direction) -> Connections {
+        Connections {
+            connection_bitfield: dir as u32,
+        }
+    }
+
+    pub fn add(&mut self, dir: Direction) {
+        self.connection_bitfield |= dir as u32;
+    }
+
+    pub fn remove(&mut self, dir: Direction) {
+        self.connection_bitfield &= !(dir as u32);
+    }
+
+    pub fn count(&self) -> u32 {
+        self.connection_bitfield.count_ones()
+    }
+
+    pub fn safe_to_block(&self) -> bool {
+        // Don't block intersections!
+        self.connection_bitfield.count_ones() < 2
+    }
+
+    pub fn iter(&self) -> ConnectionsIterator {
+        ConnectionsIterator {
+            connection_bitfield: self.connection_bitfield,
+        }
+    }
+}
+
+impl Iterator for ConnectionsIterator {
     type Item = Direction;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.connections & Direction::Up as u32 != 0 {
-            self.connections -= Direction::Up as u32;
+        if self.connection_bitfield & Direction::Up as u32 != 0 {
+            self.connection_bitfield -= Direction::Up as u32;
             Some(Direction::Up)
-        } else if self.connections & Direction::Down as u32 != 0 {
-            self.connections -= Direction::Down as u32;
+        } else if self.connection_bitfield & Direction::Down as u32 != 0 {
+            self.connection_bitfield -= Direction::Down as u32;
             Some(Direction::Down)
-        } else if self.connections & Direction::Right as u32 != 0 {
-            self.connections -= Direction::Right as u32;
+        } else if self.connection_bitfield & Direction::Right as u32 != 0 {
+            self.connection_bitfield -= Direction::Right as u32;
             Some(Direction::Right)
-        } else if self.connections & Direction::Left as u32 != 0 {
-            self.connections -= Direction::Left as u32;
+        } else if self.connection_bitfield & Direction::Left as u32 != 0 {
+            self.connection_bitfield -= Direction::Left as u32;
             Some(Direction::Left)
         } else {
             None
@@ -198,118 +229,205 @@ impl Iterator for TileDirIter {
     }
 }
 
-pub struct PathTileIter {
-    start_pos: Position,
-    connections: u32,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Reservation {
+    pub position: Position,
+    pub start_tick: u32,
+    pub end_tick: u32,
 }
 
-impl Iterator for PathTileIter {
-    type Item = Position;
+impl Reservation {
+    pub fn new(position: Position, start_tick: u32, end_tick: u32) -> Self {
+        Reservation {
+            position,
+            start_tick,
+            end_tick,
+        }
+    }
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.connections & Direction::Up as u32 != 0 && self.start_pos.y > 0 {
-            self.connections -= Direction::Up as u32;
-            Some(Position {
-                x: self.start_pos.x,
-                y: self.start_pos.y - 1,
-            })
-        } else if self.connections & Direction::Down as u32 != 0 {
-            self.connections -= Direction::Down as u32;
-            Some(Position {
-                x: self.start_pos.x,
-                y: self.start_pos.y + 1,
-            })
-        } else if self.connections & Direction::Right as u32 != 0 {
-            self.connections -= Direction::Right as u32;
-            Some(Position {
-                x: self.start_pos.x + 1,
-                y: self.start_pos.y,
-            })
-        } else if self.connections & Direction::Left as u32 != 0 && self.start_pos.x > 0 {
-            self.connections -= Direction::Left as u32;
-            Some(Position {
-                x: self.start_pos.x - 1,
-                y: self.start_pos.y,
-            })
+pub struct ReservationInfo {
+    pub later_reservation: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Reservations {
+    reservations_bitfield: u32,
+}
+
+impl Reservations {
+    pub fn new() -> Self {
+        Reservations {
+            reservations_bitfield: 0,
+        }
+    }
+
+    fn ticks_to_bitfield(start_tick: u32, end_tick: u32) -> Option<u32> {
+        let start_ticks_shl = 1_u32.checked_shl(start_tick).unwrap_or(0);
+        let end_ticks_shl = 1_u32.checked_shl(end_tick).unwrap_or(0);
+
+        if start_ticks_shl > 0 && end_ticks_shl > start_ticks_shl {
+            Some((end_ticks_shl - 1) - (start_ticks_shl - 1))
         } else {
             None
         }
     }
+
+    pub fn is_reserved(&self, start_tick: u32, end_tick: u32) -> bool {
+        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
+            self.reservations_bitfield & ticks != 0
+        } else {
+            true
+        }
+    }
+
+    pub fn reserve(&mut self, start_tick: u32, end_tick: u32) -> Option<ReservationInfo> {
+        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
+            if ticks & self.reservations_bitfield != 0 {
+                None
+            } else if ticks < self.reservations_bitfield {
+                self.reservations_bitfield |= ticks;
+                Some(ReservationInfo {
+                    later_reservation: true,
+                })
+            } else {
+                self.reservations_bitfield |= ticks;
+                Some(ReservationInfo {
+                    later_reservation: false,
+                })
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn unreserve(&mut self, start_tick: u32, end_tick: u32) {
+        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
+            self.reservations_bitfield &= !ticks;
+        }
+    }
 }
 
-#[derive(Clone, Copy)]
-pub struct Tile {
-    house: bool,
-    allowed: bool,
-    occupied: bool,
-    connections: u32,
+impl fmt::Debug for Reservations {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Reservations: {:b}", self.reservations_bitfield)
+    }
 }
 
-impl Tile {
-    fn new() -> Tile {
-        Tile {
-            house: false,
-            allowed: false,
-            occupied: false,
-            connections: 0,
+#[cfg(test)]
+mod reservation_tests {
+    use super::*;
+
+    #[test]
+    fn test_reserve() {
+        let mut r = Reservations::new();
+
+        assert!(r.reserve(0, 31).unwrap().later_reservation == false);
+        assert!(r.is_reserved(0, 31) == true);
+        assert!(r.is_reserved(0, 1) == true);
+
+        let new_info = r.reserve(0, 31);
+        assert!(new_info.is_none());
+    }
+
+    #[test]
+    fn test_reserve_tick_limit() {
+        let mut r = Reservations::new();
+
+        assert!(r.reserve(32, 31).is_none());
+        assert!(r.reserve(31, 32).is_none());
+    }
+
+    #[test]
+    fn test_reserve_end_before_start() {
+        let mut r = Reservations::new();
+        assert!(r.reserve(1, 0).is_none());
+        assert!(r.reserve(18, 3).is_none());
+    }
+
+    #[test]
+    fn test_reserve_later() {
+        let mut r = Reservations::new();
+        assert!(r.reserve(1, 2).unwrap().later_reservation == false);
+        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
+        assert!(r.reserve(2, 3).unwrap().later_reservation == false);
+    }
+
+    #[test]
+    fn test_unreserve() {
+        let mut r = Reservations::new();
+        assert!(r.reserve(1, 2).unwrap().later_reservation == false);
+        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
+        r.unreserve(0, 1);
+        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
+        r.unreserve(0, 1);
+        r.unreserve(1, 2);
+        assert!(r.is_reserved(0, 1) == false);
+        assert!(r.reserve(0, 1).unwrap().later_reservation == false);
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Road {
+    pub blocked: bool,
+    pub reservations: Reservations,
+    pub connections: Connections,
+}
+
+impl Road {
+    pub fn new(dir: Direction) -> Road {
+        Road {
+            blocked: false,
+            reservations: Reservations::new(),
+            connections: Connections::new(dir),
         }
     }
 
-    fn connect(&mut self, dir: Direction) {
-        self.connections |= dir as u32;
-    }
-
-    fn connections_count(&self) -> u32 {
-        self.connections.count_ones()
-    }
-
-    fn connections_as_iter(&self, start_pos: Position) -> PathTileIter {
-        PathTileIter {
-            connections: self.connections,
-            start_pos,
-        }
-    }
-
-    fn directions_as_iter(&self) -> TileDirIter {
-        TileDirIter {
-            connections: self.connections,
-        }
-    }
-
-    fn draw(&self, pos: Position, tileset: &Tileset) {
-        let rect = Rectangle::from_pos(pos);
-
-        if self.house {
-            tileset.draw_tile(HOUSE_SPRITE, WHITE, &rect, 0.0);
-            return;
-        }
-
-        if !self.allowed {
-            return;
-        }
-
-        // let color = if self.occupied {
-        //     RESERVED_PATH_COLOR
-        // } else {
-        //     EMPTY_ROAD_COLOR
-        // };
-
-        let connection_count = self.connections_count();
+    fn draw(&self, rect: &Rectangle, tileset: &Tileset) {
+        let connection_count = self.connections.count();
 
         if connection_count != 1 {
             tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, &rect, 0.0);
         }
 
-        for dir in self.directions_as_iter() {
+        for dir in self.connections.iter() {
             if connection_count == 1 {
                 tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, &rect, dir.to_radians());
             } else {
                 tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, &rect, dir.to_radians());
             }
         }
+
+        if self.reservations.is_reserved(0, 31) {
+            rect.draw(RESERVED_PATH_COLOR);
+        }
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Tile {
+    Empty,
+    House,
+    Road(Road),
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile::Empty
+    }
+
+    fn draw(&self, pos: Position, tileset: &Tileset) {
+        let rect = Rectangle::from_pos(pos);
+
+        match self {
+            Tile::House => {
+                tileset.draw_tile(HOUSE_SPRITE, WHITE, &rect, 0.0);
+            }
+            Tile::Road(road) => road.draw(&rect, tileset),
+            Tile::Empty => {}
+        }
+    }
+}
 pub struct Grid {
     tiles: Vec<Vec<Tile>>,
 }
@@ -327,6 +445,85 @@ impl Grid {
         }
     }
 
+    pub fn pos_is_valid(&self, pos: &Position) -> bool {
+        pos.x >= 0 && pos.x < GRID_SIZE.0 && pos.y >= 0 && pos.y < GRID_SIZE.1
+    }
+
+    pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
+        if self.pos_is_valid(pos) {
+            Some(&self.tiles[pos.x as usize][pos.y as usize])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_tile_mut(&mut self, pos: &Position) -> Option<&mut Tile> {
+        if self.pos_is_valid(pos) {
+            Some(&mut self.tiles[pos.x as usize][pos.y as usize])
+        } else {
+            None
+        }
+    }
+
+    pub fn add_tile_connection(&mut self, pos: &Position, dir: Direction) {
+        if let Some(tile) = self.get_tile_mut(pos) {
+            if let Tile::Road(road) = tile {
+                road.connections.add(dir);
+            } else {
+                *tile = Tile::Road(Road::new(dir));
+            }
+        }
+    }
+
+    pub fn remove_tile_connection(&mut self, pos: &Position, dir: Direction) {
+        if let Some(Tile::Road(road)) = self.get_tile_mut(pos) {
+            road.connections.remove(dir);
+            if road.connections.count() == 0 {
+                self.clear_tile(pos);
+            }
+        }
+    }
+
+    pub fn clear_tile(&mut self, pos: &Position) {
+        if let Some(tile) = self.get_tile_mut(pos) {
+            *tile = Tile::Empty;
+        }
+    }
+
+    pub fn _is_driveable(&self, pos: &Position) -> bool {
+        if let Some(Tile::Road(road)) = self.get_tile(pos) {
+            !road.blocked
+        } else {
+            false
+        }
+    }
+
+    pub fn reserve_position(
+        &mut self,
+        reservation: &Reservation,
+    ) -> Option<(Connections, ReservationInfo)> {
+        if let Some(Tile::Road(road)) = self.get_tile_mut(&reservation.position) {
+            if let Some(info) = road
+                .reservations
+                .reserve(reservation.start_tick, reservation.end_tick)
+            {
+                // road.occupied = true;
+                Some((road.connections, info))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn unreserve_position(&mut self, reservation: &Reservation) {
+        if let Some(Tile::Road(road)) = self.get_tile_mut(&reservation.position) {
+            road.reservations
+                .unreserve(reservation.start_tick, reservation.end_tick);
+        }
+    }
+
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
         let result = astar(
             start,
@@ -339,61 +536,28 @@ impl Grid {
     }
 
     fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
-        self.tiles[pos.x as usize][pos.y as usize]
-            .connections_as_iter(*pos)
-            // .filter(|x| self.allowed.contains(x) && x.valid())
-            .map(|p| {
-                (
-                    p,
-                    if self.is_occupied(&p) {
-                        OCCUPIED_COST
-                    } else {
-                        DEFAULT_COST
-                    },
-                )
-            })
-            .collect()
-    }
-
-    pub fn connection_count(&self, pos: &Position) -> u32 {
-        self.tiles[pos.x as usize][pos.y as usize].connections_count()
-    }
-
-    pub fn is_allowed(&self, pos: &Position) -> bool {
-        self.tiles[pos.x as usize][pos.y as usize].allowed
-    }
-
-    pub fn get_dirs(&self, pos: &Position) -> PathTileIter {
-        self.tiles[pos.x as usize][pos.y as usize].connections_as_iter(*pos)
-    }
-
-    pub fn add_house(&mut self, pos: &Position) {
-        if !self.is_allowed(pos) {
-            self.tiles[pos.x as usize][pos.y as usize].house = true;
+        if let Some(Tile::Road(road)) = self.get_tile(pos) {
+            road.connections
+                .iter()
+                .map(|dir| {
+                    let new_pos = Position::new_from_move(pos, dir);
+                    (
+                        new_pos,
+                        if let Some(Tile::Road(road)) = self.get_tile(&new_pos) {
+                            if road.reservations.is_reserved(0, 1) {
+                                OCCUPIED_COST
+                            } else {
+                                DEFAULT_COST
+                            }
+                        } else {
+                            DEFAULT_COST * 2
+                        },
+                    )
+                })
+                .collect()
+        } else {
+            Vec::new()
         }
-    }
-
-    pub fn add_allowed(&mut self, pos: &Position, direction: Direction) {
-        self.tiles[pos.x as usize][pos.y as usize].allowed = true;
-        self.tiles[pos.x as usize][pos.y as usize].house = false;
-        self.tiles[pos.x as usize][pos.y as usize].connect(direction);
-    }
-
-    pub fn remove_allowed(&mut self, pos: &Position) {
-        self.tiles[pos.x as usize][pos.y as usize].allowed = false;
-        self.tiles[pos.x as usize][pos.y as usize].connections = 0;
-    }
-
-    pub fn is_occupied(&self, pos: &Position) -> bool {
-        self.tiles[pos.x as usize][pos.y as usize].occupied
-    }
-
-    pub fn add_occupied(&mut self, pos: &Position) {
-        self.tiles[pos.x as usize][pos.y as usize].occupied = true
-    }
-
-    pub fn remove_occupied(&mut self, pos: &Position) {
-        self.tiles[pos.x as usize][pos.y as usize].occupied = false
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
