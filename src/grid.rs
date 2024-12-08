@@ -24,7 +24,7 @@ const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
 // Here we define the size of our game board in terms of how many grid
 // cells it will take up. We choose to make a 30 x 20 game board.
-pub const GRID_SIZE: (i16, i16) = (30, 20);
+pub const GRID_SIZE: (i16, i16) = (30, 30);
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
@@ -81,7 +81,10 @@ impl Rectangle {
 
     pub fn from(&self) -> Rect {
         Rect {
-            x: self.x, y: self.y, w: self.w, h: self.h,
+            x: self.x,
+            y: self.y,
+            w: self.w,
+            h: self.h,
         }
     }
 
@@ -152,7 +155,7 @@ impl Direction {
             Direction::Right => PI / 2.0,
             Direction::Down => PI,
             Direction::Left => PI * 1.5,
-        } 
+        }
     }
 
     pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
@@ -168,7 +171,6 @@ impl Direction {
 
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
-
 
 pub struct TileDirIter {
     connections: u32,
@@ -205,7 +207,7 @@ impl Iterator for PathTileIter {
     type Item = Position;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.connections & Direction::Up as u32 != 0 {
+        if self.connections & Direction::Up as u32 != 0 && self.start_pos.y > 0 {
             self.connections -= Direction::Up as u32;
             Some(Position {
                 x: self.start_pos.x,
@@ -223,7 +225,7 @@ impl Iterator for PathTileIter {
                 x: self.start_pos.x + 1,
                 y: self.start_pos.y,
             })
-        } else if self.connections & Direction::Left as u32 != 0 {
+        } else if self.connections & Direction::Left as u32 != 0 && self.start_pos.x > 0 {
             self.connections -= Direction::Left as u32;
             Some(Position {
                 x: self.start_pos.x - 1,
@@ -246,7 +248,7 @@ pub struct Tile {
 impl Tile {
     fn new() -> Tile {
         Tile {
-            house : false,
+            house: false,
             allowed: false,
             occupied: false,
             connections: 0,
@@ -270,12 +272,11 @@ impl Tile {
 
     fn directions_as_iter(&self) -> TileDirIter {
         TileDirIter {
-            connections: self.connections
+            connections: self.connections,
         }
     }
 
     fn draw(&self, pos: Position, tileset: &Tileset) {
-
         let rect = Rectangle::from_pos(pos);
 
         if self.house {
@@ -286,7 +287,6 @@ impl Tile {
         if !self.allowed {
             return;
         }
-
 
         // let color = if self.occupied {
         //     RESERVED_PATH_COLOR
@@ -303,8 +303,7 @@ impl Tile {
         for dir in self.directions_as_iter() {
             if connection_count == 1 {
                 tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, &rect, dir.to_radians());
-            }
-            else {
+            } else {
                 tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, &rect, dir.to_radians());
             }
         }
@@ -369,14 +368,14 @@ impl Grid {
     }
 
     pub fn add_house(&mut self, pos: &Position) {
-        if !self.is_allowed(pos)
-        {
+        if !self.is_allowed(pos) {
             self.tiles[pos.x as usize][pos.y as usize].house = true;
         }
     }
 
     pub fn add_allowed(&mut self, pos: &Position, direction: Direction) {
         self.tiles[pos.x as usize][pos.y as usize].allowed = true;
+        self.tiles[pos.x as usize][pos.y as usize].house = false;
         self.tiles[pos.x as usize][pos.y as usize].connect(direction);
     }
 
@@ -405,5 +404,4 @@ impl Grid {
             }
         }
     }
-
 }

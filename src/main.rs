@@ -8,7 +8,6 @@ mod map;
 use map::Map;
 use station::Station;
 use tileset::Tileset;
-use vehicle::Vehicle;
 
 use macroquad::prelude::*;
 
@@ -58,10 +57,8 @@ impl GameState {
         self.map.generate();
     }
 
-    fn update(&mut self) {
-        for s in self.map.vehicles.iter_mut() {
-            self.delivered += s.update(&self.map.stations, &mut self.map.path_grid);
-        }
+    fn update(&mut self) { 
+        self.delivered += self.map.update();
     }
 
 
@@ -134,11 +131,11 @@ impl GameState {
         let pos = Position::from_screen(x, y);
         println!("Mouse pressed: pos: {pos:?} x: {x}, y: {y}");
         match self.build_mode {
-            BuildMode::Vehicle => {
-                if self.map.path_grid.is_allowed(&pos) && !self.map.path_grid.is_occupied(&pos) {
-                    self.map.vehicles.push(Vehicle::new(pos, &mut self.map.path_grid))
-                }
-            }
+            // BuildMode::Vehicle => {
+            //     if self.map.path_grid.is_allowed(&pos) && !self.map.path_grid.is_occupied(&pos) {
+            //         self.map.vehicles.push(Vehicle::new(pos, &mut self.map.path_grid))
+            //     }
+            // }
             BuildMode::Station => {
                 if !self.map.path_grid.is_allowed(&pos) {
                     // self.path_grid.add_allowed(pos);

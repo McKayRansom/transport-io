@@ -1,6 +1,5 @@
 use macroquad::color::Color;
 use macroquad::color::WHITE;
-use macroquad_tiled::Map;
 
 use crate::grid::Direction;
 use crate::grid::Position;
@@ -19,13 +18,14 @@ pub struct Vehicle {
     pos: Position,
     lag_pos: i16,
     dir: Direction,
-    station_id: usize,
+    // station_id: usize,
+    destination: Position,
     reserved: Vec<Position>,
     no_path: bool,
 }
 
 impl Vehicle {
-    pub fn new(pos: Position, path_grid: &mut Grid) -> Self {
+    pub fn new(pos: Position, destination: Position, path_grid: &mut Grid) -> Self {
         assert!(path_grid.is_allowed(&pos) == true);
         assert!(path_grid.is_occupied(&pos) == false);
 
@@ -35,7 +35,8 @@ impl Vehicle {
             pos: pos,
             lag_pos: 0,
             dir: Direction::Right,
-            station_id: 0,
+            // station_id: 0,
+            destination: destination,
             reserved: vec![pos], // TODO: Safe way to do this?
             no_path: false,
         }
@@ -47,9 +48,9 @@ impl Vehicle {
         path_grid.add_occupied(&pos);
     }
 
-    fn clear_reserved(&mut self, path_grid: &mut Grid) {
+    pub fn clear_reserved(&mut self, path_grid: &mut Grid) {
         // shouldn't double-free
-        assert!(self.reserved.len() > 0);
+        // assert!(self.reserved.len() > 0);
 
         for pos in &self.reserved {
             path_grid.remove_occupied(pos);
@@ -86,19 +87,19 @@ impl Vehicle {
 
     fn update_path(&mut self, stations: &Vec<station::Station>, path_grid: &mut Grid) -> u32 {
         // check destination
-        if self.pos == stations[self.station_id].pos {
+        if self.pos == self.destination { //stations[self.station_id].pos {
             // we made it! head to next station
-            self.station_id += 1;
-            if self.station_id >= stations.len() {
-                self.station_id = 0;
-            }
+            // self.station_id += 1;
+            // if self.station_id >= stations.len() {
+            //     self.station_id = 0;
+            // }
             return 1;
         }
 
         self.clear_reserved(path_grid);
-        let destination = &stations[self.station_id];
+        // let destination = &stations[self.station_id];
 
-        if let Some(path) = path_grid.find_path(&self.pos, &destination.pos) {
+        if let Some(path) = path_grid.find_path(&self.pos, &self.destination) {
             if !self.reserve_path(path_grid, &path.0) {
                 self.reserve(self.pos, path_grid);
                 return 0;
@@ -156,7 +157,7 @@ impl Vehicle {
 
         // tiled_map.spr("tileset", 0, rect.from());
 
-        let sprite = 3;
+        let sprite = 2;
         tileset.draw_tile(sprite, WHITE, &rect, self.dir.to_radians());
 
 
