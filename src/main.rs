@@ -48,7 +48,7 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        self.ui.draw(self);
+        self.ui.draw(self.delivered);
 
     }
 

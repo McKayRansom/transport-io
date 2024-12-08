@@ -1,11 +1,14 @@
 use crate::{
-    grid::{Direction, Position},
+    grid::{Direction, Position, Rectangle},
     map::Map,
     GameState,
 };
 use macroquad::{
+    color::Color,
     input::{get_char_pressed, is_mouse_button_down, mouse_position, MouseButton},
     math::vec2,
+    miniquad::graphics,
+    shapes::draw_rectangle,
     ui::{
         hash, root_ui,
         widgets::{self},
@@ -13,7 +16,10 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 
-#[derive(Clone, Copy)]
+const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
+const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
+
+#[derive(Clone, Copy, PartialEq)]
 enum BuildMode {
     None,
     Vehicle,
@@ -26,7 +32,6 @@ enum BuildMode {
 pub struct UiState {
     pub request_quit: bool,
     mouse_pressed: bool,
-    mouse_down: bool,
     last_mouse_pos: Position,
     build_mode: BuildMode,
 }
@@ -36,7 +41,6 @@ impl UiState {
         UiState {
             request_quit: false,
             mouse_pressed: false,
-            mouse_down: false,
             last_mouse_pos: Position { x: 0, y: 0 },
             build_mode: BuildMode::None,
         }
@@ -45,24 +49,25 @@ impl UiState {
     pub fn update(&mut self, map: &mut Map) {
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
-            self.key_down_event(key, false);
+            // TODO: Deal with repeat
+            self.key_down_event(key);
         }
 
         let new_mouse_pos = mouse_position();
+        let pos = Position::from_screen(new_mouse_pos.0, new_mouse_pos.1);
 
         if is_mouse_button_down(MouseButton::Left) {
             // macroquad::ui::
             if !self.mouse_pressed
                 && !root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1))
             {
-                self.mouse_button_down_event(new_mouse_pos.0, new_mouse_pos.1);
+                self.mouse_button_down_event(pos, map)
             }
             self.mouse_pressed = true;
         } else {
             self.mouse_pressed = false;
         }
 
-        let pos = Position::from_screen(new_mouse_pos.0, new_mouse_pos.1);
         if self.last_mouse_pos != pos
             && !root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1))
         {
@@ -71,7 +76,7 @@ impl UiState {
         }
     }
 
-    fn draw_toolbar(self) -> BuildMode {
+    fn draw_toolbar(&self) -> BuildMode {
         let toolbar_item_count: f32 = 5.;
         let toolbar_item_width: f32 = 32.;
         let toolbar_item_pad: f32 = 10.;
@@ -112,115 +117,64 @@ impl UiState {
         build_mode
     }
 
-    pub fn draw(&self, game_state: &GameState) -> UiState {
-        let mut new_state = *self;
+    pub fn draw(&mut self, delivered: u32) {
         // Score
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
             .label("Score")
             .movable(false)
             .ui(&mut *root_ui(), |ui| {
-                ui.label(None, &format!("Delivered: {}", game_state.delivered));
+                ui.label(None, &format!("Delivered: {}", delivered));
             });
 
-        new_state.build_mode = self.draw_toolbar();
+        self.build_mode = self.draw_toolbar();
 
-        new_state
+        // draw selected
+        let color = if self.build_mode == BuildMode::Delete {
+            SELECTED_DELETE
+        } else {
+            SELECTED_BUILD
+        };
+
+        Rectangle::from_pos(self.last_mouse_pos).draw(color);
     }
 
-    fn key_down_event(&mut self, ch: char, repeat: bool) {
-        if repeat {
-            return;
-        }
-        // Here we attempt to convert the Keycode into a Direction using the helper
-        // we defined earlier.
-        // if let Some(keycode) = input.keycode {
+    fn key_down_event(&mut self, ch: char) {
         match ch {
             'q' => {
                 self.request_quit = true;
-                // ctx.request_quit();
-            }
-            // 'a' => {
-            // self.build_mode = BuildMode::Vehicle;
-            // }
-            // 's' => {
-            // self.build_mode = BuildMode::Station;
-            // }
-            '2' => {
-                self.build_mode = BuildMode::Delete;
             }
             '1' => {
                 self.build_mode = BuildMode::Road;
             }
+            '2' => {
+                self.build_mode = BuildMode::Delete;
+            }
             _ => {} // }
         }
-
-        // Ok(())
     }
 
-    fn mouse_button_down_event(
-        &mut self,
-        // _ctx: &mut Context,
-        x: f32,
-        y: f32,
-    ) {
-        self.mouse_down = true;
-        let pos = Position::from_screen(x, y);
-        println!("Mouse pressed: pos: {pos:?} x: {x}, y: {y}");
+    fn mouse_button_down_event(&mut self, pos: Position, map: &mut Map) {
+        println!("Mouse pressed: pos: {pos:?}");
         match self.build_mode {
-            // BuildMode::Vehicle => {
-            //     if self.map.path_grid.is_allowed(&pos) && !self.map.path_grid.is_occupied(&pos) {
-            //         self.map.vehicles.push(Vehicle::new(pos, &mut self.map.path_grid))
-            //     }
-            // }
-            // BuildMode::Station => {
-            //     if !self.map.path_grid.is_allowed(&pos) {
-            //         // self.path_grid.add_allowed(pos);
-            //         println!("Not allowed here");
-            //     } else {
-            //         self.map.stations.push(Station::new(pos))
-            //     }
-            // }
-            // BuildMode::Road => {
-            //     // if !self.path_grid.is_allowed(pos) {
-            //     self.map.path_grid.add_allowed(&pos, self.build_direction);
-            //     // }
-            // }
-            // BuildMode::Delete => {
-            //     if self.map.path_grid.is_allowed(&pos) {
-            //         self.map.path_grid.remove_allowed(&pos);
-            //     }
-            // }
+            BuildMode::Delete => {
+                map.path_grid.remove_allowed(&pos);
+            }
             _ => {}
         }
     }
 
     fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
         if is_mouse_button_down(MouseButton::Left) {
-            // _ctx: &mut Context,
             match self.build_mode {
                 BuildMode::Road => {
-                    map.path_grid
-                        .add_allowed(&self.last_mouse_pos, Direction::from_position(self.last_mouse_pos, pos));
+                    map.path_grid.add_allowed(
+                        &self.last_mouse_pos,
+                        Direction::from_position(self.last_mouse_pos, pos),
+                    );
                 }
-                // BuildMode::Vehicle => {
-                // if self.path_grid.is_allowed(pos) {
-                // self.snakes.push(Vehicle::new(pos, &mut self.path_grid))
-                // }
-                // }
-                // BuildMode::Station => {
-                // if !self.path_grid.is_allowed(pos) {
-                // }
-                // self.stations.push(Station::new(pos))
-
-                // }
-                // BuildMode::Road => {
-                //     self.map.path_grid.add_allowed(&pos, self.build_direction);
-                // }
-                // BuildMode::Delete => {
-                //     if self.map.path_grid.is_allowed(&pos) {
-                //         self.map.path_grid.remove_allowed(&pos);
-                //     }
-                // }
+                BuildMode::Delete => {
+                    map.path_grid.remove_allowed(&pos);
+                }
                 _ => {}
             }
         }
