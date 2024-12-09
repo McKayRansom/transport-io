@@ -187,7 +187,7 @@ impl UiState {
     }
 
     fn key_down_event(&mut self, ch: char) {
-        if ch > '1' && ch < '9' {
+        if ch >= '1' && ch < '9' {
             let toolbar_count: usize = ch as usize - '1' as usize;
             if toolbar_count < self.toolbar_items.len() {
                 self.build_mode = self.toolbar_items[toolbar_count].build_mode;

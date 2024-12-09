@@ -1,4 +1,5 @@
 use macroquad::color::Color;
+use macroquad::color::WHITE;
 
 use crate::grid::Connections;
 use crate::grid::Direction;
@@ -12,6 +13,8 @@ use crate::grid::GRID_CELL_SIZE;
 use crate::tileset::Tileset;
 
 const SPEED: i16 = 4;
+
+const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.2);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PathStatus {
@@ -203,7 +206,15 @@ impl Vehicle {
         };
 
         let sprite = 1;
+
+        // draw shadow
+        let mut shadow_rect = rect;
+        shadow_rect.x += 2.;
+        shadow_rect.y += 2.;
+        tileset.draw_tile(2, WHITE, &shadow_rect, self.dir.to_radians());
+
         tileset.draw_tile(sprite, color, &rect, self.dir.to_radians());
+
 
         // draw the path
         // if let Some(path) = &self.path {
@@ -252,6 +263,6 @@ mod vehicle_tests {
         assert!(vehicle.path_status == PathStatus::Okay);
         println!("Reserved: {:?}", vehicle.reserved);
 
-        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_none());
+        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_some());
     }
 }

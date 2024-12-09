@@ -62,6 +62,8 @@ impl Position {
 }
 
 // LATER: Merge with macroquad::math::Rect
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rectangle {
     pub x: f32,
     pub y: f32,
