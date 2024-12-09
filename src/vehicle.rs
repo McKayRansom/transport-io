@@ -8,7 +8,6 @@ use crate::grid::Position;
 use crate::grid::Rectangle;
 use crate::grid::Reservation;
 use crate::grid::ReservationInfo;
-use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
 // use crate::station;
 use crate::tileset::Tileset;

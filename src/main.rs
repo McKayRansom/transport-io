@@ -39,7 +39,7 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        self.ui.draw(self.delivered, &self.map);
+        self.ui.draw(self.delivered, &self.map, tileset);
 
     }
 
@@ -61,7 +61,7 @@ async fn main() {
     // let tiled_map_json = load_string("resources/map.json").await.unwrap();
     // let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
 
-    let tileset = Tileset::new(tileset_texture, 16);
+    let mut tileset = Tileset::new(tileset_texture, 16);
 
     state.load_level();
     // And finally we actually run our game, passing in our context and state.
@@ -78,6 +78,8 @@ async fn main() {
             state.update();
         }
 
+        tileset.zoom = state.ui.zoom;
+        tileset.camera = state.ui.camera;
         state.draw(&tileset);
 
         // TODO: Take quit request confirmation from example

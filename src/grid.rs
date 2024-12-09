@@ -4,10 +4,9 @@ use std::fmt;
 use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
 use macroquad::math::Rect;
-use macroquad::shapes::draw_rectangle;
 use pathfinding::prelude::astar;
 
-use crate::tileset::{self, Tileset};
+use crate::tileset::Tileset;
 
 const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
@@ -42,10 +41,10 @@ impl Position {
         Position { x, y }
     }
 
-    pub fn from_screen(x: f32, y: f32) -> Self {
+    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32) -> Self {
         Position {
-            x: x as i16 / GRID_CELL_SIZE.0 as i16,
-            y: y as i16 / GRID_CELL_SIZE.1 as i16,
+            x: ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0 ) as i16,
+            y: ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1 ) as i16,
         }
     }
 
@@ -94,10 +93,6 @@ impl Rectangle {
             GRID_CELL_SIZE.0 as f32,
             GRID_CELL_SIZE.1 as f32,
         )
-    }
-
-    pub fn draw(&self, color: Color) {
-        draw_rectangle(self.x, self.y, self.w, self.h, color);
     }
 }
 
@@ -471,7 +466,7 @@ impl Road {
         }
 
         if self.reservations.is_reserved(0, 31) {
-            rect.draw(RESERVED_PATH_COLOR);
+            tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
         }
     }
 }

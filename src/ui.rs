@@ -1,10 +1,10 @@
 use crate::{
     grid::{Direction, Position, Rectangle, Tile},
-    map::Map,
+    map::Map, tileset::Tileset,
 };
 use macroquad::{
     color::Color,
-    input::{get_char_pressed, is_mouse_button_down, mouse_position, MouseButton},
+    input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton},
     math::vec2,
     ui::{
         hash, root_ui,
@@ -16,6 +16,10 @@ use macroquad::{
 
 const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
 const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
+
+const WASD_MOVE_SENSITIVITY: f32 = 10.;
+const SCROLL_SENSITIVITY: f32 = 0.9;
+const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BuildMode {
@@ -38,6 +42,8 @@ pub struct ToolbarItem {
 pub struct UiState {
     pub request_quit: bool,
     pub paused: bool,
+    pub zoom: f32,
+    pub camera: (f32, f32),
     mouse_pressed: bool,
     last_mouse_pos: Position,
     build_mode: BuildMode,
@@ -49,6 +55,8 @@ impl UiState {
         UiState {
             request_quit: false,
             paused: false,
+            zoom: 1.,
+            camera: (0., 0.),
             mouse_pressed: false,
             last_mouse_pos: Position { x: 0, y: 0 },
             build_mode: BuildMode::None,
@@ -68,7 +76,7 @@ impl UiState {
                 ToolbarItem {
                     build_mode: BuildMode::Yield,
                     label: "Yield",
-                }
+                },
             ],
         }
     }
@@ -80,14 +88,28 @@ impl UiState {
             self.key_down_event(key);
         }
 
+        let new_mouse_wheel = mouse_wheel();
         let new_mouse_pos = mouse_position();
-        let pos = Position::from_screen(new_mouse_pos.0, new_mouse_pos.1);
+
+        if root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1)) {
+            return;
+        }
+
+        if new_mouse_wheel.1 != 0. {
+            if new_mouse_wheel.1 > 0. {
+                self.zoom *= /*new_mouse_wheel.1 * */SCROLL_SENSITIVITY;
+            } else {
+                self.zoom /= /*(-new_mouse_wheel.1) * */SCROLL_SENSITIVITY;
+            }
+
+            println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
+        }
+
+        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom);
 
         if is_mouse_button_down(MouseButton::Left) {
             // macroquad::ui::
-            if !self.mouse_pressed
-                && !root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1))
-            {
+            if !self.mouse_pressed {
                 self.mouse_button_down_event(pos, map)
             }
             self.mouse_pressed = true;
@@ -95,9 +117,7 @@ impl UiState {
             self.mouse_pressed = false;
         }
 
-        if self.last_mouse_pos != pos
-            && !root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1))
-        {
+        if self.last_mouse_pos != pos {
             self.mouse_motion_event(pos, map);
             self.last_mouse_pos = pos;
         }
@@ -180,29 +200,21 @@ impl UiState {
         let paused_width = 75.;
         widgets::Window::new(
             hash!(),
-            vec2(
-                screen_width() - paused_width,
-                0.,
-            ),
+            vec2(screen_width() - paused_width, 0.),
             vec2(paused_width, paused_height),
         )
         .label("Time")
         .movable(false)
         .ui(&mut *root_ui(), |ui| {
+            let label = if self.paused { "**play**" } else { "pause" };
 
-            let label = if self.paused {
-                "**play**"
-            } else {
-                "pause"
-            };
-            
             if ui.button(None, label) {
                 self.paused = !self.paused;
             }
         });
     }
 
-    pub fn draw(&mut self, delivered: u32, map: &Map) {
+    pub fn draw(&mut self, delivered: u32, map: &Map, tileset: &Tileset) {
         // Score
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
             .label("Score")
@@ -224,7 +236,7 @@ impl UiState {
             SELECTED_BUILD
         };
 
-        Rectangle::from_pos(self.last_mouse_pos).draw(color);
+        tileset.draw_rect(&Rectangle::from_pos(self.last_mouse_pos), color);
     }
 
     fn key_down_event(&mut self, ch: char) {
@@ -236,12 +248,15 @@ impl UiState {
             return;
         }
         match ch {
-            'q' => {
-                self.request_quit = true;
-            }
-            ' ' => {
-                self.paused = !self.paused;
-            }
+            'q' => self.request_quit = true,
+            ' ' => self.paused = !self.paused,
+            'w' => self.camera.1 -= WASD_MOVE_SENSITIVITY,
+            'a' => self.camera.0 -= WASD_MOVE_SENSITIVITY,
+            's' => self.camera.1 += WASD_MOVE_SENSITIVITY,
+            'd' => self.camera.0 += WASD_MOVE_SENSITIVITY,
+            '-' => self.zoom *= PLUS_MINUS_SENSITVITY,
+            '=' => self.zoom /= PLUS_MINUS_SENSITVITY,
+
             _ => {} // }
         }
     }
@@ -251,7 +266,7 @@ impl UiState {
         match self.build_mode {
             BuildMode::Clear => {
                 map.path_grid.clear_tile(&pos);
-            },
+            }
             BuildMode::Yield => {
                 if let Some(Tile::Road(road)) = map.path_grid.get_tile_mut(&pos) {
                     road.should_yield = !road.should_yield;
