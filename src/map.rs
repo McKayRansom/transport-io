@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use macroquad::rand::{self, srand};
 
 use crate::{
-    grid::{Direction, Grid, Position, Tile},
+    grid::{ConnectionsIterator, Direction, Grid, House, Position, Tile},
     station::Station,
     tileset::Tileset,
     vehicle::Vehicle,
@@ -38,7 +38,14 @@ impl Map {
     pub fn generate_house(&mut self, pos: Position) {
         if let Some(tile) = self.path_grid.get_tile_mut(&pos) {
             if *tile == Tile::Empty {
-                *tile = Tile::House;
+                *tile = Tile::House(House { people_heading_to: false });
+                // add driveways
+                for dir in ConnectionsIterator::all_directions() {
+                    let road_pos = Position::new_from_move(&pos, dir);
+                    if let Some(Tile::Road(road)) = self.path_grid.get_tile_mut(&road_pos) {
+                        road.connections.add(dir.inverse());
+                    }
+                }
             }
         }
     }
@@ -110,18 +117,23 @@ impl Map {
         let start_house = self.random_house();
         let end_house = self.random_house();
 
-        // spawn a new vehicle at the closest road
-        let start_road = self.find_closest_road(start_house);
-        let end_road = self.find_closest_road(end_house);
-
-        // TODO: FIX THIS
-        if let Some(Tile::Road(road)) = self.path_grid.get_tile(&start_road) {
-            if road.reservations.is_reserved(0, 31) {
+        if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&end_house) {
+            if house.people_heading_to {
                 return;
             }
+            house.people_heading_to = true;
+        } else {
+            return;
         }
+
+        if let Some(Tile::House(_)) = self.path_grid.get_tile(&start_house) {
+            
+        } else {
+            return;
+        }
+
         println!("Start: {start_house:?} End: {end_house:?}");
-        if let Some(vehicle ) = Vehicle::new(start_road, end_road, &mut self.path_grid) {
+        if let Some(vehicle ) = Vehicle::new(start_house, end_house, &mut self.path_grid) {
             self.vehicles.insert(
                 self.vehicle_id,
                 vehicle,

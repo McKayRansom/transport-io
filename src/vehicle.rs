@@ -14,8 +14,6 @@ use crate::tileset::Tileset;
 
 const SPEED: i16 = 4;
 
-const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.2);
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PathStatus {
     Okay,

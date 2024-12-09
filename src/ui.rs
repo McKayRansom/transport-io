@@ -135,8 +135,8 @@ impl UiState {
                 Tile::Empty => {
                     ui.label(None, &format!("Empty"));
                 }
-                Tile::House => {
-                    ui.label(None, &format!("House"));
+                Tile::House(house) => {
+                    ui.label(None, &format!("House {:?}", house.people_heading_to));
                 }
                 Tile::Road(road) => {
                     ui.label(None, &format!("Road {:?}", road.reservations));

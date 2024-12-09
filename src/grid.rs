@@ -12,6 +12,8 @@ use crate::tileset::Tileset;
 const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
 
+const CONNECTIONS_ALL: u32 = 0b1111;
+
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;
 const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
@@ -116,7 +118,7 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub fn _inverse(self) -> Self {
+    pub fn inverse(self) -> Self {
         match self {
             Direction::Up => Direction::Down,
             Direction::Down => Direction::Up,
@@ -171,6 +173,16 @@ pub type Path = Option<(Vec<Position>, PathCost)>;
 
 pub struct ConnectionsIterator {
     connection_bitfield: u32,
+}
+
+impl ConnectionsIterator {
+    pub fn all_directions() -> Self {
+        ConnectionsIterator{connection_bitfield: CONNECTIONS_ALL}
+    }
+
+    pub fn no_directions() -> Self {
+        ConnectionsIterator{connection_bitfield: 0}
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -228,6 +240,16 @@ impl Iterator for ConnectionsIterator {
         } else {
             None
         }
+    }
+}
+
+
+#[cfg(test)]
+mod connections_tests {
+    use super::*;
+
+    #[test]
+    fn test_reserve() {
     }
 }
 
@@ -407,9 +429,14 @@ impl Road {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+pub struct House {
+    pub people_heading_to: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tile {
     Empty,
-    House,
+    House(House),
     Road(Road),
 }
 
@@ -418,12 +445,24 @@ impl Tile {
         Tile::Empty
     }
 
+    fn iter_connections(&self) -> ConnectionsIterator {
+        match self {
+            Tile::Road(road) => road.connections.iter(),
+            Tile::House(_) => ConnectionsIterator::all_directions(),
+            Tile::Empty => ConnectionsIterator::no_directions(),
+        }
+    }
     fn draw(&self, pos: Position, tileset: &Tileset) {
         let rect = Rectangle::from_pos(pos);
 
         match self {
-            Tile::House => {
-                tileset.draw_tile(HOUSE_SPRITE, WHITE, &rect, 0.0);
+            Tile::House(house) => {
+                let color = if house.people_heading_to {
+                    RESERVED_PATH_COLOR 
+                } else {
+                    WHITE
+                };
+                tileset.draw_tile(HOUSE_SPRITE, color, &rect, 0.0);
             }
             Tile::Road(road) => road.draw(&rect, tileset),
             Tile::Empty => {}
@@ -504,18 +543,26 @@ impl Grid {
         &mut self,
         reservation: &Reservation,
     ) -> Option<(Connections, ReservationInfo)> {
-        if let Some(Tile::Road(road)) = self.get_tile_mut(&reservation.position) {
-            if let Some(info) = road
-                .reservations
-                .reserve(reservation.start_tick, reservation.end_tick)
-            {
-                // road.occupied = true;
-                Some((road.connections, info))
-            } else {
-                None
+        match self.get_tile_mut(&reservation.position) {
+            Some(Tile::Road(road)) => {
+                if let Some(info) = road
+                    .reservations
+                    .reserve(reservation.start_tick, reservation.end_tick)
+                {
+                    // road.occupied = true;
+                    Some((road.connections, info))
+                } else {
+                    None
+                }
             }
-        } else {
-            None
+            Some(Tile::House(_)) => Some((
+                Connections::new(Direction::Right),
+                ReservationInfo {
+                    later_reservation: false,
+                },
+            )),
+            Some(Tile::Empty) => None,
+            None => None,
         }
     }
 
@@ -538,21 +585,26 @@ impl Grid {
     }
 
     fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
-        if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            road.connections
-                .iter()
+        if let Some(tile) = self.get_tile(pos) {
+            tile.iter_connections()
                 .map(|dir| {
                     let new_pos = Position::new_from_move(pos, dir);
                     (
                         new_pos,
-                        if let Some(Tile::Road(road)) = self.get_tile(&new_pos) {
-                            if road.reservations.is_reserved(0, 1) {
-                                OCCUPIED_COST
-                            } else {
-                                DEFAULT_COST
+                        if let Some(tile) = self.get_tile(&new_pos) {
+                            match tile {
+                                Tile::Road(road) => {
+                                    if road.reservations.is_reserved(0, 1) {
+                                        OCCUPIED_COST
+                                    } else {
+                                        DEFAULT_COST
+                                    }
+                                }
+                                Tile::House(_) => DEFAULT_COST * 2,
+                                Tile::Empty => DEFAULT_COST * 3,
                             }
                         } else {
-                            DEFAULT_COST * 2
+                            DEFAULT_COST * 3
                         },
                     )
                 })
