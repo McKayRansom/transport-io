@@ -43,7 +43,7 @@ impl Map {
                 for dir in ConnectionsIterator::all_directions() {
                     let road_pos = Position::new_from_move(&pos, dir);
                     if let Some(Tile::Road(road)) = self.path_grid.get_tile_mut(&road_pos) {
-                        road.connections.add(dir.inverse());
+                        road.connections.add(crate::grid::ConnectionLayer::Driveway, dir.inverse());
                     }
                 }
             }
@@ -95,24 +95,6 @@ impl Map {
         }
     }
 
-    fn find_closest_road(&self, pos: Position) -> Position {
-        // TEMP: for now just go up
-        let mut road_pos = pos;
-        while road_pos.y >= 0 {
-            if let Some(tile) = self.path_grid.get_tile(&road_pos) {
-                if let Tile::Road(_) = tile {
-                    return road_pos;
-                }
-            }
-
-            road_pos.y -= 1;
-        }
-        if road_pos.y < 0 {
-            road_pos.y = 0;
-        }
-        road_pos
-    }
-
     fn generate_cars(&mut self) {
         let start_house = self.random_house();
         let end_house = self.random_house();
@@ -148,9 +130,12 @@ impl Map {
         let mut to_remove: Vec<u16> = Vec::new();
         for s in self.vehicles.iter_mut() {
             let finished = s.1.update(&mut self.path_grid);
-            if finished > 0 {
-                delivered += finished;
+            if let Some(destination) = finished {
+                delivered += 1;
                 s.1.clear_reserved(&mut self.path_grid);
+                if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
+                    house.people_heading_to = false;
+                }
                 to_remove.push(*s.0);
             }
         }
@@ -173,5 +158,7 @@ impl Map {
         for s in self.vehicles.iter() {
             s.1.draw(tileset);
         }
+
+        self.path_grid.draw_houses(tileset);
     }
 }

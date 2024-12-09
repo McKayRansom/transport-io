@@ -8,6 +8,7 @@ use crate::grid::Position;
 use crate::grid::Rectangle;
 use crate::grid::Reservation;
 use crate::grid::ReservationInfo;
+use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
 // use crate::station;
 use crate::tileset::Tileset;
@@ -29,6 +30,7 @@ pub struct Vehicle {
     destination: Position,
     reserved: Vec<Reservation>,
     path_status: PathStatus,
+    yield_delay: bool,
 }
 
 impl Vehicle {
@@ -54,6 +56,7 @@ impl Vehicle {
             destination: destination,
             reserved: vec![res], // TODO: Safe way to do this?
             path_status: PathStatus::Okay,
+            yield_delay: false,
         })
     }
 
@@ -97,9 +100,20 @@ impl Vehicle {
             if let Some(connection) = self.reserve(path_grid, &reservation) {
                 // find safe place to wait
                 if connection.0.safe_to_block() && !connection.1.later_reservation {
+                    // check for delay TODO: Change to generic check for tile that should yield
+                    if path_grid.should_yield(&self.pos) {
+                        if self.yield_delay {
+                            self.yield_delay = false;
+                            break;
+                        }
+                        self.yield_delay = true;
+                        self.clear_reserved(path_grid);
+                        return false;
+                    }
                     break;
                 }
             } else {
+                self.yield_delay = false;
                 self.clear_reserved(path_grid);
                 return false;
             }
@@ -115,7 +129,7 @@ impl Vehicle {
         self.lag_pos -= SPEED;
     }
 
-    fn update_path(&mut self, path_grid: &mut Grid) -> u32 {
+    fn update_path(&mut self, path_grid: &mut Grid) -> Option<Position> {
         // check destination
         if self.pos == self.destination {
             //stations[self.station_id].pos {
@@ -124,7 +138,7 @@ impl Vehicle {
             // if self.station_id >= stations.len() {
             //     self.station_id = 0;
             // }
-            return 1;
+            return Some(self.destination);
         }
 
         self.clear_reserved(path_grid);
@@ -142,14 +156,14 @@ impl Vehicle {
                 );
 
                 self.path_status = PathStatus::Waiting;
-                return 0;
+                return None;
             }
 
             self.path_status = PathStatus::Okay;
 
             let positions = &path.0;
             if positions.len() == 0 {
-                return 0;
+                return None;
             }
 
             let next_pos = positions[1];
@@ -168,13 +182,13 @@ impl Vehicle {
             );
         }
 
-        0
+        None
     }
 
-    pub fn update(&mut self, path_grid: &mut Grid) -> u32 {
+    pub fn update(&mut self, path_grid: &mut Grid) -> Option<Position> {
         if self.lag_pos > 0 {
             self.update_position();
-            0
+            None
         } else {
             self.update_path(path_grid)
         }

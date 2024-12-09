@@ -25,6 +25,7 @@ enum BuildMode {
     AddRoad,
     RemoveRoad,
     Clear,
+    Yield,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -62,6 +63,10 @@ impl UiState {
                     build_mode: BuildMode::Clear,
                     label: "Delete",
                 },
+                ToolbarItem {
+                    build_mode: BuildMode::Yield,
+                    label: "Yield",
+                }
             ],
         }
     }
@@ -98,7 +103,7 @@ impl UiState {
 
     fn draw_toolbar(&self) -> BuildMode {
         let toolbar_item_count: f32 = 5.;
-        let toolbar_item_width: f32 = 32.;
+        let toolbar_item_width: f32 = 64.;
         let toolbar_item_pad: f32 = 10.;
         let toolbar_height: f32 = 32.;
 
@@ -119,7 +124,12 @@ impl UiState {
         .ui(&mut *root_ui(), |ui| {
             let mut position = vec2(0., 0.);
             for toolbar_item in &self.toolbar_items {
-                if ui.button(position, toolbar_item.label) {
+                let tag = if self.build_mode == toolbar_item.build_mode {
+                    "*"
+                } else {
+                    ""
+                };
+                if ui.button(position, format!("{}{}{}", tag, toolbar_item.label, tag)) {
                     build_mode = BuildMode::AddRoad;
                 }
                 position.x += toolbar_item_width + toolbar_item_pad;
@@ -207,6 +217,11 @@ impl UiState {
         match self.build_mode {
             BuildMode::Clear => {
                 map.path_grid.clear_tile(&pos);
+            },
+            BuildMode::Yield => {
+                if let Some(Tile::Road(road)) = map.path_grid.get_tile_mut(&pos) {
+                    road.should_yield = !road.should_yield;
+                }
             }
             _ => {}
         }

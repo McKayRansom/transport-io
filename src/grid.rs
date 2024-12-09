@@ -7,7 +7,7 @@ use macroquad::math::Rect;
 use macroquad::shapes::draw_rectangle;
 use pathfinding::prelude::astar;
 
-use crate::tileset::Tileset;
+use crate::tileset::{self, Tileset};
 
 const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
@@ -171,6 +171,11 @@ impl Direction {
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
+pub enum ConnectionLayer {
+    Road = 0,
+    Driveway = 1,
+}
+
 pub struct ConnectionsIterator {
     connection_bitfield: u32,
 }
@@ -190,15 +195,18 @@ pub struct Connections {
     connection_bitfield: u32,
 }
 
+const LAYER_SIZE: u32 = 4;
+const LAYER_MASK: u32 = 0b1111;
+
 impl Connections {
-    pub fn new(dir: Direction) -> Connections {
+    pub fn new(layer: ConnectionLayer, dir: Direction) -> Connections {
         Connections {
-            connection_bitfield: dir as u32,
+            connection_bitfield: (dir as u32) << ((layer as u32) * LAYER_SIZE),
         }
     }
 
-    pub fn add(&mut self, dir: Direction) {
-        self.connection_bitfield |= dir as u32;
+    pub fn add(&mut self, layer:ConnectionLayer, dir: Direction) {
+        self.connection_bitfield |= (dir as u32) << layer as u32 * LAYER_SIZE;
     }
 
     pub fn remove(&mut self, dir: Direction) {
@@ -206,12 +214,19 @@ impl Connections {
     }
 
     pub fn count(&self) -> u32 {
-        self.connection_bitfield.count_ones()
+        (self.connection_bitfield & LAYER_MASK).count_ones()
     }
 
     pub fn safe_to_block(&self) -> bool {
         // Don't block intersections!
-        self.connection_bitfield.count_ones() < 2
+        // but only for real road intersections
+        self.count() < 2
+    }
+
+    pub fn iter_layer(&self, layer: ConnectionLayer) -> ConnectionsIterator {
+        ConnectionsIterator {
+            connection_bitfield: (self.connection_bitfield >> (layer as u32 * LAYER_SIZE)) & LAYER_MASK,
+        }
     }
 
     pub fn iter(&self) -> ConnectionsIterator {
@@ -237,6 +252,9 @@ impl Iterator for ConnectionsIterator {
         } else if self.connection_bitfield & Direction::Left as u32 != 0 {
             self.connection_bitfield -= Direction::Left as u32;
             Some(Direction::Left)
+        } else if self.connection_bitfield != 0 {
+            self.connection_bitfield = self.connection_bitfield >> LAYER_SIZE;
+            self.next()
         } else {
             None
         }
@@ -249,8 +267,31 @@ mod connections_tests {
     use super::*;
 
     #[test]
-    fn test_reserve() {
+    fn test_new() {
+        assert!(Connections::new(ConnectionLayer::Road, Direction::Right).count() == 1);
     }
+
+    #[test]
+    fn test_iter() {
+        let mut connection = Connections::new(ConnectionLayer::Road, Direction::Right);
+        connection.add(ConnectionLayer::Road, Direction::Left);
+        assert!(connection.iter().collect::<Vec<Direction>>() == vec![Direction::Right, Direction::Left]);
+
+        assert!(connection.safe_to_block() == false);
+    }
+
+    #[test]
+    fn test_layer() {
+
+        let mut connection = Connections::new(ConnectionLayer::Driveway, Direction::Right);
+        connection.add(ConnectionLayer::Road, Direction::Left);
+        assert!(connection.iter().collect::<Vec<Direction>>() == vec![Direction::Left, Direction::Right]);
+        assert!(connection.iter_layer(ConnectionLayer::Driveway).collect::<Vec<Direction>>() == vec![Direction::Right]);
+        
+        assert!(connection.count() == 1);
+        assert!(connection.safe_to_block() == true);
+    }
+
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -393,6 +434,7 @@ mod reservation_tests {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Road {
+    pub should_yield: bool,
     pub blocked: bool,
     pub reservations: Reservations,
     pub connections: Connections,
@@ -401,9 +443,10 @@ pub struct Road {
 impl Road {
     pub fn new(dir: Direction) -> Road {
         Road {
+            should_yield: false,
             blocked: false,
             reservations: Reservations::new(),
-            connections: Connections::new(dir),
+            connections: Connections::new(ConnectionLayer::Road, dir),
         }
     }
 
@@ -414,9 +457,14 @@ impl Road {
             tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, &rect, 0.0);
         }
 
-        for dir in self.connections.iter() {
+        for dir in self.connections.iter_layer(ConnectionLayer::Road) {
             if connection_count == 1 {
-                tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, &rect, dir.to_radians());
+                let sprite = if self.should_yield {
+                    ROAD_STRAIGHT_SPRITE + 2
+                } else {
+                    ROAD_STRAIGHT_SPRITE
+                };
+                tileset.draw_tile(sprite, WHITE, &rect, dir.to_radians());
             } else {
                 tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, &rect, dir.to_radians());
             }
@@ -431,6 +479,18 @@ impl Road {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct House {
     pub people_heading_to: bool,
+}
+
+impl House {
+
+    fn draw(&self, rect: &Rectangle, tileset: &Tileset) {
+        let color = if self.people_heading_to {
+            Color::new(0.5, 0.5, 0.5, 1.0)
+        } else {
+            WHITE
+        };
+        tileset.draw_tile(HOUSE_SPRITE, color, &rect, 0.0);
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -456,16 +516,17 @@ impl Tile {
         let rect = Rectangle::from_pos(pos);
 
         match self {
-            Tile::House(house) => {
-                let color = if house.people_heading_to {
-                    RESERVED_PATH_COLOR 
-                } else {
-                    WHITE
-                };
-                tileset.draw_tile(HOUSE_SPRITE, color, &rect, 0.0);
-            }
+            
             Tile::Road(road) => road.draw(&rect, tileset),
-            Tile::Empty => {}
+            _ => {}
+        }
+    }
+    
+    fn should_yield(&self) -> bool {
+        match self {
+            Tile::Road(road) => road.should_yield,
+            Tile::House(_) => true,
+            _ => true,
         }
     }
 }
@@ -509,7 +570,7 @@ impl Grid {
     pub fn add_tile_connection(&mut self, pos: &Position, dir: Direction) {
         if let Some(tile) = self.get_tile_mut(pos) {
             if let Tile::Road(road) = tile {
-                road.connections.add(dir);
+                road.connections.add(ConnectionLayer::Road, dir);
             } else {
                 *tile = Tile::Road(Road::new(dir));
             }
@@ -556,7 +617,7 @@ impl Grid {
                 }
             }
             Some(Tile::House(_)) => Some((
-                Connections::new(Direction::Right),
+                Connections::new(ConnectionLayer::Driveway, Direction::Right),
                 ReservationInfo {
                     later_reservation: false,
                 },
@@ -620,6 +681,25 @@ impl Grid {
                 let pos = Position::new(i, j);
                 self.tiles[i as usize][j as usize].draw(pos, tileset);
             }
+        }
+    }
+
+    pub fn draw_houses(&self, tileset: &Tileset) {
+        for i in 0..GRID_SIZE.0 {
+            for j in 0..GRID_SIZE.1 {
+                let pos =Position::new(i, j);
+                if let Some(Tile::House(house)) = self.get_tile(&pos) {
+                    house.draw(&Rectangle::from_pos(pos), tileset);
+                }
+            }
+        }
+    }
+    
+    pub fn should_yield(&self, pos: &Position) -> bool {
+        if let Some(tile) = self.get_tile(pos) {
+            tile.should_yield()
+        } else {
+            false
         }
     }
 }
