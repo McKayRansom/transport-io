@@ -37,6 +37,7 @@ pub struct ToolbarItem {
 // #[derive(Clone, Copy)]
 pub struct UiState {
     pub request_quit: bool,
+    pub paused: bool,
     mouse_pressed: bool,
     last_mouse_pos: Position,
     build_mode: BuildMode,
@@ -47,6 +48,7 @@ impl UiState {
     pub fn new() -> Self {
         UiState {
             request_quit: false,
+            paused: false,
             mouse_pressed: false,
             last_mouse_pos: Position { x: 0, y: 0 },
             build_mode: BuildMode::None,
@@ -173,6 +175,33 @@ impl UiState {
         });
     }
 
+    fn draw_paused(&mut self) {
+        let paused_height = 50.;
+        let paused_width = 75.;
+        widgets::Window::new(
+            hash!(),
+            vec2(
+                screen_width() - paused_width,
+                0.,
+            ),
+            vec2(paused_width, paused_height),
+        )
+        .label("Time")
+        .movable(false)
+        .ui(&mut *root_ui(), |ui| {
+
+            let label = if self.paused {
+                "**play**"
+            } else {
+                "pause"
+            };
+            
+            if ui.button(None, label) {
+                self.paused = !self.paused;
+            }
+        });
+    }
+
     pub fn draw(&mut self, delivered: u32, map: &Map) {
         // Score
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
@@ -185,6 +214,8 @@ impl UiState {
         self.build_mode = self.draw_toolbar();
 
         self.draw_details(map);
+
+        self.draw_paused();
 
         // draw selected
         let color = if self.build_mode == BuildMode::Clear {
@@ -207,6 +238,9 @@ impl UiState {
         match ch {
             'q' => {
                 self.request_quit = true;
+            }
+            ' ' => {
+                self.paused = !self.paused;
             }
             _ => {} // }
         }

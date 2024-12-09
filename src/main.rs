@@ -72,7 +72,7 @@ async fn main() {
     loop {
         state.ui.update(&mut state.map);
 
-        if get_time() - last_update > speed {
+        if !state.ui.paused && get_time() - last_update > speed {
             last_update = get_time();
 
             state.update();
