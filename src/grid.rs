@@ -23,7 +23,6 @@ const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
 const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
-
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
@@ -414,16 +413,16 @@ impl Grid {
         }
     }
 
-    pub fn pos_is_valid(&self, pos: &Position) -> bool {
-        pos.x >= 0 && pos.x < self.tiles.len() as i16 && pos.y >= 0 && pos.y < self.tiles[0].len() as i16
-    }
-
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
-        if self.pos_is_valid(pos) {
-            if pos.z == 0 {
-                self.tiles[pos.x as usize][pos.y as usize].ground.as_ref()
+        if let Some(grid_column) = self.tiles.get(pos.x as usize) {
+            if let Some(tile) = grid_column.get(pos.y as usize) {
+                if pos.z == 0 {
+                    tile.ground.as_ref()
+                } else {
+                    tile.bridge.as_ref()
+                }
             } else {
-                self.tiles[pos.x as usize][pos.y as usize].bridge.as_ref()
+                None
             }
         } else {
             None
@@ -431,8 +430,16 @@ impl Grid {
     }
 
     pub fn get_tile_mut(&mut self, pos: &Position) -> Option<&mut Tile> {
-        if self.pos_is_valid(pos) {
-            self.tiles[pos.x as usize][pos.y as usize].ground.as_mut()
+        if let Some(grid_column) = self.tiles.get_mut(pos.x as usize) {
+            if let Some(tile) = grid_column.get_mut(pos.y as usize) {
+                if pos.z == 0 {
+                    tile.ground.as_mut()
+                } else {
+                    tile.bridge.as_mut()
+                }
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -538,7 +545,6 @@ impl Grid {
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
-
         for i in 0..self.tiles.len() {
             for j in 0..self.tiles[i].len() {
                 let pos = Position::new(i as i16, j as i16);
