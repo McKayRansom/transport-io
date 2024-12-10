@@ -1,13 +1,11 @@
 use macroquad::color::Color;
 use macroquad::color::WHITE;
 
-use crate::grid::Connections;
 use crate::grid::Direction;
 use crate::grid::Grid;
 use crate::grid::Position;
 use crate::grid::Rectangle;
-use crate::grid::Reservation;
-use crate::grid::ReservationInfo;
+use crate::grid::ReservationStatus;
 use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
 // use crate::station;
@@ -26,26 +24,17 @@ pub struct Vehicle {
     pos: Position,
     lag_pos: i16,
     dir: Direction,
-    // station_id: usize,
+    // station_id: usize
     blocking_tile: Option<Position>,
     destination: Position,
-    reserved: Vec<Reservation>,
+    reserved: Vec<Position>,
     path_status: PathStatus,
     yield_delay: bool,
 }
 
 impl Vehicle {
     pub fn new(pos: Position, destination: Position, path_grid: &mut Grid) -> Option<Self> {
-        let res = Reservation {
-            position: pos,
-            start_tick: 0,
-            end_tick: 31,
-        };
-        if let Some((connection, info)) = path_grid.reserve_position(&res) {
-            if !connection.safe_to_block() && !info.later_reservation {
-                return None;
-            }
-        } else {
+        if path_grid.reserve_position(&pos) != ReservationStatus::TileBlockable {
             return None;
         }
 
@@ -56,23 +45,19 @@ impl Vehicle {
             // station_id: 0,
             blocking_tile: None,
             destination: destination,
-            reserved: vec![res], // TODO: Safe way to do this?
+            reserved: vec![pos], // TODO: Safe way to do this?
             path_status: PathStatus::Okay,
             yield_delay: false,
         })
     }
 
-    fn reserve(
-        &mut self,
-        path_grid: &mut Grid,
-        reservation: &Reservation,
-    ) -> Option<(Connections, ReservationInfo)> {
-        if let Some(info) = path_grid.reserve_position(reservation) {
-            self.reserved.push(*reservation);
-            Some(info)
-        } else {
-            None
+    fn reserve(&mut self, path_grid: &mut Grid, position: Position) -> ReservationStatus {
+        let status = path_grid.reserve_position(&position);
+        if status == ReservationStatus::TileBlockable || status == ReservationStatus::TileDoNotBlock
+        {
+            self.reserved.push(position);
         }
+        status
     }
 
     pub fn clear_reserved(&mut self, path_grid: &mut Grid) {
@@ -86,39 +71,29 @@ impl Vehicle {
     }
 
     fn reserve_path(&mut self, path_grid: &mut Grid, positions: &Vec<Position>) -> bool {
-        let mut reservation = Reservation {
-            position: self.pos,
-            start_tick: 0,
-            end_tick: SPEED as u32,
-        };
-
         for pos in positions {
             if *pos == self.pos {
                 continue;
             }
 
-            reservation.position = *pos;
-
-            if let Some(connection) = self.reserve(path_grid, &reservation) {
-                // find safe place to wait
-                if connection.0.safe_to_block() {
-                    // check for delay TODO: Change to generic check for tile that should yield
-                    if path_grid.should_yield(&self.pos) {
-                        if self.yield_delay {
-                            self.yield_delay = false;
-                            break;
-                        }
-                        self.yield_delay = true;
-                        self.clear_reserved(path_grid);
-                        return false;
-                    }
-                    break;
+            match self.reserve(path_grid, *pos) {
+                ReservationStatus::TileBlockable => {
+                    return true;
                 }
-            } else {
-                self.blocking_tile = Some(*pos);
-                self.yield_delay = false;
-                self.clear_reserved(path_grid);
-                return false;
+                ReservationStatus::TileDoNotBlock => {
+                    // keep reserving ahead
+                }
+                ReservationStatus::TileInvalid => {
+                    // TODO: Return calc new path?
+                    self.clear_reserved(path_grid);
+                    return false;
+                }
+                ReservationStatus::TileReserved => {
+                    // TODO: Only do this if we are not currently in an intersection
+                    self.clear_reserved(path_grid);
+                    self.blocking_tile = Some(*pos);
+                    return false;
+                }
             }
         }
 
@@ -132,9 +107,17 @@ impl Vehicle {
     fn update_path(&mut self, path_grid: &mut Grid) -> Option<Position> {
         if let Some(blocking_tile) = self.blocking_tile {
             if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
-                if road.reservations.is_reserved(0, 4) {
+                if road.reserved {
                     // don't bother
                     return None;
+                }
+                if path_grid.should_yield(&self.pos) {
+                    if self.yield_delay {
+                        self.yield_delay = false;
+                    } else {
+                        self.yield_delay = true;
+                        return None;
+                    }
                 }
             }
         }
@@ -156,14 +139,7 @@ impl Vehicle {
 
         if let Some(path) = path_grid.find_path(&self.pos, &self.destination) {
             if !self.reserve_path(path_grid, &path.0) {
-                self.reserve(
-                    path_grid,
-                    &Reservation {
-                        position: self.pos,
-                        start_tick: 0,
-                        end_tick: 31,
-                    },
-                );
+                self.reserve(path_grid, self.pos);
 
                 self.path_status = PathStatus::Waiting;
                 return None;
@@ -182,14 +158,7 @@ impl Vehicle {
             self.pos = next_pos;
         } else {
             self.path_status = PathStatus::NoPath;
-            self.reserve(
-                path_grid,
-                &Reservation {
-                    position: self.pos,
-                    start_tick: 0,
-                    end_tick: 31,
-                },
-            );
+            self.reserve(path_grid, self.pos);
         }
 
         None
@@ -247,6 +216,8 @@ impl Vehicle {
 
 #[cfg(test)]
 mod vehicle_tests {
+    use crate::grid::{House, ReservationStatus};
+
     use super::*;
 
     fn new_grid_from_ascii(ascii: &str) -> Grid {
@@ -260,6 +231,14 @@ mod vehicle_tests {
                 '*' => {
                     grid.add_tile_connection(&pos, Direction::Right);
                     grid.add_tile_connection(&pos, Direction::Up);
+                }
+                'y' => {
+                    if let Tile::Road(road) = grid.get_tile_mut(&pos).unwrap() {
+                        road.should_yield = true;
+                    }
+                }
+                'h' => {
+                    *grid.get_tile_mut(&pos).unwrap() = Tile::House(House{people_heading_to: true});
                 }
                 _ => {}
             }
@@ -275,17 +254,27 @@ mod vehicle_tests {
         let start_pos = Position::new(0, 0);
         let end_pos = Position::new(4, 0);
         let mut vehicle = Vehicle::new(start_pos, end_pos, &mut grid).unwrap();
-        assert!(grid
-            .reserve_position(&Reservation::new(start_pos, 0, 1))
-            .is_none());
+        assert!(grid.reserve_position(&start_pos) == ReservationStatus::TileReserved);
 
         vehicle.update(&mut grid);
 
         assert!(vehicle.path_status == PathStatus::Okay);
         println!("Reserved: {:?}", vehicle.reserved);
 
-        assert!(grid
-            .reserve_position(&Reservation::new(start_pos, 0, 1))
-            .is_some());
+        assert!(grid.reserve_position(&start_pos) == ReservationStatus::TileBlockable);
+    }
+
+    #[test]
+    fn test_yield() {
+        let mut grid = new_grid_from_ascii("hy>>>");
+        let start_pos = Position::new(0, 0);
+        let mut vehicle =
+            Vehicle::new(start_pos, Position::new(3, 0), &mut grid).unwrap();
+
+        vehicle.update(&mut grid);
+
+        // we should yield and not move immediantly
+        assert!(grid.reserve_position(&start_pos) == ReservationStatus::TileBlockable);
+
     }
 }

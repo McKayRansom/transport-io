@@ -1,5 +1,4 @@
 use std::f32::consts::PI;
-use std::fmt;
 
 use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
@@ -43,7 +42,7 @@ impl Position {
         Position { x, y, z }
     }
 
-    pub fn new_z(x: i16, y: i16, z: i16) -> Self {
+    pub fn _new_z(x: i16, y: i16, z: i16) -> Self {
         Position { x, y, z }
     }
 
@@ -175,7 +174,7 @@ pub type Path = Option<(Vec<Position>, PathCost)>;
 pub enum ConnectionLayer {
     Road = 0,
     Driveway = 1,
-    Bridge = 2,
+    // Bridge = 2,
 }
 
 pub struct ConnectionsIterator {
@@ -311,148 +310,9 @@ mod connections_tests {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Reservation {
-    pub position: Position,
-    pub start_tick: u32,
-    pub end_tick: u32,
-}
-
-impl Reservation {
-    pub fn new(position: Position, start_tick: u32, end_tick: u32) -> Self {
-        Reservation {
-            position,
-            start_tick,
-            end_tick,
-        }
-    }
-}
-
-pub struct ReservationInfo {
-    pub later_reservation: bool,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Reservations {
-    reservations_bitfield: u32,
-}
-
-impl Reservations {
-    pub fn new() -> Self {
-        Reservations {
-            reservations_bitfield: 0,
-        }
-    }
-
-    fn ticks_to_bitfield(start_tick: u32, end_tick: u32) -> Option<u32> {
-        let start_ticks_shl = 1_u32.checked_shl(start_tick).unwrap_or(0);
-        let end_ticks_shl = 1_u32.checked_shl(end_tick).unwrap_or(0);
-
-        if start_ticks_shl > 0 && end_ticks_shl > start_ticks_shl {
-            Some((end_ticks_shl - 1) - (start_ticks_shl - 1))
-        } else {
-            None
-        }
-    }
-
-    pub fn is_reserved(&self, start_tick: u32, end_tick: u32) -> bool {
-        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
-            self.reservations_bitfield & ticks != 0
-        } else {
-            true
-        }
-    }
-
-    pub fn reserve(&mut self, start_tick: u32, end_tick: u32) -> Option<ReservationInfo> {
-        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
-            if ticks & self.reservations_bitfield != 0 {
-                None
-            } else if ticks < self.reservations_bitfield {
-                self.reservations_bitfield |= ticks;
-                Some(ReservationInfo {
-                    later_reservation: true,
-                })
-            } else {
-                self.reservations_bitfield |= ticks;
-                Some(ReservationInfo {
-                    later_reservation: false,
-                })
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn unreserve(&mut self, start_tick: u32, end_tick: u32) {
-        if let Some(ticks) = Self::ticks_to_bitfield(start_tick, end_tick) {
-            self.reservations_bitfield &= !ticks;
-        }
-    }
-}
-
-impl fmt::Debug for Reservations {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Reservations: {:b}", self.reservations_bitfield)
-    }
-}
-
-#[cfg(test)]
-mod reservation_tests {
-    use super::*;
-
-    #[test]
-    fn test_reserve() {
-        let mut r = Reservations::new();
-
-        assert!(r.reserve(0, 31).unwrap().later_reservation == false);
-        assert!(r.is_reserved(0, 31) == true);
-        assert!(r.is_reserved(0, 1) == true);
-
-        let new_info = r.reserve(0, 31);
-        assert!(new_info.is_none());
-    }
-
-    #[test]
-    fn test_reserve_tick_limit() {
-        let mut r = Reservations::new();
-
-        assert!(r.reserve(32, 31).is_none());
-        assert!(r.reserve(31, 32).is_none());
-    }
-
-    #[test]
-    fn test_reserve_end_before_start() {
-        let mut r = Reservations::new();
-        assert!(r.reserve(1, 0).is_none());
-        assert!(r.reserve(18, 3).is_none());
-    }
-
-    #[test]
-    fn test_reserve_later() {
-        let mut r = Reservations::new();
-        assert!(r.reserve(1, 2).unwrap().later_reservation == false);
-        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
-        assert!(r.reserve(2, 3).unwrap().later_reservation == false);
-    }
-
-    #[test]
-    fn test_unreserve() {
-        let mut r = Reservations::new();
-        assert!(r.reserve(1, 2).unwrap().later_reservation == false);
-        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
-        r.unreserve(0, 1);
-        assert!(r.reserve(0, 1).unwrap().later_reservation == true);
-        r.unreserve(0, 1);
-        r.unreserve(1, 2);
-        assert!(r.is_reserved(0, 1) == false);
-        assert!(r.reserve(0, 1).unwrap().later_reservation == false);
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Road {
     pub should_yield: bool,
-    pub blocked: bool,
-    pub reservations: Reservations,
+    pub reserved: bool,
     pub connections: Connections,
 }
 
@@ -460,8 +320,7 @@ impl Road {
     pub fn new(dir: Direction) -> Road {
         Road {
             should_yield: false,
-            blocked: false,
-            reservations: Reservations::new(),
+            reserved: false,
             connections: Connections::new(ConnectionLayer::Road, dir),
         }
     }
@@ -486,7 +345,7 @@ impl Road {
             }
         }
 
-        if self.reservations.is_reserved(0, 31) {
+        if self.reserved {
             tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
         }
     }
@@ -569,6 +428,14 @@ impl Position {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ReservationStatus {
+    TileInvalid,
+    TileReserved,
+    TileBlockable,
+    TileDoNotBlock,
+}
+
 impl Grid {
     pub fn new() -> Self {
         Grid {
@@ -627,43 +494,34 @@ impl Grid {
 
     pub fn _is_driveable(&self, pos: &Position) -> bool {
         if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            !road.blocked
+            !road.reserved
         } else {
             false
         }
     }
 
-    pub fn reserve_position(
-        &mut self,
-        reservation: &Reservation,
-    ) -> Option<(Connections, ReservationInfo)> {
-        match self.get_tile_mut(&reservation.position) {
+    pub fn reserve_position(&mut self, pos: &Position) -> ReservationStatus {
+        match self.get_tile_mut(pos) {
             Some(Tile::Road(road)) => {
-                if let Some(info) = road
-                    .reservations
-                    .reserve(reservation.start_tick, reservation.end_tick)
-                {
-                    // road.occupied = true;
-                    Some((road.connections, info))
+                if road.reserved {
+                    ReservationStatus::TileReserved
+                } else if road.connections.safe_to_block() {
+                    road.reserved = true;
+                    ReservationStatus::TileBlockable
                 } else {
-                    None
+                    road.reserved = true;
+                    ReservationStatus::TileDoNotBlock
                 }
             }
-            Some(Tile::House(_)) => Some((
-                Connections::new(ConnectionLayer::Driveway, Direction::Right),
-                ReservationInfo {
-                    later_reservation: false,
-                },
-            )),
-            Some(Tile::Empty) => None,
-            None => None,
+            Some(Tile::House(_)) => ReservationStatus::TileBlockable,
+            Some(Tile::Empty) => ReservationStatus::TileInvalid,
+            None => ReservationStatus::TileInvalid,
         }
     }
 
-    pub fn unreserve_position(&mut self, reservation: &Reservation) {
-        if let Some(Tile::Road(road)) = self.get_tile_mut(&reservation.position) {
-            road.reservations
-                .unreserve(reservation.start_tick, reservation.end_tick);
+    pub fn unreserve_position(&mut self, pos: &Position) {
+        if let Some(Tile::Road(road)) = self.get_tile_mut(&pos) {
+            road.reserved = false;
         }
     }
 
@@ -688,7 +546,7 @@ impl Grid {
                         if let Some(tile) = self.get_tile(&new_pos) {
                             match tile {
                                 Tile::Road(road) => {
-                                    if road.reservations.is_reserved(0, 1) {
+                                    if road.reserved {
                                         OCCUPIED_COST
                                     } else {
                                         DEFAULT_COST
