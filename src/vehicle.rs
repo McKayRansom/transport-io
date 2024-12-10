@@ -1,10 +1,10 @@
 use macroquad::color::Color;
 use macroquad::color::WHITE;
+use macroquad::math::Rect;
 
 use crate::grid::Direction;
 use crate::grid::Grid;
 use crate::grid::Position;
-use crate::grid::Rectangle;
 use crate::grid::ReservationStatus;
 use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
@@ -163,7 +163,7 @@ impl Vehicle {
     }
 
     pub fn draw(&self, tileset: &Tileset) {
-        let mut rect: Rectangle = Rectangle::from_pos(self.pos);
+        let mut rect = Rect::from(self.pos);
         match self.dir {
             Direction::Right => rect.x -= self.lag_pos as f32,
             Direction::Left => rect.x += self.lag_pos as f32,

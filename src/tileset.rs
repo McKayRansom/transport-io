@@ -5,8 +5,6 @@ use macroquad::{
     texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
 
-use crate::grid::Rectangle;
-
 const TILE_SIZE: u32 = 16;
 
 pub struct Tileset {
@@ -28,8 +26,9 @@ impl Tileset {
         }
     }
 
-    fn sprite_rect(&self, sprite: u32) -> Rectangle {
-        Rectangle {
+    fn sprite_rect(&self, sprite: u32) -> Rect {
+        Rect {
+            // spr_rect.x + 1.1 TODO: WHY was it like this before? A: Maybe due to weird drawing in webasm?
             x: ((sprite % self.columns) * TILE_SIZE) as f32,
             y: ((sprite / self.columns) * TILE_SIZE) as f32,
             w: TILE_SIZE as f32,
@@ -37,7 +36,7 @@ impl Tileset {
         }
     }
 
-    pub fn draw_tile(&self, sprite: u32, color: Color, dest: &Rectangle, rotation: f32) {
+    pub fn draw_tile(&self, sprite: u32, color: Color, dest: &Rect, rotation: f32) {
         let spr_rect = self.sprite_rect(sprite);
 
         draw_texture_ex(
@@ -47,17 +46,14 @@ impl Tileset {
             color,
             DrawTextureParams {
                 dest_size: Some(vec2(dest.w * self.zoom, dest.h * self.zoom)),
-                source: Some(Rect::new(
-                    spr_rect.x, // spr_rect.x + 1.1 TODO: WHY was it like this before? A: Maybe due to weird drawing in webasm?
-                    spr_rect.y, spr_rect.w, spr_rect.h,
-                )),
+                source: Some(spr_rect),
                 rotation: rotation,
                 ..Default::default()
             },
         );
     }
 
-    pub fn draw_rect(&self, rect: &Rectangle, color: Color) {
+    pub fn draw_rect(&self, rect: &Rect, color: Color) {
         draw_rectangle(
             (rect.x - self.camera.0) * self.zoom,
             (rect.y - self.camera.1) * self.zoom,

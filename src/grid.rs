@@ -61,32 +61,9 @@ impl Position {
     }
 }
 
-// LATER: Merge with macroquad::math::Rect
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Rectangle {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
-}
-
-impl Rectangle {
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
-        Rectangle { x, y, w, h }
-    }
-
-    pub fn _from(&self) -> Rect {
-        Rect {
-            x: self.x,
-            y: self.y,
-            w: self.w,
-            h: self.h,
-        }
-    }
-
-    pub fn from_pos(pos: Position) -> Self {
-        Rectangle::new(
+impl From<Position> for Rect {
+    fn from(pos: Position) -> Self {
+        Rect::new(
             pos.x as f32 * GRID_CELL_SIZE.0,
             pos.y as f32 * GRID_CELL_SIZE.1,
             GRID_CELL_SIZE.0 as f32,
@@ -319,7 +296,7 @@ impl Road {
         }
     }
 
-    fn draw(&self, rect: &Rectangle, tileset: &Tileset) {
+    fn draw(&self, rect: &Rect, tileset: &Tileset) {
         let connection_count = self.connections.count();
 
         if connection_count != 1 {
@@ -351,7 +328,7 @@ pub struct House {
 }
 
 impl House {
-    fn draw(&self, rect: &Rectangle, tileset: &Tileset) {
+    fn draw(&self, rect: &Rect, tileset: &Tileset) {
         let color = if self.people_heading_to {
             Color::new(0.5, 0.5, 0.5, 1.0)
         } else {
@@ -381,7 +358,7 @@ impl Tile {
         }
     }
     fn draw(&self, pos: Position, tileset: &Tileset) {
-        let rect = Rectangle::from_pos(pos);
+        let rect = Rect::from(pos);
 
         match self {
             Tile::Road(road) => road.draw(&rect, tileset),
@@ -577,7 +554,7 @@ impl Grid {
             for j in 0..self.tiles[i].len() {
                 let pos = Position::new(i as i16, j as i16);
                 if let Some(Tile::House(house)) = self.get_tile(&pos) {
-                    house.draw(&Rectangle::from_pos(pos), tileset);
+                    house.draw(&Rect::from(pos), tileset);
                 }
             }
         }

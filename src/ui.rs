@@ -1,11 +1,11 @@
 use crate::{
-    grid::{Direction, Position, Rectangle, Tile},
+    grid::{Direction, Position, Tile},
     map::Map, tileset::Tileset,
 };
 use macroquad::{
     color::Color,
     input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton},
-    math::vec2,
+    math::{vec2, Rect},
     ui::{
         hash, root_ui,
         widgets::{self},
@@ -237,7 +237,7 @@ impl UiState {
             SELECTED_BUILD
         };
 
-        tileset.draw_rect(&Rectangle::from_pos(self.last_mouse_pos), color);
+        tileset.draw_rect(&Rect::from(self.last_mouse_pos), color);
 
         // profiler
         macroquad_profiler::profiler(ProfilerParams{fps_counter_pos: vec2(0., 50.)});

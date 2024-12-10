@@ -1,6 +1,6 @@
-use macroquad::color::WHITE;
+use macroquad::{color::WHITE, math::Rect};
 
-use crate::{grid::{Position, Rectangle}, tileset::Tileset};
+use crate::{grid::Position, tileset::Tileset};
 
 pub struct Station {
     pub pos: Position,
@@ -19,7 +19,7 @@ impl Station {
     /// this example since there are a fairly limited number of calls.
     pub fn draw(&self, tileset: &Tileset) {
 
-        let rect: Rectangle = Rectangle::from_pos(self.pos);
+        let rect = Rect::from(self.pos);
         // rect.draw(STATION_COLOR);
         tileset.draw_tile(STATION_SPRITE, WHITE, &rect, 0.);
 
