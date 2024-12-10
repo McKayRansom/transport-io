@@ -12,6 +12,8 @@ use crate::{
 const CITY_BLOCK_SIZE: i16 = 8;
 const CITY_BLOCK_COUNT: i16 = 4;
 
+pub const GRID_SIZE: (i16, i16) = (30, 30);
+
 pub struct Map {
     pub path_grid: Grid,
     pub vehicle_id: u16, // TODO: Change to u32 just in case
@@ -23,7 +25,7 @@ impl Map {
     pub fn new() -> Self {
         srand(1234);
         Map {
-            path_grid: Grid::new(),
+            path_grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
             vehicle_id: 0,
             // vehicles: Vec::new(),
             vehicles: HashMap::new(),

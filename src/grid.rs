@@ -23,9 +23,7 @@ const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
 const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
-// Here we define the size of our game board in terms of how many grid
-// cells it will take up. We choose to make a 30 x 20 game board.
-pub const GRID_SIZE: (i16, i16) = (30, 30);
+
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
@@ -51,10 +49,6 @@ impl Position {
             ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
             ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1) as i16,
         )
-    }
-
-    pub fn _valid(&self) -> bool {
-        self.x > 0 && self.y > 0 && self.x < GRID_SIZE.0 && self.y < GRID_SIZE.1
     }
 
     pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
@@ -428,7 +422,7 @@ impl Position {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ReservationStatus {
     TileInvalid,
     TileReserved,
@@ -437,14 +431,14 @@ pub enum ReservationStatus {
 }
 
 impl Grid {
-    pub fn new() -> Self {
+    pub fn new(size_x: usize, size_y: usize) -> Self {
         Grid {
-            tiles: vec![vec![GridTile::new(); GRID_SIZE.1 as usize]; GRID_SIZE.0 as usize],
+            tiles: vec![vec![GridTile::new(); size_y as usize]; size_x as usize],
         }
     }
 
     pub fn pos_is_valid(&self, pos: &Position) -> bool {
-        pos.x >= 0 && pos.x < GRID_SIZE.0 && pos.y >= 0 && pos.y < GRID_SIZE.1
+        pos.x >= 0 && pos.x < self.tiles.len() as i16 && pos.y >= 0 && pos.y < self.tiles[0].len() as i16
     }
 
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
@@ -567,9 +561,10 @@ impl Grid {
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
-        for i in 0..GRID_SIZE.0 {
-            for j in 0..GRID_SIZE.1 {
-                let pos = Position::new(i, j);
+
+        for i in 0..self.tiles.len() {
+            for j in 0..self.tiles[i].len() {
+                let pos = Position::new(i as i16, j as i16);
                 if let Some(tile) = self.get_tile(&pos) {
                     tile.draw(pos, tileset);
                 }
@@ -578,9 +573,9 @@ impl Grid {
     }
 
     pub fn draw_houses(&self, tileset: &Tileset) {
-        for i in 0..GRID_SIZE.0 {
-            for j in 0..GRID_SIZE.1 {
-                let pos = Position::new(i, j);
+        for i in 0..self.tiles.len() {
+            for j in 0..self.tiles[i].len() {
+                let pos = Position::new(i as i16, j as i16);
                 if let Some(Tile::House(house)) = self.get_tile(&pos) {
                     house.draw(&Rectangle::from_pos(pos), tileset);
                 }
