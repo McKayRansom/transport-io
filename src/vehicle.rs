@@ -8,6 +8,7 @@ use crate::grid::Position;
 use crate::grid::Rectangle;
 use crate::grid::Reservation;
 use crate::grid::ReservationInfo;
+use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
 // use crate::station;
 use crate::tileset::Tileset;
@@ -26,6 +27,7 @@ pub struct Vehicle {
     lag_pos: i16,
     dir: Direction,
     // station_id: usize,
+    blocking_tile: Option<Position>,
     destination: Position,
     reserved: Vec<Reservation>,
     path_status: PathStatus,
@@ -52,6 +54,7 @@ impl Vehicle {
             lag_pos: 0,
             dir: Direction::Right,
             // station_id: 0,
+            blocking_tile: None,
             destination: destination,
             reserved: vec![res], // TODO: Safe way to do this?
             path_status: PathStatus::Okay,
@@ -112,13 +115,11 @@ impl Vehicle {
                     break;
                 }
             } else {
+                self.blocking_tile = Some(*pos);
                 self.yield_delay = false;
                 self.clear_reserved(path_grid);
                 return false;
             }
-
-            // reservation.start_tick += SPEED as u32;
-            // reservation.end_tick += SPEED as u32;
         }
 
         true
@@ -129,6 +130,16 @@ impl Vehicle {
     }
 
     fn update_path(&mut self, path_grid: &mut Grid) -> Option<Position> {
+        if let Some(blocking_tile) = self.blocking_tile {
+            if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
+                if road.reservations.is_reserved(0, 4) {
+                    // don't bother
+                    return None;
+                }
+            }
+        }
+        self.blocking_tile = None;
+
         // check destination
         if self.pos == self.destination {
             //stations[self.station_id].pos {
@@ -226,7 +237,6 @@ impl Vehicle {
 
         tileset.draw_tile(sprite, color, &rect, self.dir.to_radians());
 
-
         // draw the path
         // if let Some(path) = &self.path {
         //     for seg in &path.0 {
@@ -240,7 +250,7 @@ mod vehicle_tests {
     use super::*;
 
     fn new_grid_from_ascii(ascii: &str) -> Grid {
-        let mut pos= Position::new(0, 0);
+        let mut pos = Position::new(0, 0);
         let mut grid = Grid::new();
         for chr in ascii.chars() {
             match chr {
@@ -251,9 +261,7 @@ mod vehicle_tests {
                     grid.add_tile_connection(&pos, Direction::Right);
                     grid.add_tile_connection(&pos, Direction::Up);
                 }
-                _ => {
-
-                }
+                _ => {}
             }
             pos.x += 1;
         }
@@ -267,13 +275,17 @@ mod vehicle_tests {
         let start_pos = Position::new(0, 0);
         let end_pos = Position::new(4, 0);
         let mut vehicle = Vehicle::new(start_pos, end_pos, &mut grid).unwrap();
-        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_none());
+        assert!(grid
+            .reserve_position(&Reservation::new(start_pos, 0, 1))
+            .is_none());
 
         vehicle.update(&mut grid);
 
         assert!(vehicle.path_status == PathStatus::Okay);
         println!("Reserved: {:?}", vehicle.reserved);
 
-        assert!(grid.reserve_position(&Reservation::new(start_pos, 0, 1)).is_some());
+        assert!(grid
+            .reserve_position(&Reservation::new(start_pos, 0, 1))
+            .is_some());
     }
 }
