@@ -34,18 +34,24 @@ pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 pub struct Position {
     pub x: i16,
     pub y: i16,
+    pub z: i16,
 }
 
 impl Position {
     pub fn new(x: i16, y: i16) -> Self {
-        Position { x, y }
+        let z = 0;
+        Position { x, y, z }
+    }
+
+    pub fn new_z(x: i16, y: i16, z: i16) -> Self {
+        Position { x, y, z }
     }
 
     pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32) -> Self {
-        Position {
-            x: ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0 ) as i16,
-            y: ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1 ) as i16,
-        }
+        Position::new(
+            ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
+            ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1) as i16,
+        )
     }
 
     pub fn _valid(&self) -> bool {
@@ -100,7 +106,7 @@ impl Rectangle {
 /// `(i16, i16)` and a `GridPosition`.
 impl From<(i16, i16)> for Position {
     fn from(pos: (i16, i16)) -> Self {
-        Position { x: pos.0, y: pos.1 }
+        Position::new(pos.0, pos.1)
     }
 }
 
@@ -169,6 +175,7 @@ pub type Path = Option<(Vec<Position>, PathCost)>;
 pub enum ConnectionLayer {
     Road = 0,
     Driveway = 1,
+    Bridge = 2,
 }
 
 pub struct ConnectionsIterator {
@@ -177,11 +184,15 @@ pub struct ConnectionsIterator {
 
 impl ConnectionsIterator {
     pub fn all_directions() -> Self {
-        ConnectionsIterator{connection_bitfield: CONNECTIONS_ALL}
+        ConnectionsIterator {
+            connection_bitfield: CONNECTIONS_ALL,
+        }
     }
 
     pub fn no_directions() -> Self {
-        ConnectionsIterator{connection_bitfield: 0}
+        ConnectionsIterator {
+            connection_bitfield: 0,
+        }
     }
 }
 
@@ -200,7 +211,7 @@ impl Connections {
         }
     }
 
-    pub fn add(&mut self, layer:ConnectionLayer, dir: Direction) {
+    pub fn add(&mut self, layer: ConnectionLayer, dir: Direction) {
         self.connection_bitfield |= (dir as u32) << layer as u32 * LAYER_SIZE;
     }
 
@@ -216,11 +227,13 @@ impl Connections {
         // Don't block intersections!
         // but only for real road intersections
         self.count() < 2
+        // true
     }
 
     pub fn iter_layer(&self, layer: ConnectionLayer) -> ConnectionsIterator {
         ConnectionsIterator {
-            connection_bitfield: (self.connection_bitfield >> (layer as u32 * LAYER_SIZE)) & LAYER_MASK,
+            connection_bitfield: (self.connection_bitfield >> (layer as u32 * LAYER_SIZE))
+                & LAYER_MASK,
         }
     }
 
@@ -256,7 +269,6 @@ impl Iterator for ConnectionsIterator {
     }
 }
 
-
 #[cfg(test)]
 mod connections_tests {
     use super::*;
@@ -270,23 +282,32 @@ mod connections_tests {
     fn test_iter() {
         let mut connection = Connections::new(ConnectionLayer::Road, Direction::Right);
         connection.add(ConnectionLayer::Road, Direction::Left);
-        assert!(connection.iter().collect::<Vec<Direction>>() == vec![Direction::Right, Direction::Left]);
+        assert!(
+            connection.iter().collect::<Vec<Direction>>()
+                == vec![Direction::Right, Direction::Left]
+        );
 
         assert!(connection.safe_to_block() == false);
     }
 
     #[test]
     fn test_layer() {
-
         let mut connection = Connections::new(ConnectionLayer::Driveway, Direction::Right);
         connection.add(ConnectionLayer::Road, Direction::Left);
-        assert!(connection.iter().collect::<Vec<Direction>>() == vec![Direction::Left, Direction::Right]);
-        assert!(connection.iter_layer(ConnectionLayer::Driveway).collect::<Vec<Direction>>() == vec![Direction::Right]);
-        
+        assert!(
+            connection.iter().collect::<Vec<Direction>>()
+                == vec![Direction::Left, Direction::Right]
+        );
+        assert!(
+            connection
+                .iter_layer(ConnectionLayer::Driveway)
+                .collect::<Vec<Direction>>()
+                == vec![Direction::Right]
+        );
+
         assert!(connection.count() == 1);
         assert!(connection.safe_to_block() == true);
     }
-
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -477,7 +498,6 @@ pub struct House {
 }
 
 impl House {
-
     fn draw(&self, rect: &Rectangle, tileset: &Tileset) {
         let color = if self.people_heading_to {
             Color::new(0.5, 0.5, 0.5, 1.0)
@@ -511,12 +531,11 @@ impl Tile {
         let rect = Rectangle::from_pos(pos);
 
         match self {
-            
             Tile::Road(road) => road.draw(&rect, tileset),
             _ => {}
         }
     }
-    
+
     fn should_yield(&self) -> bool {
         match self {
             Tile::Road(road) => road.should_yield,
@@ -525,8 +544,23 @@ impl Tile {
         }
     }
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct GridTile {
+    ground: Option<Tile>,
+    bridge: Option<Tile>,
+}
+
+impl GridTile {
+    fn new() -> Self {
+        GridTile {
+            ground: Some(Tile::new()),
+            bridge: None,
+        }
+    }
+}
 pub struct Grid {
-    tiles: Vec<Vec<Tile>>,
+    tiles: Vec<Vec<GridTile>>,
 }
 
 impl Position {
@@ -538,7 +572,7 @@ impl Position {
 impl Grid {
     pub fn new() -> Self {
         Grid {
-            tiles: vec![vec![Tile::new(); GRID_SIZE.1 as usize]; GRID_SIZE.0 as usize],
+            tiles: vec![vec![GridTile::new(); GRID_SIZE.1 as usize]; GRID_SIZE.0 as usize],
         }
     }
 
@@ -548,7 +582,11 @@ impl Grid {
 
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
         if self.pos_is_valid(pos) {
-            Some(&self.tiles[pos.x as usize][pos.y as usize])
+            if pos.z == 0 {
+                self.tiles[pos.x as usize][pos.y as usize].ground.as_ref()
+            } else {
+                self.tiles[pos.x as usize][pos.y as usize].bridge.as_ref()
+            }
         } else {
             None
         }
@@ -556,7 +594,7 @@ impl Grid {
 
     pub fn get_tile_mut(&mut self, pos: &Position) -> Option<&mut Tile> {
         if self.pos_is_valid(pos) {
-            Some(&mut self.tiles[pos.x as usize][pos.y as usize])
+            self.tiles[pos.x as usize][pos.y as usize].ground.as_mut()
         } else {
             None
         }
@@ -674,7 +712,9 @@ impl Grid {
         for i in 0..GRID_SIZE.0 {
             for j in 0..GRID_SIZE.1 {
                 let pos = Position::new(i, j);
-                self.tiles[i as usize][j as usize].draw(pos, tileset);
+                if let Some(tile) = self.get_tile(&pos) {
+                    tile.draw(pos, tileset);
+                }
             }
         }
     }
@@ -682,14 +722,14 @@ impl Grid {
     pub fn draw_houses(&self, tileset: &Tileset) {
         for i in 0..GRID_SIZE.0 {
             for j in 0..GRID_SIZE.1 {
-                let pos =Position::new(i, j);
+                let pos = Position::new(i, j);
                 if let Some(Tile::House(house)) = self.get_tile(&pos) {
                     house.draw(&Rectangle::from_pos(pos), tileset);
                 }
             }
         }
     }
-    
+
     pub fn should_yield(&self, pos: &Position) -> bool {
         if let Some(tile) = self.get_tile(pos) {
             tile.should_yield()

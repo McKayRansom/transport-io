@@ -98,7 +98,7 @@ impl Vehicle {
 
             if let Some(connection) = self.reserve(path_grid, &reservation) {
                 // find safe place to wait
-                if connection.0.safe_to_block() && !connection.1.later_reservation {
+                if connection.0.safe_to_block() {
                     // check for delay TODO: Change to generic check for tile that should yield
                     if path_grid.should_yield(&self.pos) {
                         if self.yield_delay {

@@ -48,7 +48,7 @@ impl Tileset {
             DrawTextureParams {
                 dest_size: Some(vec2(dest.w * self.zoom, dest.h * self.zoom)),
                 source: Some(Rect::new(
-                    spr_rect.x, // spr_rect.x + 1.1 TODO: WHY was it like this before?
+                    spr_rect.x, // spr_rect.x + 1.1 TODO: WHY was it like this before? A: Maybe due to weird drawing in webasm?
                     spr_rect.y, spr_rect.w, spr_rect.h,
                 )),
                 rotation: rotation,

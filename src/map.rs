@@ -9,8 +9,8 @@ use crate::{
     vehicle::Vehicle,
 };
 
-const CITY_BLOCK_SIZE: i16 = 10;
-const CITY_BLOCK_COUNT: i16 = 2;
+const CITY_BLOCK_SIZE: i16 = 8;
+const CITY_BLOCK_COUNT: i16 = 4;
 
 pub struct Map {
     pub path_grid: Grid,
@@ -38,12 +38,15 @@ impl Map {
     pub fn generate_house(&mut self, pos: Position) {
         if let Some(tile) = self.path_grid.get_tile_mut(&pos) {
             if *tile == Tile::Empty {
-                *tile = Tile::House(House { people_heading_to: false });
+                *tile = Tile::House(House {
+                    people_heading_to: false,
+                });
                 // add driveways
                 for dir in ConnectionsIterator::all_directions() {
                     let road_pos = Position::new_from_move(&pos, dir);
                     if let Some(Tile::Road(road)) = self.path_grid.get_tile_mut(&road_pos) {
-                        road.connections.add(crate::grid::ConnectionLayer::Driveway, dir.inverse());
+                        road.connections
+                            .add(crate::grid::ConnectionLayer::Driveway, dir.inverse());
                     }
                 }
             }
@@ -89,10 +92,10 @@ impl Map {
         let house_x = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
         let house_y = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
 
-        Position {
-            x: (block_x * CITY_BLOCK_SIZE) + house_x,
-            y: (block_y * CITY_BLOCK_SIZE) + house_y,
-        }
+        Position::new(
+            (block_x * CITY_BLOCK_SIZE) + house_x,
+            (block_y * CITY_BLOCK_SIZE) + house_y,
+        )
     }
 
     fn generate_cars(&mut self) {
@@ -109,17 +112,13 @@ impl Map {
         }
 
         if let Some(Tile::House(_)) = self.path_grid.get_tile(&start_house) {
-            
         } else {
             return;
         }
 
         println!("Start: {start_house:?} End: {end_house:?}");
-        if let Some(vehicle ) = Vehicle::new(start_house, end_house, &mut self.path_grid) {
-            self.vehicles.insert(
-                self.vehicle_id,
-                vehicle,
-            );
+        if let Some(vehicle) = Vehicle::new(start_house, end_house, &mut self.path_grid) {
+            self.vehicles.insert(self.vehicle_id, vehicle);
 
             self.vehicle_id += 1;
         }

@@ -13,6 +13,7 @@ use macroquad::{
     },
     window::{screen_height, screen_width},
 };
+use macroquad_profiler::ProfilerParams;
 
 const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
 const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
@@ -58,7 +59,7 @@ impl UiState {
             zoom: 1.,
             camera: (0., 0.),
             mouse_pressed: false,
-            last_mouse_pos: Position { x: 0, y: 0 },
+            last_mouse_pos: Position::new(0, 0),
             build_mode: BuildMode::None,
             toolbar_items: vec![
                 ToolbarItem {
@@ -237,6 +238,9 @@ impl UiState {
         };
 
         tileset.draw_rect(&Rectangle::from_pos(self.last_mouse_pos), color);
+
+        // profiler
+        macroquad_profiler::profiler(ProfilerParams{fps_counter_pos: vec2(0., 50.)});
     }
 
     fn key_down_event(&mut self, ch: char) {
