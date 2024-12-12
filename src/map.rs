@@ -16,9 +16,8 @@ pub const GRID_SIZE: (i16, i16) = (30, 30);
 
 pub struct Map {
     pub path_grid: Grid,
-    pub vehicle_id: u16, // TODO: Change to u32 just in case
-    pub vehicles: HashMap<u16, Vehicle>,
-    pub stations: Vec<Station>,
+    pub vehicle_id: u32,
+    pub vehicles: HashMap<u32, Vehicle>,
 }
 
 impl Map {
@@ -128,7 +127,7 @@ impl Map {
 
     pub fn update(&mut self) -> u32 {
         let mut delivered = 0;
-        let mut to_remove: Vec<u16> = Vec::new();
+        let mut to_remove: Vec<u32> = Vec::new();
         for s in self.vehicles.iter_mut() {
             let finished = s.1.update(&mut self.path_grid);
             if let Some(destination) = finished {

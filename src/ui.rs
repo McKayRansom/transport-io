@@ -276,6 +276,14 @@ impl UiState {
                     road.should_yield = !road.should_yield;
                 }
             }
+            // BuildMode::Roundabout => {
+            //     let roundabout = map.add_intersection();
+            //     for tile: Tile in map.path_grid.get_tiles(pos, 2) {
+            //         if let Tile::Road(road) = tile {
+            //             road.intersection = roundabout;
+            //         }
+            //     }
+            // }
             _ => {}
         }
     }

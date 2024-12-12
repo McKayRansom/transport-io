@@ -97,6 +97,15 @@ impl Direction {
         }
     }
 
+    pub fn rotate_left(self) -> Self {
+        match self {
+            Direction::Up => Direction::Left,
+            Direction::Right => Direction::Up,
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Down,
+        }
+    }
+
     pub fn _rotate(self) -> Self {
         match self {
             Direction::Up => Direction::Right,
@@ -404,6 +413,7 @@ pub enum ReservationStatus {
     TileReserved,
     TileBlockable,
     TileDoNotBlock,
+    // TileYield,
 }
 
 impl Grid {
@@ -481,7 +491,7 @@ impl Grid {
     pub fn reserve_position(&mut self, pos: &Position) -> ReservationStatus {
         match self.get_tile_mut(pos) {
             Some(Tile::Road(road)) => {
-                if road.reserved {
+                if road.reserved /* TODO: Add check for intersection full */ {
                     ReservationStatus::TileReserved
                 } else if road.connections.safe_to_block() {
                     road.reserved = true;

@@ -28,7 +28,6 @@ pub struct Vehicle {
     destination: Position,
     reserved: Vec<Position>,
     path_status: PathStatus,
-    yield_delay: bool,
 }
 
 impl Vehicle {
@@ -45,7 +44,6 @@ impl Vehicle {
             destination: destination,
             reserved: vec![pos],
             path_status: PathStatus::Okay,
-            yield_delay: false,
         })
     }
 
@@ -68,6 +66,7 @@ impl Vehicle {
     }
 
     fn reserve_path(&mut self, path_grid: &mut Grid, positions: &Vec<Position>) -> bool {
+        let mut last_pos = self.pos;
         for pos in positions {
             if *pos == self.pos {
                 continue;
@@ -80,6 +79,23 @@ impl Vehicle {
                 ReservationStatus::TileDoNotBlock => {
                     // keep reserving ahead
                 }
+                // ReservationStatus::TileYield => {
+                //     // check "left" to see if we should "yield"
+                //     // UNLESS we are connected (outputting) to that tile
+                //     let direction = Direction::from_position(last_pos, *pos);
+                //     for dir in path_grid.
+                //     let yield_to_pos = Position::new_from_move(pos, direction.rotate_left());
+                //     if let Some(Tile::Road(road)) = path_grid.get_tile(&yield_to_pos) {
+                //         if road.reserved {
+                //             // don't bother
+                //             self.blocking_tile = Some(yield_to_pos);
+                //             return false;
+                //         }
+                //     }
+
+                //     // don't keep reserving ahead
+                //     return true;
+                // }
                 ReservationStatus::TileInvalid => {
                     // TODO: Return calc new path?
                     return false;
@@ -90,6 +106,8 @@ impl Vehicle {
                     return false;
                 }
             }
+
+            last_pos = *pos;
         }
 
         true
@@ -120,21 +138,13 @@ impl Vehicle {
             if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
                 if road.reserved {
                     // don't bother
-                    self.yield_delay = false;
                     return None;
-                }
-                if path_grid.should_yield(&self.pos) {
-                    if self.yield_delay {
-                        self.yield_delay = false;
-                    } else {
-                        self.yield_delay = true;
-                        return None;
-                    }
                 }
             }
         }
         self.blocking_tile = None;
-        self.yield_delay = false;
+
+
 
         if self.pos == self.destination {
             return Some(self.destination);
@@ -224,6 +234,15 @@ mod vehicle_tests {
                         people_heading_to: true,
                     });
                 }
+                '_' => {
+                    *grid.get_tile_mut(&pos).unwrap() = Tile::Empty;
+                }
+                '\n' => {
+                    pos.y += 1;
+                }
+                ' ' => {
+                    pos.x -= 1;
+                }
                 _ => {}
             }
             pos.x += 1;
@@ -254,10 +273,16 @@ mod vehicle_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_yield() {
-        let mut grid = new_grid_from_ascii("h>>>>");
-        let start_pos = Position::new(0, 0);
-        let yield_to_pos = Position::new(1, 0);
+        let mut grid = new_grid_from_ascii(
+            "\
+            >>>>>
+            _h___
+        ",
+        );
+        let start_pos = Position::new(1, 1);
+        let yield_to_pos = Position::new(0, 0);
         let mut vehicle = Vehicle::new(start_pos, Position::new(3, 0), &mut grid).unwrap();
 
         assert_eq!(
