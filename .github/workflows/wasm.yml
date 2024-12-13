@@ -29,23 +29,15 @@ jobs:
           toolchain: stable
           target: wasm32-unknown-unknown
 
-      - name: 🔨 Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build 
-          args: --release --target wasm32-unknown-unknown
-
-      - name: Copy wasm build
-        run: cp target/wasm32-unknown-unknown/release/transport-io.wasm static/
-
-      - name: Copy resources
-        run: cp -r resources/ static/
+      - name: 🔨 Build wasm
+        run: build_wasm.sh
+        
         
       - name: Upload static files as artifact
         id: deployment
         uses: actions/upload-pages-artifact@v3 # or specific "vX.X.X" version tag for this action
         with:
-            path: static/
+            path: deploy/
   # Deploy job
   deploy:
     # Add a dependency to the build job
