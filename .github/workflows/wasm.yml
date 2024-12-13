@@ -30,7 +30,7 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: 🔨 Build wasm
-        run: build_wasm.sh
+        run: ./build_wasm.sh
         
         
       - name: Upload static files as artifact
