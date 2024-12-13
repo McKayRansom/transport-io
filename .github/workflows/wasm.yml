@@ -1,4 +1,4 @@
-name: Rust
+name: Wasm
 
 on:
     push:
@@ -32,7 +32,8 @@ jobs:
       - name: 🔨 Build
         uses: actions-rs/cargo@v1
         with:
-          command: build --release --target wasm32-unknown-unknown
+          command: build 
+          args: --release --target wasm32-unknown-unknown
 
       - name: Copy wasm build
         run: cp target/wasm32-unknown-unknown/release/transport-io.wasm static/
