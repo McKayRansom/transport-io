@@ -37,6 +37,9 @@ jobs:
 
       - name: Copy wasm build
         run: cp target/wasm32-unknown-unknown/release/transport-io.wasm static/
+
+      - name: Copy resources
+        run: mkdir static/resources && cp resources/ static/resources/
         
       - name: Upload static files as artifact
         id: deployment
