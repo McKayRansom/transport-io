@@ -4,7 +4,6 @@ use macroquad::rand::{self, srand};
 
 use crate::{
     grid::{ConnectionsIterator, Direction, Grid, House, Position, Tile},
-    station::Station,
     tileset::Tileset,
     vehicle::Vehicle,
 };
@@ -28,7 +27,6 @@ impl Map {
             vehicle_id: 0,
             // vehicles: Vec::new(),
             vehicles: HashMap::new(),
-            stations: Vec::new(),
         }
     }
 
@@ -150,10 +148,6 @@ impl Map {
 
     pub fn draw(&self, tileset: &Tileset) {
         self.path_grid.draw_tiles(tileset);
-
-        for s in self.stations.iter() {
-            s.draw(tileset);
-        }
 
         for s in self.vehicles.iter() {
             s.1.draw(tileset);

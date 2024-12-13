@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+use std::fmt;
 
 use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
@@ -174,7 +175,7 @@ impl ConnectionsIterator {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Connections {
     connection_bitfield: u32,
 }
@@ -218,6 +219,48 @@ impl Connections {
     pub fn iter(&self) -> ConnectionsIterator {
         ConnectionsIterator {
             connection_bitfield: self.connection_bitfield,
+        }
+    }
+
+    pub fn iter_inverse(&self, layer: ConnectionLayer) -> ConnectionsIterator {
+        ConnectionsIterator {
+            connection_bitfield: (!self.connection_bitfield & LAYER_MASK << (LAYER_SIZE & layer as u32)),
+        }
+    }
+
+    pub fn has(&self, dir: Direction) -> bool {
+        (self.connection_bitfield & dir as u32) != 0
+    }
+}
+
+impl fmt::Debug for Connections {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.connection_bitfield == Direction::Left as u32 {
+            write!(f, "<")
+        }
+        else if self.connection_bitfield == Direction::Right as u32 {
+            write!(f, ">")
+        }
+        else if self.connection_bitfield == Direction::Up as u32 {
+            write!(f, "^")
+        }
+        else if self.connection_bitfield == Direction::Down as u32 {
+            write!(f, ".")
+        }
+        else if self.connection_bitfield == (Direction::Up as u32 | Direction::Left as u32) {
+            write!(f, "r")
+        }
+        else if self.connection_bitfield == (Direction::Down as u32 | Direction::Left as u32) {
+            write!(f, "l")
+        }
+        else if self.connection_bitfield == (Direction::Down as u32 | Direction::Right as u32) {
+            write!(f, "L")
+        }
+        else if self.connection_bitfield == (Direction::Up as u32 | Direction::Right as u32) {
+            write!(f, "R")
+        }
+        else {
+            write!(f, "?")
         }
     }
 }
@@ -288,7 +331,8 @@ mod connections_tests {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Road {
     pub should_yield: bool,
     pub reserved: bool,
@@ -303,6 +347,10 @@ impl Road {
             connections: Connections::new(ConnectionLayer::Road, dir),
         }
     }
+
+    // pub fn should_yield(&self) -> bool {
+    //     return self.connections.count() < 2;
+    // }
 
     fn draw(&self, rect: &Rect, tileset: &Tileset) {
         let connection_count = self.connections.count();
@@ -326,6 +374,17 @@ impl Road {
 
         if self.reserved {
             tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
+        }
+    }
+}
+
+impl fmt::Debug for Road {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.reserved {
+            write!(f, "o")
+        }
+        else {
+            self.connections.fmt(f)
         }
     }
 }
@@ -374,18 +433,18 @@ impl Tile {
         }
     }
 
-    fn should_yield(&self) -> bool {
-        match self {
-            Tile::Road(road) => road.should_yield,
-            Tile::House(_) => true,
-            _ => true,
-        }
-    }
+    // pub fn should_yield(&self) -> bool {
+    //     match self {
+    //         Tile::Road(road) => road.should_yield(),
+    //         Tile::House(_) => true,
+    //         _ => true,
+    //     }
+    // }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct GridTile {
-    ground: Option<Tile>,
+    pub ground: Option<Tile>,
     bridge: Option<Tile>,
 }
 
@@ -398,7 +457,7 @@ impl GridTile {
     }
 }
 pub struct Grid {
-    tiles: Vec<Vec<GridTile>>,
+    pub tiles: Vec<Vec<GridTile>>,
 }
 
 impl Position {
@@ -413,19 +472,115 @@ pub enum ReservationStatus {
     TileReserved,
     TileBlockable,
     TileDoNotBlock,
-    // TileYield,
+}
+
+
+
+impl fmt::Debug for Grid  {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "g")?;
+        for x in 0..self.tiles[0].len() {
+            write!(f, "{}", x % 10)?;
+        }
+        write!(f, "\n")?;
+        for y in 0..self.tiles.len() {
+            write!(f, "{}", y)?;
+            for x in 0..self.tiles[y].len() {
+                match self.tiles[y][x].ground {
+                    Some(Tile::Empty) => write!(f, "e")?,
+                    Some(Tile::Road(road)) => {
+                        road.fmt(f)?
+                    }
+                    Some(Tile::House(_)) => write!(f, "h")?,
+                    None => write!(f, "b")?,
+                }
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
+    }
 }
 
 impl Grid {
     pub fn new(size_x: usize, size_y: usize) -> Self {
         Grid {
-            tiles: vec![vec![GridTile::new(); size_y as usize]; size_x as usize],
+            tiles: vec![vec![GridTile::new(); size_x as usize]; size_y as usize],
         }
     }
 
+    #[allow(dead_code)]
+    pub fn new_grid_from_ascii(ascii: &str) -> Grid {
+        let mut pos = Position::new(0, 0);
+        let size_x = ascii.find('\n').unwrap_or(ascii.len());
+        let size_y = ascii.lines().count();
+        println!("size_x: {}, size_y: {}", size_x, size_y);
+        let mut grid = Grid::new(size_x, size_y);
+        for chr in ascii.chars() {
+            match chr {
+                '>' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                }
+                '<' => {
+                    grid.add_tile_connection(&pos, Direction::Left);
+                }
+                '^' => {
+                    grid.add_tile_connection(&pos, Direction::Up);
+                }
+                '.' => {
+                    grid.add_tile_connection(&pos, Direction::Down);
+                }
+                'y' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                    if let Tile::Road(road) = grid.get_tile_mut(&pos).unwrap() {
+                        road.should_yield = true;
+                    }
+                }
+                'h' => {
+                    *grid.get_tile_mut(&pos).unwrap() = Tile::House(House {
+                        people_heading_to: true,
+                    });
+                }
+                '_' => {
+                    *grid.get_tile_mut(&pos).unwrap() = Tile::Empty;
+                }
+                // Roundabouts - top left
+                'l' => {
+                    grid.add_tile_connection(&pos, Direction::Left);
+                    grid.add_tile_connection(&pos, Direction::Down);
+                }
+                // Roundabouts - top right
+                'r' => {
+                    grid.add_tile_connection(&pos, Direction::Left);
+                    grid.add_tile_connection(&pos, Direction::Up);
+                }
+                // Roundabouts - bottom Left
+                'L' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                    grid.add_tile_connection(&pos, Direction::Down);
+                }
+                // Roundabouts - bottom Right
+                'R' => {
+                    grid.add_tile_connection(&pos, Direction::Right);
+                    grid.add_tile_connection(&pos, Direction::Up);
+                }
+
+                '\n' => {
+                    pos.y += 1;
+                    pos.x = -1;
+                }
+                ' ' => {
+                    pos.x -= 1;
+                }
+                _ => {}
+            }
+            pos.x += 1;
+        }
+        grid
+    }
+
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
-        if let Some(grid_column) = self.tiles.get(pos.x as usize) {
-            if let Some(tile) = grid_column.get(pos.y as usize) {
+        if let Some(grid_row) = self.tiles.get(pos.y as usize) {
+            if let Some(tile) = grid_row.get(pos.x as usize) {
                 if pos.z == 0 {
                     tile.ground.as_ref()
                 } else {
@@ -440,8 +595,8 @@ impl Grid {
     }
 
     pub fn get_tile_mut(&mut self, pos: &Position) -> Option<&mut Tile> {
-        if let Some(grid_column) = self.tiles.get_mut(pos.x as usize) {
-            if let Some(tile) = grid_column.get_mut(pos.y as usize) {
+        if let Some(grid_row) = self.tiles.get_mut(pos.y as usize) {
+            if let Some(tile) = grid_row.get_mut(pos.x as usize) {
                 if pos.z == 0 {
                     tile.ground.as_mut()
                 } else {
@@ -555,9 +710,9 @@ impl Grid {
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
-        for i in 0..self.tiles.len() {
-            for j in 0..self.tiles[i].len() {
-                let pos = Position::new(i as i16, j as i16);
+        for y in 0..self.tiles.len() {
+            for x in 0..self.tiles[y].len() {
+                let pos = Position::new(x as i16, y as i16);
                 if let Some(tile) = self.get_tile(&pos) {
                     tile.draw(pos, tileset);
                 }
@@ -566,9 +721,9 @@ impl Grid {
     }
 
     pub fn draw_houses(&self, tileset: &Tileset) {
-        for i in 0..self.tiles.len() {
-            for j in 0..self.tiles[i].len() {
-                let pos = Position::new(i as i16, j as i16);
+        for y in 0..self.tiles.len() {
+            for x in 0..self.tiles[y].len() {
+                let pos = Position::new(x as i16, y as i16);
                 if let Some(Tile::House(house)) = self.get_tile(&pos) {
                     house.draw(&Rect::from(pos), tileset);
                 }
@@ -576,11 +731,11 @@ impl Grid {
         }
     }
 
-    pub fn should_yield(&self, pos: &Position) -> bool {
-        if let Some(tile) = self.get_tile(pos) {
-            tile.should_yield()
-        } else {
-            false
-        }
-    }
+    // pub fn should_yield(&self, pos: &Position) -> bool {
+    //     if let Some(tile) = self.get_tile(pos) {
+    //         tile.should_yield()
+    //     } else {
+    //         false
+    //     }
+    // }
 }
