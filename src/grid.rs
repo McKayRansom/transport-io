@@ -471,7 +471,7 @@ pub enum ReservationStatus {
     TileInvalid,
     TileReserved,
     TileBlockable,
-    TileDoNotBlock,
+    // TileDoNotBlock,
 }
 
 
@@ -648,12 +648,13 @@ impl Grid {
             Some(Tile::Road(road)) => {
                 if road.reserved /* TODO: Add check for intersection full */ {
                     ReservationStatus::TileReserved
-                } else if road.connections.safe_to_block() {
-                    road.reserved = true;
-                    ReservationStatus::TileBlockable
+                // } else if road.connections.safe_to_block() {
+                    // road.reserved = true;
+                    // ReservationStatus::TileBlockable
                 } else {
                     road.reserved = true;
-                    ReservationStatus::TileDoNotBlock
+                    ReservationStatus::TileBlockable
+                    // ReservationStatus::TileDoNotBlock
                 }
             }
             Some(Tile::House(_)) => ReservationStatus::TileBlockable,

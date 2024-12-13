@@ -130,7 +130,7 @@ impl Map {
             let finished = s.1.update(&mut self.path_grid);
             if let Some(destination) = finished {
                 delivered += 1;
-                s.1.clear_reserved(&mut self.path_grid);
+                s.1.delete(&mut self.path_grid);
                 if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
                     house.people_heading_to = false;
                 }
