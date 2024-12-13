@@ -2,3 +2,5 @@ target
 deploy
 
 Cargo.lock
+
+cobertura.xml
