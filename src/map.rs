@@ -5,7 +5,7 @@ use macroquad::rand::{self, srand};
 use crate::{
     grid::{ConnectionsIterator, Direction, Grid, House, Position, Tile},
     tileset::Tileset,
-    vehicle::Vehicle,
+    vehicle::{Vehicle, Status},
 };
 
 const CITY_BLOCK_SIZE: i16 = 8;
@@ -127,14 +127,25 @@ impl Map {
         let mut delivered = 0;
         let mut to_remove: Vec<u32> = Vec::new();
         for s in self.vehicles.iter_mut() {
-            let finished = s.1.update(&mut self.path_grid);
-            if let Some(destination) = finished {
-                delivered += 1;
-                s.1.delete(&mut self.path_grid);
-                if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
-                    house.people_heading_to = false;
+            match s.1.update(&mut self.path_grid) {
+                Status::ReachedDestination(destination) => {
+                    delivered += 1;
+                    s.1.delete(&mut self.path_grid);
+                    if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
+                        // TODO: Increase house rating
+                        house.people_heading_to = false;
+                    }
+                    to_remove.push(*s.0);
                 }
-                to_remove.push(*s.0);
+                Status::HopelesslyLate(destination) => {
+                    s.1.delete(&mut self.path_grid);
+                    if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
+                        // TODO: Decrease house standing
+                        house.people_heading_to = false;
+                    }
+                    to_remove.push(*s.0);
+                }
+                Status::EnRoute => {}
             }
         }
         for id in to_remove {

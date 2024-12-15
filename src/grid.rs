@@ -1,9 +1,11 @@
+// use pathfinding::num_traits::Integer;
 use std::f32::consts::PI;
 use std::fmt;
 
 use macroquad::color::{Color, WHITE};
 use macroquad::input::KeyCode;
 use macroquad::math::Rect;
+use pathfinding::num_traits::AsPrimitive;
 use pathfinding::prelude::astar;
 
 use crate::tileset::Tileset;
@@ -74,9 +76,12 @@ impl From<Position> for Rect {
 
 /// And here we implement `From` again to allow us to easily convert between
 /// `(i16, i16)` and a `GridPosition`.
-impl From<(i16, i16)> for Position {
-    fn from(pos: (i16, i16)) -> Self {
-        Position::new(pos.0, pos.1)
+impl<T> From<(T, T)> for Position
+    where 
+        T: AsPrimitive<i16>
+{
+    fn from(pos: (T, T)) -> Self {
+        Position::new(pos.0.as_(), pos.1.as_())
     }
 }
 
@@ -372,9 +377,9 @@ impl Road {
             }
         }
 
-        if self.reserved {
-            tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
-        }
+        // if self.reserved {
+        //     tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
+        // }
     }
 }
 
