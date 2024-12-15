@@ -47,7 +47,7 @@ pub enum ShouldWeYieldStatus {
 
 impl Vehicle {
     pub fn new(pos: Position, destination: Position, grid: &mut Grid) -> Option<Self> {
-        if grid.reserve_position(&pos) != ReservationStatus::TileBlockable {
+        if grid.reserve_position(&pos) != ReservationStatus::TileSuccess {
             return None;
         }
 
@@ -87,7 +87,7 @@ impl Vehicle {
         reserved: &mut Vec<Position>,
     ) -> ReservationStatus {
         let status = path_grid.reserve_position(&position);
-        if status == ReservationStatus::TileBlockable {
+        if status == ReservationStatus::TileSuccess {
             reserved.push(position);
         } else {
             Vehicle::clear_reserved(path_grid, reserved);
@@ -167,7 +167,7 @@ impl Vehicle {
             }
 
             match Vehicle::reserve(path_grid, *pos, &mut reserved) {
-                ReservationStatus::TileBlockable => {
+                ReservationStatus::TileSuccess => {
                     match self.should_we_yield_when_entering(path_grid, &my_tile, &pos) {
                         ShouldWeYieldStatus::Yield(yield_to_pos) => {
                             Vehicle::clear_reserved(path_grid, &mut reserved);
@@ -373,7 +373,7 @@ mod vehicle_tests {
 
         assert_eq!(
             grid.reserve_position(&end_pos),
-            ReservationStatus::TileBlockable
+            ReservationStatus::TileSuccess
         );
 
         assert_eq!(
@@ -414,14 +414,14 @@ mod vehicle_tests {
 
         assert_eq!(
             grid.reserve_position(&yield_to_pos),
-            ReservationStatus::TileBlockable
+            ReservationStatus::TileSuccess
         );
 
         vehicle.update(&mut grid);
 
         assert_eq!(
             grid.reserve_position(&intersection_pos),
-            ReservationStatus::TileBlockable
+            ReservationStatus::TileSuccess
         );
     }
 

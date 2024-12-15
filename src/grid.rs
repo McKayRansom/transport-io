@@ -17,7 +17,7 @@ const CONNECTIONS_ALL: u32 = 0b1111;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;
-const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
+// const RESERVED_PATH_COLOR: Color = Color::new(1.0, 0.1, 0.0, 0.3);
 // const CONNECTION_INDICATOR_COLOR: Color = Color::new(0.7, 0.7, 0.7, 0.7);
 
 const HOUSE_SPRITE: u32 = (16 * 1) + 0;
@@ -475,7 +475,7 @@ impl Position {
 pub enum ReservationStatus {
     TileInvalid,
     TileReserved,
-    TileBlockable,
+    TileSuccess,
     // TileDoNotBlock,
 }
 
@@ -658,11 +658,11 @@ impl Grid {
                     // ReservationStatus::TileBlockable
                 } else {
                     road.reserved = true;
-                    ReservationStatus::TileBlockable
+                    ReservationStatus::TileSuccess
                     // ReservationStatus::TileDoNotBlock
                 }
             }
-            Some(Tile::House(_)) => ReservationStatus::TileBlockable,
+            Some(Tile::House(_)) => ReservationStatus::TileSuccess,
             Some(Tile::Empty) => ReservationStatus::TileInvalid,
             None => ReservationStatus::TileInvalid,
         }

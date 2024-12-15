@@ -25,7 +25,6 @@ impl Map {
         Map {
             path_grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
             vehicle_id: 0,
-            // vehicles: Vec::new(),
             vehicles: HashMap::new(),
         }
     }
