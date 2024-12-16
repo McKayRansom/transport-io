@@ -1,4 +1,6 @@
 use macroquad::color::Color;
+use macroquad::color::BLUE;
+use macroquad::color::RED;
 use macroquad::color::WHITE;
 use macroquad::math::Rect;
 
@@ -9,12 +11,16 @@ use crate::grid::Position;
 use crate::grid::ReservationStatus;
 use crate::grid::Tile;
 use crate::grid::GRID_CELL_SIZE;
+use crate::tileset;
 use crate::tileset::Tileset;
+
+use crate::grid::Id;
 
 const SPEED: i16 = 4;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.25;
 
 pub struct Vehicle {
+    pub id: Id,
     path: Path,
     eta: u32,
     elapsed: u32,
@@ -46,14 +52,15 @@ pub enum ShouldWeYieldStatus {
 }
 
 impl Vehicle {
-    pub fn new(pos: Position, destination: Position, grid: &mut Grid) -> Option<Self> {
-        if grid.reserve_position(&pos) != ReservationStatus::TileSuccess {
+    pub fn new(pos: Position, id: Id, destination: Position, grid: &mut Grid) -> Option<Self> {
+        if grid.reserve_position(&pos, id) != ReservationStatus::TileSuccess {
             return None;
         }
 
         // get path now?
 
         let mut vehicle = Vehicle {
+            id: id,
             path: None,
             eta: 0,
             elapsed: 0,
@@ -83,10 +90,11 @@ impl Vehicle {
 
     fn reserve(
         path_grid: &mut Grid,
+        vehicle_id: Id,
         position: Position,
         reserved: &mut Vec<Position>,
     ) -> ReservationStatus {
-        let status = path_grid.reserve_position(&position);
+        let status = path_grid.reserve_position(&position, vehicle_id);
         if status == ReservationStatus::TileSuccess {
             reserved.push(position);
         } else {
@@ -126,7 +134,7 @@ impl Vehicle {
                 // Get the road
                 if let Some(Tile::Road(yield_to_road)) = path_grid.get_tile(&yield_to_pos) {
                     // if it's reserved and connects to our road
-                    if yield_to_road.reserved && yield_to_road.connections.has(dir.inverse()) {
+                    if yield_to_road.reserved.is_some() && yield_to_road.connections.has(dir.inverse()) {
                         match my_tile {
                             // alway yield from a house
                             Tile::House(_) => {
@@ -166,7 +174,7 @@ impl Vehicle {
                 continue;
             }
 
-            match Vehicle::reserve(path_grid, *pos, &mut reserved) {
+            match Vehicle::reserve(path_grid, self.id, *pos, &mut reserved) {
                 ReservationStatus::TileSuccess => {
                     match self.should_we_yield_when_entering(path_grid, &my_tile, &pos) {
                         ShouldWeYieldStatus::Yield(yield_to_pos) => {
@@ -216,12 +224,12 @@ impl Vehicle {
             }
             ReservePathStatus::InvalidPath => {
                 self.find_path(grid);
-                grid.reserve_position(&self.pos);
+                grid.reserve_position(&self.pos, self.id);
                 return None;
             }
             ReservePathStatus::Blocking(blocking_pos) => {
                 self.blocking_tile = Some(blocking_pos);
-                grid.reserve_position(&self.pos);
+                grid.reserve_position(&self.pos, self.id);
                 return None;
             }
         }
@@ -230,7 +238,7 @@ impl Vehicle {
     fn update_position(&mut self, path_grid: &mut Grid) -> Status {
         if let Some(blocking_tile) = self.blocking_tile {
             if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
-                if road.reserved {
+                if road.reserved.is_some() {
                     // don't bother
                     return Status::EnRoute;
                 }
@@ -307,6 +315,26 @@ impl Vehicle {
 
         tileset.draw_tile(sprite, color, &rect, self.dir.to_radians());
     }
+
+    pub(crate) fn draw_detail(&self, tileset: &Tileset) {
+        // draw reserved
+        let mut reserved_path_color = RED;
+        reserved_path_color.a = 0.3;
+        if let Some(reserved) = &self.reserved {
+            for pos in reserved {
+                tileset.draw_rect(&Rect::from(*pos), reserved_path_color);
+            }
+        }
+
+        let mut path_color = BLUE;
+        path_color.a = 0.3;
+        if let Some(path) = self.path.as_ref() {
+            for pos in &path.0 {
+
+                tileset.draw_rect(&Rect::from(*pos), path_color);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -318,25 +346,25 @@ mod vehicle_tests {
 
     #[test]
     fn test_init() {
-        let mut grid = Grid::new_grid_from_ascii(">>>>");
+        let mut grid = Grid::new_from_string(">>>>");
         let start_pos = Position::new(0, 0);
         let end_pos = Position::new(3, 0);
-        assert!(Vehicle::new(start_pos, end_pos, &mut grid).is_some());
+        assert!(Vehicle::new(start_pos, 0, end_pos, &mut grid).is_some());
 
         assert_eq!(
-            grid.reserve_position(&start_pos),
+            grid.reserve_position(&start_pos, 1),
             ReservationStatus::TileReserved
         );
 
-        assert!(Vehicle::new(start_pos, end_pos, &mut grid).is_none());
+        assert!(Vehicle::new(start_pos, 2, end_pos, &mut grid).is_none());
     }
 
     #[test]
     fn test_status() {
-        let mut grid = Grid::new_grid_from_ascii(">>>>");
-        let mut vehicle = Vehicle::new((0, 0).into(), (3, 0).into(), &mut grid).unwrap();
+        let mut grid = Grid::new_from_string(">>>>");
+        let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
 
-        grid.reserve_position(&(1, 0).into());
+        grid.reserve_position(&(1, 0).into(), 1);
 
         assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
     }
@@ -344,13 +372,13 @@ mod vehicle_tests {
     #[test]
     fn test_late() {
             
-        let mut grid = Grid::new_grid_from_ascii(">>>>");
-        let mut vehicle = Vehicle::new((0, 0).into(), (3, 0).into(), &mut grid).unwrap();
+        let mut grid = Grid::new_from_string(">>>>");
+        let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
 
         assert_eq!(vehicle.eta, SPEED as u32 * 6);
 
         assert_eq!(vehicle.on_time_percent(), 1.0);
-        grid.reserve_position(&(1, 0).into());
+        grid.reserve_position(&(1, 0).into(), 1);
 
         for i in 1..25 {
             assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
@@ -364,30 +392,30 @@ mod vehicle_tests {
 
     #[test]
     fn test_reserved() {
-        let mut grid = Grid::new_grid_from_ascii(">>>>");
+        let mut grid = Grid::new_from_string(">>>>");
 
         let start_pos = (0, 0).into();
         let end_pos = (3, 0).into();
 
-        let _ = Vehicle::new(start_pos, end_pos, &mut grid).unwrap();
+        let _ = Vehicle::new(start_pos, 0, end_pos, &mut grid).unwrap();
 
         assert_eq!(
-            grid.reserve_position(&end_pos),
+            grid.reserve_position(&end_pos, 1),
             ReservationStatus::TileSuccess
         );
 
         assert_eq!(
-            grid.reserve_position(&end_pos),
+            grid.reserve_position(&end_pos, 1),
             ReservationStatus::TileReserved
         );
     }
 
     #[test]
     fn test_update_speed() {
-        let mut grid = Grid::new_grid_from_ascii(">>>>");
+        let mut grid = Grid::new_from_string(">>>>");
         let start_pos = Position::new(0, 0);
         let end_pos = Position::new(3, 0);
-        let mut vehicle = Vehicle::new(start_pos, end_pos, &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(start_pos, 0, end_pos, &mut grid).unwrap();
 
         vehicle.update_speed();
 
@@ -399,7 +427,7 @@ mod vehicle_tests {
 
     #[test]
     fn test_yield() {
-        let mut grid = Grid::new_grid_from_ascii(
+        let mut grid = Grid::new_from_string(
             "\
             >>>>>
             _h___",
@@ -410,24 +438,24 @@ mod vehicle_tests {
         let start_pos = Position::new(1, 1);
         let yield_to_pos = Position::new(0, 0);
         let intersection_pos = Position::new(1, 0);
-        let mut vehicle = Vehicle::new(start_pos, Position::new(3, 0), &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(start_pos, 0, Position::new(3, 0), &mut grid).unwrap();
 
         assert_eq!(
-            grid.reserve_position(&yield_to_pos),
+            grid.reserve_position(&yield_to_pos, 1),
             ReservationStatus::TileSuccess
         );
 
         vehicle.update(&mut grid);
 
         assert_eq!(
-            grid.reserve_position(&intersection_pos),
+            grid.reserve_position(&intersection_pos, 1),
             ReservationStatus::TileSuccess
         );
     }
 
     #[test]
     fn test_yield_roundabout() {
-        let mut grid = Grid::new_grid_from_ascii(
+        let mut grid = Grid::new_from_string(
             "\
             __.^__
             __.^__
@@ -439,16 +467,16 @@ mod vehicle_tests {
         );
 
         let mut vehicle_top =
-            Vehicle::new(Position::new(2, 1), Position::new(2, 4), &mut grid).unwrap();
+            Vehicle::new(Position::new(2, 1), 0, Position::new(2, 4), &mut grid).unwrap();
 
         let mut vehicle_left =
-            Vehicle::new(Position::new(1, 3), Position::new(5, 3), &mut grid).unwrap();
+            Vehicle::new(Position::new(1, 3), 1, Position::new(5, 3), &mut grid).unwrap();
 
         let mut vehicle_bottom =
-            Vehicle::new(Position::new(3, 4), Position::new(3, 0), &mut grid).unwrap();
+            Vehicle::new(Position::new(3, 4), 2, Position::new(3, 0), &mut grid).unwrap();
 
         let mut vehicle_right =
-            Vehicle::new(Position::new(4, 2), Position::new(0, 2), &mut grid).unwrap();
+            Vehicle::new(Position::new(4, 2), 3, Position::new(0, 2), &mut grid).unwrap();
 
         assert!(vehicle_top.path.is_some());
         assert!(vehicle_left.path.is_some());
@@ -473,7 +501,7 @@ mod vehicle_tests {
     #[test]
     fn test_yield_house() {
         // Houses should yield, but only to relevant traffic
-        let mut grid = Grid::new_grid_from_ascii(
+        let mut grid = Grid::new_from_string(
             "\
             <<<<
             >>>>
@@ -481,14 +509,14 @@ mod vehicle_tests {
         );
 
         let mut vehicle =
-            Vehicle::new(Position::new(1, 2), Position::new(3, 1), &mut grid).unwrap();
+            Vehicle::new(Position::new(1, 2), 0, Position::new(3, 1), &mut grid).unwrap();
 
         let yield_to_pos = Position::new(0, 1);
 
         assert_eq!(vehicle.path.is_some(), true);
 
         // reserve position we should yield to
-        grid.reserve_position(&yield_to_pos);
+        grid.reserve_position(&yield_to_pos, 1);
 
         vehicle.update(&mut grid);
 
@@ -498,7 +526,7 @@ mod vehicle_tests {
 
         // reserve position accross the street
         let do_not_yield_to_pos = Position::new(1, 0);
-        grid.reserve_position(&do_not_yield_to_pos);
+        grid.reserve_position(&do_not_yield_to_pos, 1);
 
         vehicle.update(&mut grid);
 

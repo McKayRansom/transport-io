@@ -10,6 +10,8 @@ use pathfinding::prelude::astar;
 
 use crate::tileset::Tileset;
 
+pub type Id = u64;
+
 const DEFAULT_COST: u32 = 2;
 const OCCUPIED_COST: u32 = 3;
 
@@ -340,7 +342,7 @@ mod connections_tests {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Road {
     pub should_yield: bool,
-    pub reserved: bool,
+    pub reserved: Option<Id>,
     pub connections: Connections,
 }
 
@@ -348,7 +350,7 @@ impl Road {
     pub fn new(dir: Direction) -> Road {
         Road {
             should_yield: false,
-            reserved: false,
+            reserved: None,
             connections: Connections::new(ConnectionLayer::Road, dir),
         }
     }
@@ -385,7 +387,7 @@ impl Road {
 
 impl fmt::Debug for Road {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.reserved {
+        if self.reserved.is_some() {
             write!(f, "o")
         }
         else {
@@ -396,12 +398,12 @@ impl fmt::Debug for Road {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct House {
-    pub people_heading_to: bool,
+    pub vehicle_on_the_way: Option<Id>,
 }
 
 impl House {
     fn draw(&self, rect: &Rect, tileset: &Tileset) {
-        let color = if self.people_heading_to {
+        let color = if self.vehicle_on_the_way.is_some() {
             Color::new(0.5, 0.5, 0.5, 1.0)
         } else {
             WHITE
@@ -514,13 +516,13 @@ impl Grid {
     }
 
     #[allow(dead_code)]
-    pub fn new_grid_from_ascii(ascii: &str) -> Grid {
+    pub fn new_from_string(string: &str) -> Grid {
         let mut pos = Position::new(0, 0);
-        let size_x = ascii.find('\n').unwrap_or(ascii.len());
-        let size_y = ascii.lines().count();
+        let size_x = string.find('\n').unwrap_or(string.len());
+        let size_y = string.lines().count();
         println!("size_x: {}, size_y: {}", size_x, size_y);
         let mut grid = Grid::new(size_x, size_y);
-        for chr in ascii.chars() {
+        for chr in string.chars() {
             match chr {
                 '>' => {
                     grid.add_tile_connection(&pos, Direction::Right);
@@ -542,7 +544,7 @@ impl Grid {
                 }
                 'h' => {
                     *grid.get_tile_mut(&pos).unwrap() = Tile::House(House {
-                        people_heading_to: true,
+                        vehicle_on_the_way: None,
                     });
                 }
                 '_' => {
@@ -642,22 +644,22 @@ impl Grid {
 
     pub fn _is_driveable(&self, pos: &Position) -> bool {
         if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            !road.reserved
+            !road.reserved.is_some()
         } else {
             false
         }
     }
 
-    pub fn reserve_position(&mut self, pos: &Position) -> ReservationStatus {
+    pub fn reserve_position(&mut self, pos: &Position, id: Id) -> ReservationStatus {
         match self.get_tile_mut(pos) {
             Some(Tile::Road(road)) => {
-                if road.reserved /* TODO: Add check for intersection full */ {
+                if road.reserved.is_some() /* TODO: Add check for intersection full */ {
                     ReservationStatus::TileReserved
                 // } else if road.connections.safe_to_block() {
                     // road.reserved = true;
                     // ReservationStatus::TileBlockable
                 } else {
-                    road.reserved = true;
+                    road.reserved = Some(id);
                     ReservationStatus::TileSuccess
                     // ReservationStatus::TileDoNotBlock
                 }
@@ -670,7 +672,7 @@ impl Grid {
 
     pub fn unreserve_position(&mut self, pos: &Position) {
         if let Some(Tile::Road(road)) = self.get_tile_mut(&pos) {
-            road.reserved = false;
+            road.reserved = None;
         }
     }
 
@@ -695,7 +697,7 @@ impl Grid {
                         if let Some(tile) = self.get_tile(&new_pos) {
                             match tile {
                                 Tile::Road(road) => {
-                                    if road.reserved {
+                                    if road.reserved.is_some() {
                                         OCCUPIED_COST
                                     } else {
                                         DEFAULT_COST

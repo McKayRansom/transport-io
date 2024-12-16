@@ -1,6 +1,8 @@
 target
 deploy
 
+examples/
+
 Cargo.lock
 
 cobertura.xml

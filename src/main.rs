@@ -62,6 +62,9 @@ async fn main() {
 
     let mut tileset = Tileset::new(tileset_texture, 16);
 
+    
+    state.ui.init().await;
+
     state.load_level();
     // And finally we actually run our game, passing in our context and state.
     // event::run(ctx, events_loop, state)

@@ -3,15 +3,9 @@ use crate::{
     map::Map, tileset::Tileset,
 };
 use macroquad::{
-    color::Color,
-    input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton},
-    math::{vec2, Rect},
-    ui::{
-        hash, root_ui,
-        widgets::{self},
-        Ui,
-    },
-    window::{screen_height, screen_width},
+    color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, text::load_ttf_font, texture::Image, ui::{
+        hash, root_ui, widgets::{self}, Skin, Ui
+    }, window::{screen_height, screen_width}
 };
 use macroquad_profiler::ProfilerParams;
 
@@ -80,6 +74,141 @@ impl UiState {
                 },
             ],
         }
+    }
+
+    pub async fn init(&mut self) {
+        let skin2 = {
+            let font = load_ttf_font("examples/ui_assets/MinimalPixel v2.ttf")
+                .await
+                .unwrap();
+            // let label_style = root_ui()
+            //     .style_builder()
+            //     .with_font(&font)
+            //     .unwrap()
+            //     .text_color(Color::from_rgba(120, 120, 120, 255))
+            //     .font_size(15)
+            //     .build();
+
+            let window_color = Color::from_hex(0x585858);
+    
+            let window_style = root_ui()
+                .style_builder()
+                // .background(
+                //     Image::from_file_with_format(
+                //         include_bytes!("../examples/ui_assets/window_background_2.png"),
+                //         None,
+                //     )
+                //     .unwrap(),
+                // )
+                .color_inactive(window_color)
+                .color_hovered(window_color)
+                .color_selected(window_color)
+                .color_clicked(window_color)
+                .color(window_color)
+                // .background_margin(RectOffset::new(52.0, 52.0, 52.0, 52.0))
+                .margin(RectOffset::new(5.0,5.0, 5.0, 0.0))
+                .build();
+    
+            // let button_style = root_ui()
+            //     .style_builder()
+                // .background(
+                //     Image::from_file_with_format(
+                //         include_bytes!("../examples/ui_assets/button_background_2.png"),
+                //         None,
+                //     )
+                //     .unwrap(),
+                // )
+                // .background_margin(RectOffset::new(8.0, 8.0, 8.0, 8.0))
+                // .background_hovered(
+                //     Image::from_file_with_format(
+                //         include_bytes!("../examples/ui_assets/button_hovered_background_2.png"),
+                //         None,
+                //     )
+                //     .unwrap(),
+                // )
+                // .background_clicked(
+                //     Image::from_file_with_format(
+                //         include_bytes!("../examples/ui_assets/button_clicked_background_2.png"),
+                //         None,
+                //     )
+                //     .unwrap(),
+                // )
+                // .with_font(&font)
+                // .unwrap()
+                // .text_color(Color::from_rgba(180, 180, 100, 255))
+                // .font_size(40)
+                // .build();
+    
+            let checkbox_style = root_ui()
+                .style_builder()
+                .background(
+                    Image::from_file_with_format(
+                        include_bytes!("../examples/ui_assets/checkbox_background.png"),
+                        None,
+                    )
+                    .unwrap(),
+                )
+                .background_hovered(
+                    Image::from_file_with_format(
+                        include_bytes!("../examples/ui_assets/checkbox_hovered_background.png"),
+                        None,
+                    )
+                    .unwrap(),
+                )
+                .background_clicked(
+                    Image::from_file_with_format(
+                        include_bytes!("../examples/ui_assets/checkbox_clicked_background.png"),
+                        None,
+                    )
+                    .unwrap(),
+                )
+                .build();
+    
+            let editbox_style = root_ui()
+                .style_builder()
+                .background(
+                    Image::from_file_with_format(
+                        include_bytes!("../examples/ui_assets/editbox_background.png"),
+                        None,
+                    )
+                    .unwrap(),
+                )
+                .background_margin(RectOffset::new(2., 2., 2., 2.))
+                .with_font(&font)
+                .unwrap()
+                .text_color(Color::from_rgba(120, 120, 120, 255))
+                .font_size(25)
+                .build();
+    
+            let combobox_style = root_ui()
+                .style_builder()
+                .background(
+                    Image::from_file_with_format(
+                        include_bytes!("../examples/ui_assets/combobox_background.png"),
+                        None,
+                    )
+                    .unwrap(),
+                )
+                .background_margin(RectOffset::new(4., 25., 6., 6.))
+                .with_font(&font)
+                .unwrap()
+                .text_color(Color::from_rgba(120, 120, 120, 255))
+                .color(Color::from_rgba(210, 210, 210, 255))
+                .font_size(25)
+                .build();
+    
+            Skin {
+                window_style,
+                // button_style,
+                // label_style,
+                checkbox_style,
+                editbox_style,
+                combobox_style,
+                ..root_ui().default_skin()
+            }
+        };
+
+        root_ui().push_skin(&skin2);
     }
 
     pub fn update(&mut self, map: &mut Map) {
@@ -162,23 +291,33 @@ impl UiState {
         build_mode
     }
 
-    fn draw_tile_details(&self, ui: &mut Ui, map: &Map) {
+    fn draw_tile_details(&self, ui: &mut Ui, map: &Map, tileset: &Tileset) {
         if let Some(tile) = map.path_grid.get_tile(&self.last_mouse_pos) {
             match tile {
                 Tile::Empty => {
                     ui.label(None, &format!("Empty"));
                 }
                 Tile::House(house) => {
-                    ui.label(None, &format!("House {:?}", house.people_heading_to));
+                    ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
+                    if let Some(vehicle_id) = house.vehicle_on_the_way {
+                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                            vehicle.draw_detail(tileset);
+                        }
+                    }
                 }
                 Tile::Road(road) => {
                     ui.label(None, &format!("Road {:?}", road.reserved));
+                    if let Some(vehicle_id) = road.reserved {
+                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                            vehicle.draw_detail(tileset);
+                        }
+                    }
                 }
             }
         }
     }
 
-    fn draw_details(&self, map: &Map) {
+    fn draw_details(&self, map: &Map, tileset: &Tileset) {
         let details_height = 100.;
         let details_width = 200.;
         widgets::Window::new(
@@ -192,7 +331,7 @@ impl UiState {
         .label("Details")
         .movable(false)
         .ui(&mut *root_ui(), |ui| {
-            self.draw_tile_details(ui, map);
+            self.draw_tile_details(ui, map, tileset);
         });
     }
 
@@ -226,7 +365,7 @@ impl UiState {
 
         self.build_mode = self.draw_toolbar();
 
-        self.draw_details(map);
+        self.draw_details(map, tileset);
 
         self.draw_paused();
 

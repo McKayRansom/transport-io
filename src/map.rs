@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use macroquad::rand::{self, srand};
 
 use crate::{
-    grid::{ConnectionsIterator, Direction, Grid, House, Position, Tile},
+    grid::{self, ConnectionsIterator, Direction, Grid, House, Id, Position, Tile},
     tileset::Tileset,
-    vehicle::{Vehicle, Status},
+    vehicle::{Status, Vehicle},
 };
 
 const CITY_BLOCK_SIZE: i16 = 8;
@@ -15,8 +15,8 @@ pub const GRID_SIZE: (i16, i16) = (30, 30);
 
 pub struct Map {
     pub path_grid: Grid,
-    pub vehicle_id: u32,
-    pub vehicles: HashMap<u32, Vehicle>,
+    pub vehicle_id: grid::Id,
+    pub vehicles: HashMap<grid::Id, Vehicle>,
 }
 
 impl Map {
@@ -24,7 +24,16 @@ impl Map {
         srand(1234);
         Map {
             path_grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
-            vehicle_id: 0,
+            vehicle_id: 1,
+            vehicles: HashMap::new(),
+        }
+    }
+
+    #[allow(unused)]
+    pub fn new_from_string(string: &str) -> Self {
+        Map {
+            path_grid: Grid::new_from_string(string),
+            vehicle_id: 1,
             vehicles: HashMap::new(),
         }
     }
@@ -37,7 +46,7 @@ impl Map {
         if let Some(tile) = self.path_grid.get_tile_mut(&pos) {
             if *tile == Tile::Empty {
                 *tile = Tile::House(House {
-                    people_heading_to: false,
+                    vehicle_on_the_way: None,
                 });
                 // add driveways
                 for dir in ConnectionsIterator::all_directions() {
@@ -96,35 +105,40 @@ impl Map {
         )
     }
 
-    fn generate_cars(&mut self) {
-        let start_house = self.random_house();
-        let end_house = self.random_house();
-
-        if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&end_house) {
-            if house.people_heading_to {
-                return;
-            }
-            house.people_heading_to = true;
-        } else {
-            return;
-        }
-
-        if let Some(Tile::House(_)) = self.path_grid.get_tile(&start_house) {
-        } else {
-            return;
-        }
-
-        println!("Start: {start_house:?} End: {end_house:?}");
-        if let Some(vehicle) = Vehicle::new(start_house, end_house, &mut self.path_grid) {
-            self.vehicles.insert(self.vehicle_id, vehicle);
-
+    pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
+        let id = self.vehicle_id;
+        if let Some( vehicle) = Vehicle::new(start_pos, self.vehicle_id, end_pos, &mut self.path_grid) {
+            self.vehicles.insert(id, vehicle);
             self.vehicle_id += 1;
+
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    fn generate_cars(&mut self) {
+        let start_pos = self.random_house();
+        let end_pos = self.random_house();
+
+        if let Some(Tile::House(_)) = self.path_grid.get_tile(&start_pos) {
+            if let Some(Tile::House(start_house)) = self.path_grid.get_tile(&end_pos) {
+                if start_house.vehicle_on_the_way.is_some() {
+                    return;
+                }
+
+                let vehicle = self.add_vehicle(start_pos, end_pos);
+
+                if let Some(Tile::House(start_house_again)) = self.path_grid.get_tile_mut(&end_pos) {
+                    start_house_again.vehicle_on_the_way = vehicle;
+                }
+            }
         }
     }
 
     pub fn update(&mut self) -> u32 {
         let mut delivered = 0;
-        let mut to_remove: Vec<u32> = Vec::new();
+        let mut to_remove: Vec<grid::Id> = Vec::new();
         for s in self.vehicles.iter_mut() {
             match s.1.update(&mut self.path_grid) {
                 Status::ReachedDestination(destination) => {
@@ -132,7 +146,7 @@ impl Map {
                     s.1.delete(&mut self.path_grid);
                     if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
                         // TODO: Increase house rating
-                        house.people_heading_to = false;
+                        house.vehicle_on_the_way = None;
                     }
                     to_remove.push(*s.0);
                 }
@@ -140,7 +154,7 @@ impl Map {
                     s.1.delete(&mut self.path_grid);
                     if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
                         // TODO: Decrease house standing
-                        house.people_heading_to = false;
+                        house.vehicle_on_the_way = None;
                     }
                     to_remove.push(*s.0);
                 }
