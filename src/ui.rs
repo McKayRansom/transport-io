@@ -1,9 +1,9 @@
 use crate::{
-    grid::{Direction, Position, Tile},
+    grid::{Position, Tile},
     map::Map, tileset::Tileset, vehicle::Vehicle,
 };
 use macroquad::{
-    color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, text::load_ttf_font, texture::Image, ui::{
+    color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, ui::{
         hash, root_ui, widgets::{self}, Skin, Ui
     }, window::{screen_height, screen_width}
 };
@@ -23,6 +23,7 @@ enum BuildMode {
     // Station,
     AddRoad,
     RemoveRoad,
+    Bridge,
     Clear,
     Yield,
 }
@@ -41,6 +42,7 @@ pub struct UiState {
     pub camera: (f32, f32),
     mouse_pressed: bool,
     last_mouse_pos: Position,
+    bridge_start_pos: Option<Position>,
     build_mode: BuildMode,
     toolbar_items: Vec<ToolbarItem>,
 }
@@ -54,6 +56,7 @@ impl UiState {
             camera: (0., 0.),
             mouse_pressed: false,
             last_mouse_pos: Position::new(0, 0),
+            bridge_start_pos: None,
             build_mode: BuildMode::None,
             toolbar_items: vec![
                 ToolbarItem {
@@ -63,6 +66,10 @@ impl UiState {
                 ToolbarItem {
                     build_mode: BuildMode::RemoveRoad,
                     label: "Road-",
+                },
+                ToolbarItem {
+                    build_mode: BuildMode::Bridge,
+                    label: "Bridge",
                 },
                 ToolbarItem {
                     build_mode: BuildMode::Clear,
@@ -78,9 +85,9 @@ impl UiState {
 
     pub async fn init(&mut self) {
         let skin2 = {
-            let font = load_ttf_font("examples/ui_assets/MinimalPixel v2.ttf")
-                .await
-                .unwrap();
+            // let font = load_ttf_font("examples/ui_assets/MinimalPixel v2.ttf")
+            //     .await
+            //     .unwrap();
             // let label_style = root_ui()
             //     .style_builder()
             //     .with_font(&font)
@@ -139,71 +146,71 @@ impl UiState {
                 // .font_size(40)
                 // .build();
     
-            let checkbox_style = root_ui()
-                .style_builder()
-                .background(
-                    Image::from_file_with_format(
-                        include_bytes!("../examples/ui_assets/checkbox_background.png"),
-                        None,
-                    )
-                    .unwrap(),
-                )
-                .background_hovered(
-                    Image::from_file_with_format(
-                        include_bytes!("../examples/ui_assets/checkbox_hovered_background.png"),
-                        None,
-                    )
-                    .unwrap(),
-                )
-                .background_clicked(
-                    Image::from_file_with_format(
-                        include_bytes!("../examples/ui_assets/checkbox_clicked_background.png"),
-                        None,
-                    )
-                    .unwrap(),
-                )
-                .build();
+            // let checkbox_style = root_ui()
+            //     .style_builder()
+            //     .background(
+            //         Image::from_file_with_format(
+            //             include_bytes!("../examples/ui_assets/checkbox_background.png"),
+            //             None,
+            //         )
+            //         .unwrap(),
+            //     )
+            //     .background_hovered(
+            //         Image::from_file_with_format(
+            //             include_bytes!("../examples/ui_assets/checkbox_hovered_background.png"),
+            //             None,
+            //         )
+            //         .unwrap(),
+            //     )
+            //     .background_clicked(
+            //         Image::from_file_with_format(
+            //             include_bytes!("../examples/ui_assets/checkbox_clicked_background.png"),
+            //             None,
+            //         )
+            //         .unwrap(),
+            //     )
+            //     .build();
     
-            let editbox_style = root_ui()
-                .style_builder()
-                .background(
-                    Image::from_file_with_format(
-                        include_bytes!("../examples/ui_assets/editbox_background.png"),
-                        None,
-                    )
-                    .unwrap(),
-                )
-                .background_margin(RectOffset::new(2., 2., 2., 2.))
-                .with_font(&font)
-                .unwrap()
-                .text_color(Color::from_rgba(120, 120, 120, 255))
-                .font_size(25)
-                .build();
+            // let editbox_style = root_ui()
+            //     .style_builder()
+            //     .background(
+            //         Image::from_file_with_format(
+            //             include_bytes!("../examples/ui_assets/editbox_background.png"),
+            //             None,
+            //         )
+            //         .unwrap(),
+            //     )
+            //     .background_margin(RectOffset::new(2., 2., 2., 2.))
+            //     .with_font(&font)
+            //     .unwrap()
+            //     .text_color(Color::from_rgba(120, 120, 120, 255))
+            //     .font_size(25)
+            //     .build();
     
-            let combobox_style = root_ui()
-                .style_builder()
-                .background(
-                    Image::from_file_with_format(
-                        include_bytes!("../examples/ui_assets/combobox_background.png"),
-                        None,
-                    )
-                    .unwrap(),
-                )
-                .background_margin(RectOffset::new(4., 25., 6., 6.))
-                .with_font(&font)
-                .unwrap()
-                .text_color(Color::from_rgba(120, 120, 120, 255))
-                .color(Color::from_rgba(210, 210, 210, 255))
-                .font_size(25)
-                .build();
+            // let combobox_style = root_ui()
+            //     .style_builder()
+            //     .background(
+            //         Image::from_file_with_format(
+            //             include_bytes!("../examples/ui_assets/combobox_background.png"),
+            //             None,
+            //         )
+            //         .unwrap(),
+            //     )
+            //     .background_margin(RectOffset::new(4., 25., 6., 6.))
+            //     .with_font(&font)
+            //     .unwrap()
+            //     .text_color(Color::from_rgba(120, 120, 120, 255))
+            //     .color(Color::from_rgba(210, 210, 210, 255))
+            //     .font_size(25)
+            //     .build();
     
             Skin {
                 window_style,
                 // button_style,
                 // label_style,
-                checkbox_style,
-                editbox_style,
-                combobox_style,
+                // checkbox_style,
+                // editbox_style,
+                // combobox_style,
                 ..root_ui().default_skin()
             }
         };
@@ -361,6 +368,30 @@ impl UiState {
         });
     }
 
+    fn draw_selected(&self, tileset: &Tileset) {
+        // draw selected
+        match self.build_mode {
+            BuildMode::Bridge => {
+                if let Some(start_pos) = self.bridge_start_pos {
+                    for pos in start_pos.iter_line_to(self.last_mouse_pos) {
+                        tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
+                    }
+                } else {
+                    tileset.draw_rect(&Rect::from(self.last_mouse_pos), SELECTED_BUILD);
+                }
+            }
+            _ => {
+                let color = if self.build_mode == BuildMode::Clear {
+                    SELECTED_DELETE
+                } else {
+                    SELECTED_BUILD
+                };
+                tileset.draw_rect(&Rect::from(self.last_mouse_pos), color);
+            }
+        }
+
+    }
+
     pub fn draw(&mut self, map: &Map, tileset: &Tileset) {
         // Score
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
@@ -376,14 +407,7 @@ impl UiState {
 
         self.draw_paused();
 
-        // draw selected
-        let color = if self.build_mode == BuildMode::Clear {
-            SELECTED_DELETE
-        } else {
-            SELECTED_BUILD
-        };
-
-        tileset.draw_rect(&Rect::from(self.last_mouse_pos), color);
+        self.draw_selected(tileset);
 
         // profiler
         macroquad_profiler::profiler(ProfilerParams{fps_counter_pos: vec2(0., 50.)});
@@ -422,6 +446,20 @@ impl UiState {
                     road.should_yield = !road.should_yield;
                 }
             }
+            BuildMode::Bridge => {
+                if let Some(start_pos) = self.bridge_start_pos {
+                    let iter = start_pos.iter_line_to(pos);
+                    let dir = iter.direction;
+                    for pos in iter {
+                        // TODO: Add bridge connection
+                        map.path_grid.add_tile_connection(&pos, dir);
+                    }
+
+                    self.bridge_start_pos = None;
+                } else {
+                    self.bridge_start_pos = Some(pos);
+                }
+            }
             // BuildMode::Roundabout => {
             //     let roundabout = map.add_intersection();
             //     for tile: Tile in map.path_grid.get_tiles(pos, 2) {
@@ -438,11 +476,11 @@ impl UiState {
         if is_mouse_button_down(MouseButton::Left) {
             match self.build_mode {
                 BuildMode::AddRoad => {
-                    let dir = Direction::from_position(self.last_mouse_pos, pos);
+                    let dir = self.last_mouse_pos.direction_to(pos);
                     map.path_grid.add_tile_connection(&self.last_mouse_pos, dir);
                 }
                 BuildMode::RemoveRoad => {
-                    let dir = Direction::from_position(self.last_mouse_pos, pos);
+                    let dir = self.last_mouse_pos.direction_to(pos);
                     map.path_grid
                         .remove_tile_connection(&self.last_mouse_pos, dir);
                 }

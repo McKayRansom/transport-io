@@ -261,7 +261,7 @@ impl Vehicle {
 
         if let Some(next_pos) = self.get_next_pos(path_grid) {
             self.lag_pos_pixels = (GRID_CELL_SIZE.0 as i16) - SPEED_PIXELS_PER_TICK;
-            self.dir = Direction::from_position(self.pos, next_pos);
+            self.dir = self.pos.direction_to(next_pos);
             self.pos = next_pos;
         }
 

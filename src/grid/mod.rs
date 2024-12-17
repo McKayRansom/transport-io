@@ -1,11 +1,13 @@
 // use pathfinding::num_traits::Integer;
-use std::f32::consts::PI;
 use std::fmt;
 
+mod position;
+pub use position::*;
+mod direction;
+pub use direction::*;
+
 use macroquad::color::{Color, WHITE};
-use macroquad::input::KeyCode;
 use macroquad::math::Rect;
-use pathfinding::num_traits::AsPrimitive;
 use pathfinding::prelude::astar;
 
 use crate::tileset::Tileset;
@@ -31,129 +33,6 @@ const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
-pub struct Position {
-    pub x: i16,
-    pub y: i16,
-    pub z: i16,
-}
-
-impl Position {
-    pub fn new(x: i16, y: i16) -> Self {
-        let z = 0;
-        Position { x, y, z }
-    }
-
-    pub fn _new_z(x: i16, y: i16, z: i16) -> Self {
-        Position { x, y, z }
-    }
-
-    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32) -> Self {
-        Position::new(
-            ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
-            ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1) as i16,
-        )
-    }
-
-    pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
-        match dir {
-            Direction::Up => Position::new(pos.x, pos.y - 1),
-            Direction::Down => Position::new(pos.x, pos.y + 1),
-            Direction::Left => Position::new(pos.x - 1, pos.y),
-            Direction::Right => Position::new(pos.x + 1, pos.y),
-        }
-    }
-}
-
-impl From<Position> for Rect {
-    fn from(pos: Position) -> Self {
-        Rect::new(
-            pos.x as f32 * GRID_CELL_SIZE.0,
-            pos.y as f32 * GRID_CELL_SIZE.1,
-            GRID_CELL_SIZE.0 as f32,
-            GRID_CELL_SIZE.1 as f32,
-        )
-    }
-}
-
-/// And here we implement `From` again to allow us to easily convert between
-/// `(i16, i16)` and a `GridPosition`.
-impl<T> From<(T, T)> for Position
-    where 
-        T: AsPrimitive<i16>
-{
-    fn from(pos: (T, T)) -> Self {
-        Position::new(pos.0.as_(), pos.1.as_())
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Direction {
-    Up = 1,
-    Down = 2,
-    Left = 4,
-    Right = 8,
-}
-
-impl Direction {
-    pub fn inverse(self) -> Self {
-        match self {
-            Direction::Up => Direction::Down,
-            Direction::Down => Direction::Up,
-            Direction::Left => Direction::Right,
-            Direction::Right => Direction::Left,
-        }
-    }
-
-    pub fn rotate_left(self) -> Self {
-        match self {
-            Direction::Up => Direction::Left,
-            Direction::Right => Direction::Up,
-            Direction::Down => Direction::Right,
-            Direction::Left => Direction::Down,
-        }
-    }
-
-    pub fn _rotate(self) -> Self {
-        match self {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
-        }
-    }
-
-    pub fn from_position(prev_pos: Position, new_pos: Position) -> Self {
-        if new_pos.x > prev_pos.x {
-            Direction::Right
-        } else if new_pos.y > prev_pos.y {
-            Direction::Down
-        } else if new_pos.y < prev_pos.y {
-            Direction::Up
-        } else {
-            Direction::Left
-        }
-    }
-
-    pub fn to_radians(self) -> f32 {
-        match self {
-            Direction::Up => 0.,
-            Direction::Right => PI / 2.0,
-            Direction::Down => PI,
-            Direction::Left => PI * 1.5,
-        }
-    }
-
-    pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
-        match key {
-            KeyCode::Up => Some(Direction::Up),
-            KeyCode::Down => Some(Direction::Down),
-            KeyCode::Left => Some(Direction::Left),
-            KeyCode::Right => Some(Direction::Right),
-            _ => None,
-        }
-    }
-}
 
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
