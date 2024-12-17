@@ -12,8 +12,8 @@ use crate::tileset::Tileset;
 
 pub type Id = u64;
 
-const DEFAULT_COST: u32 = 2;
-const OCCUPIED_COST: u32 = 3;
+const DEFAULT_COST: u32 = 1;
+const OCCUPIED_COST: u32 = 2;
 
 const CONNECTIONS_ALL: u32 = 0b1111;
 
