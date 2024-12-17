@@ -17,7 +17,7 @@ use crate::grid::Id;
 
 const SPEED_PIXELS_PER_TICK: i16 = 4;
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK;
-const HOPELESSLY_LATE_PERCENT: f32 = 2.0;
+const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
 
 pub struct Vehicle {
     pub id: Id,
@@ -30,15 +30,15 @@ pub struct Vehicle {
     dir: Direction,
     // station_id: usize
     blocking_tile: Option<Position>,
-    destination: Position,
+    pub destination: Position,
     reserved: Option<Vec<Position>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd)]
 pub enum Status {
     EnRoute,
-    ReachedDestination(Position),
-    HopelesslyLate(Position),
+    ReachedDestination,
+    HopelesslyLate,
 }
 
 pub enum ReservePathStatus {
@@ -49,7 +49,7 @@ pub enum ReservePathStatus {
 
 pub enum ShouldWeYieldStatus {
     Yield(Position),
-    Clear
+    Clear,
 }
 
 impl Vehicle {
@@ -130,7 +130,9 @@ impl Vehicle {
                 // Get the road
                 if let Some(Tile::Road(yield_to_road)) = path_grid.get_tile(&yield_to_pos) {
                     // if it's reserved and connects to our road
-                    if yield_to_road.reserved.is_some() && yield_to_road.connections.has(dir.inverse()) {
+                    if yield_to_road.reserved.is_some()
+                        && yield_to_road.connections.has(dir.inverse())
+                    {
                         match my_tile {
                             // alway yield from a house
                             Tile::House(_) => {
@@ -163,14 +165,13 @@ impl Vehicle {
         let mut reserved = Vec::<Position>::new();
         // println!("should_yield: {}", should_yield);
         if self.path.is_none() {
-            return ReservePathStatus::InvalidPath
+            return ReservePathStatus::InvalidPath;
         }
 
         // TODO: Remove clone
         let path: &Vec<Position> = &self.path.clone().unwrap().0;
 
         for i in self.path_index..path.len() {
-
             let pos = path.get(i).unwrap();
             if *pos == self.pos {
                 continue;
@@ -183,9 +184,7 @@ impl Vehicle {
                             Vehicle::clear_reserved(path_grid, &mut reserved);
                             return ReservePathStatus::Blocking(yield_to_pos);
                         }
-                        ShouldWeYieldStatus::Clear => {
-                            return ReservePathStatus::Success(reserved)
-                        }
+                        ShouldWeYieldStatus::Clear => return ReservePathStatus::Success(reserved),
                     }
                 }
                 ReservationStatus::TileInvalid => {
@@ -215,7 +214,6 @@ impl Vehicle {
     }
 
     fn get_next_pos(&mut self, grid: &mut Grid) -> Option<Position> {
-
         match self.reserve_path(grid) {
             ReservePathStatus::Success(reserved) => {
                 self.reserved = Some(reserved);
@@ -251,7 +249,7 @@ impl Vehicle {
         self.blocking_tile = None;
 
         if self.pos == self.destination {
-            return Status::ReachedDestination(self.destination);
+            return Status::ReachedDestination;
         }
 
         if let Some(reserved) = &mut self.reserved {
@@ -270,16 +268,27 @@ impl Vehicle {
         Status::EnRoute
     }
 
-    // 0.5 = way early
+    // 0.5 = 50% late
     // 1 = on time exactly
-    // 1.5 = 50% more time taken
+    // 1.5 = 50% early
     pub fn trip_late(&self) -> f32 {
-        let max_tiles_traveled = ((self.elapsed_ticks.saturating_sub(1) + SPEED_TICKS_PER_TILE as u32) / SPEED_TICKS_PER_TILE as u32) as f32;
-        let trip_tiles_expected =  (self.trip_completed_percent() * (self.path_time_ticks / SPEED_TICKS_PER_TILE as u32) as f32).max(1.);
+        if let Some(path) = &self.path {
+            let tiles_elapsed = (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS_PER_TILE as u32) + 1;
+            let tiles_expected = path.1;
 
-        // println!("max: {max_tiles_traveled}, trip: {}", trip_tiles_expected);
+            let elapsed_percent = tiles_elapsed as f32 / tiles_expected as f32;
 
-        max_tiles_traveled/trip_tiles_expected
+            let completed_percent = self.trip_completed_percent();
+            // println!("elapsed: {tiles_elapsed}, expected: {} percent: {completed_percent}", tiles_expected);
+
+            if completed_percent > 0. {
+                1. - (elapsed_percent - completed_percent)
+            } else {
+                1.
+            }
+        } else {
+            1.
+        }
     }
 
     pub fn trip_completed_percent(&self) -> f32 {
@@ -292,8 +301,8 @@ impl Vehicle {
 
     pub fn update(&mut self, path_grid: &mut Grid) -> Status {
         self.elapsed_ticks += 1;
-        if self.trip_late() > HOPELESSLY_LATE_PERCENT {
-            Status::HopelesslyLate(self.destination)
+        if self.trip_late() < HOPELESSLY_LATE_PERCENT {
+            Status::HopelesslyLate
         } else if self.lag_pos_pixels > 0 {
             self.update_speed();
             Status::EnRoute
@@ -319,7 +328,8 @@ impl Vehicle {
 
         if self.path.is_none() {
             color = vehicle_red;
-        } else if self.blocking_tile.is_some() {
+        // } else if self.blocking_tile.is_some() {
+        } else if self.trip_late() < 0.75 {
             color = vehicle_yellow;
         }
 
@@ -348,7 +358,6 @@ impl Vehicle {
         path_color.a = 0.3;
         if let Some(path) = self.path.as_ref() {
             for pos in &path.0 {
-
                 tileset.draw_rect(&Rect::from(*pos), path_color);
             }
         }
@@ -392,16 +401,17 @@ mod vehicle_tests {
         let mut grid = Grid::new_from_string(">>>>");
         let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
 
-        let trip_length: u32 = 3;
-        // let trip_time = SPEED_TICKS_PER_TILE as u32 * (trip_length - 0);
+        vehicle.update(&mut grid);
 
-        vehicle.elapsed_ticks = 9;
-        assert_eq!(vehicle.trip_late(), 2.0);
+        vehicle.elapsed_ticks = SPEED_TICKS_PER_TILE as u32 + 1;
+        assert_eq!(vehicle.trip_late(), 0.6666666);
+
+        vehicle.elapsed_ticks = (SPEED_TICKS_PER_TILE * 2) as u32 + 1;
+        assert_eq!(vehicle.trip_late(), 0.33333337);
     }
 
     #[test]
     fn test_trip() {
-            
         let mut grid = Grid::new_from_string(">>>>");
         let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
 
@@ -418,14 +428,34 @@ mod vehicle_tests {
         // assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
 
         for i in 0..24 {
-            assert_eq!(vehicle.update(&mut grid), Status::EnRoute, "Failed on tick {i}");
-            assert_eq!(vehicle.path_index, 1 + (i/(SPEED_TICKS_PER_TILE as u32)) as usize, "Failed on tick {i}");
+            assert_eq!(
+                vehicle.update(&mut grid),
+                Status::EnRoute,
+                "Failed on tick {i}"
+            );
+            assert_eq!(
+                vehicle.path_index,
+                1 + (i / (SPEED_TICKS_PER_TILE as u32)) as usize,
+                "Failed on tick {i}"
+            );
             assert_eq!(vehicle.elapsed_ticks, i + 1);
-            assert_eq!(vehicle.trip_completed_percent(), (((i + 8)/SPEED_TICKS_PER_TILE as u32)) as f32 /trip_length as f32, "Failed on tick {i}");
-            assert_eq!(vehicle.trip_late(), 1.0, "Failed on tick {i} %{}", vehicle.trip_completed_percent());
+            assert_eq!(
+                vehicle.trip_completed_percent(),
+                ((i + 8) / SPEED_TICKS_PER_TILE as u32) as f32 / trip_length as f32,
+                "Failed on tick {i}"
+            );
+            assert_eq!(
+                vehicle.trip_late(),
+                1.0,
+                "Failed on tick {i} %{}",
+                vehicle.trip_completed_percent()
+            );
         }
 
-        assert_eq!(vehicle.update(&mut grid), Status::ReachedDestination((3, 0).into()));
+        assert_eq!(
+            vehicle.update(&mut grid),
+            Status::ReachedDestination
+        );
         assert_ne!(vehicle.trip_late(), 1.0);
     }
 

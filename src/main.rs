@@ -13,7 +13,6 @@ use macroquad::prelude::*;
 struct GameState {
     map: Map,
     ui: UiState,
-    delivered: u32,
 }
 
 impl GameState {
@@ -21,7 +20,6 @@ impl GameState {
         GameState {
             map: Map::new(),
             ui: UiState::new(),
-            delivered: 0,
         }
     }
 
@@ -30,7 +28,7 @@ impl GameState {
     }
 
     fn update(&mut self) {
-        self.delivered += self.map.update();
+        self.map.update();
     }
 
     fn draw(&mut self, tileset: &Tileset) {
@@ -38,7 +36,7 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        self.ui.draw(self.delivered, &self.map, tileset);
+        self.ui.draw(&self.map, tileset);
 
     }
 

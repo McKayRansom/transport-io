@@ -17,6 +17,7 @@ pub struct Map {
     pub path_grid: Grid,
     pub vehicle_id: grid::Id,
     pub vehicles: HashMap<grid::Id, Vehicle>,
+    pub rating: f32,
 }
 
 impl Map {
@@ -26,6 +27,7 @@ impl Map {
             path_grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
             vehicle_id: 1,
             vehicles: HashMap::new(),
+            rating: 1.0,
         }
     }
 
@@ -35,6 +37,7 @@ impl Map {
             path_grid: Grid::new_from_string(string),
             vehicle_id: 1,
             vehicles: HashMap::new(),
+            rating: 1.0,
         }
     }
 
@@ -136,38 +139,35 @@ impl Map {
         }
     }
 
-    pub fn update(&mut self) -> u32 {
-        let mut delivered = 0;
-        let mut to_remove: Vec<grid::Id> = Vec::new();
+    pub fn update_rating(&mut self, success: bool) {
+        if success {
+            self.rating = (1. * 0.1) + (self.rating * 0.9);
+        } else {
+            self.rating = (0. * 0.1) + (self.rating * 0.9);
+        }
+    }
+
+    pub fn update(&mut self)  {
+        let mut to_remove: Vec<(grid::Id, Status)> = Vec::new();
         for s in self.vehicles.iter_mut() {
-            match s.1.update(&mut self.path_grid) {
-                Status::ReachedDestination(destination) => {
-                    delivered += 1;
-                    s.1.delete(&mut self.path_grid);
-                    if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
-                        // TODO: Increase house rating
-                        house.vehicle_on_the_way = None;
-                    }
-                    to_remove.push(*s.0);
-                }
-                Status::HopelesslyLate(destination) => {
-                    s.1.delete(&mut self.path_grid);
-                    if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&destination) {
-                        // TODO: Decrease house standing
-                        house.vehicle_on_the_way = None;
-                    }
-                    to_remove.push(*s.0);
-                }
-                Status::EnRoute => {}
+            let status = s.1.update(&mut self.path_grid);
+            if status != Status::EnRoute {
+                to_remove.push((*s.0, status));
             }
         }
         for id in to_remove {
-            self.vehicles.remove(&id);
+            let vehicle = self.vehicles.get_mut(&id.0).unwrap();
+            if let Some(Tile::House(house)) = self.path_grid.get_tile_mut(&vehicle.destination) {
+                house.vehicle_on_the_way = None;
+            }
+            vehicle.delete(&mut self.path_grid);
+            self.vehicles.remove(&id.0);
+
+            self.update_rating(id.1 == Status::ReachedDestination);
         }
 
         self.generate_cars();
 
-        delivered
     }
 
     pub fn draw(&self, tileset: &Tileset) {
@@ -178,5 +178,21 @@ impl Map {
         }
 
         self.path_grid.draw_houses(tileset);
+    }
+}
+
+#[cfg(test)]
+mod map_tests {
+
+    use super::*;
+
+    #[test]
+    fn test_map_rating() {
+        let mut map = Map::new_from_string(">>>>");
+        assert_eq!(map.rating, 1.0);
+        map.update_rating(true);
+        assert_eq!(map.rating, 1.0);
+        map.update_rating(false);
+        assert_eq!(map.rating, 0.9);
     }
 }

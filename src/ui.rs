@@ -1,6 +1,6 @@
 use crate::{
     grid::{Direction, Position, Tile},
-    map::Map, tileset::Tileset,
+    map::Map, tileset::Tileset, vehicle::Vehicle,
 };
 use macroquad::{
     color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, text::load_ttf_font, texture::Image, ui::{
@@ -291,6 +291,12 @@ impl UiState {
         build_mode
     }
 
+    fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
+        ui.label(None, &format!("Vehicle Trip: {:?}", vehicle.trip_completed_percent()));
+        ui.label(None, &format!("Vehicle Late: {:?}", vehicle.trip_late()));
+        vehicle.draw_detail(tileset);
+    }
+
     fn draw_tile_details(&self, ui: &mut Ui, map: &Map, tileset: &Tileset) {
         if let Some(tile) = map.path_grid.get_tile(&self.last_mouse_pos) {
             match tile {
@@ -301,7 +307,8 @@ impl UiState {
                     ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
                     if let Some(vehicle_id) = house.vehicle_on_the_way {
                         if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
-                            vehicle.draw_detail(tileset);
+                            // vehicle.draw_detail(tileset);
+                            self.draw_vehicle_details(ui, tileset, vehicle);
                         }
                     }
                 }
@@ -309,7 +316,7 @@ impl UiState {
                     ui.label(None, &format!("Road {:?}", road.reserved));
                     if let Some(vehicle_id) = road.reserved {
                         if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
-                            vehicle.draw_detail(tileset);
+                            self.draw_vehicle_details(ui, tileset, vehicle);
                         }
                     }
                 }
@@ -354,13 +361,13 @@ impl UiState {
         });
     }
 
-    pub fn draw(&mut self, delivered: u32, map: &Map, tileset: &Tileset) {
+    pub fn draw(&mut self, map: &Map, tileset: &Tileset) {
         // Score
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
             .label("Score")
             .movable(false)
             .ui(&mut *root_ui(), |ui| {
-                ui.label(None, &format!("Delivered: {}", delivered));
+                ui.label(None, &format!("Rating: {}", map.rating));
             });
 
         self.build_mode = self.draw_toolbar();
