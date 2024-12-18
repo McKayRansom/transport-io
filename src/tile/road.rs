@@ -1,9 +1,9 @@
 
 use macroquad::{color::WHITE, math::Rect};
 
-use crate::{grid::{ConnectionLayer, Connections, ConnectionsIterator, Direction, Id}, tileset::Tileset};
+use crate::{grid::{Direction, Id}, tileset::Tileset};
 
-
+use super::{ConnectionLayer, Connections, ConnectionsIterator};
 
 const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;

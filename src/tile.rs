@@ -1,12 +1,16 @@
-mod road;
 use macroquad::{
     color::{Color, WHITE},
     math::Rect,
 };
+
+mod road;
 pub use road::*;
 
+mod connections;
+pub use connections::*;
+
 use crate::{
-    grid::{ConnectionsIterator, Id, Position, ReservationStatus},
+    grid::{Id, Position, ReservationStatus},
     tileset::Tileset,
 };
 
@@ -77,6 +81,16 @@ impl Tile {
         }
     }
 
+    pub fn draw_bridge(&self, pos: Position, tileset: &Tileset) {
+        let mut rect = Rect::from(pos);
+        rect.y -= 10.;
+        match self {
+            Tile::Road(road) => road.draw(&rect, tileset),
+            _ => {}
+        }
+    }
+
+
     pub fn reserve(&mut self, id: Id) -> ReservationStatus {
         match self {
             Tile::Road(road) => {
@@ -102,6 +116,10 @@ impl Tile {
         if let Tile::Road(road) = self {
             road.reserved = None;
         }
+    }
+
+    pub fn clear(&mut self) {
+        *self = Tile::Empty;
     }
 
     pub fn build<F>(&mut self, func: F)

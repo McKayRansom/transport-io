@@ -375,7 +375,7 @@ impl UiState {
             match self.build_mode {
                 BuildMode::Bridge => {
                     if let Some(start_pos) = self.bridge_start_pos {
-                        for pos in start_pos.iter_line_to(last_mouse_pos, map.path_grid.size) {
+                        for pos in start_pos.iter_line_to(last_mouse_pos, map.path_grid.size).0 {
                             tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
                         }
                     } else {
@@ -442,7 +442,7 @@ impl UiState {
         println!("Mouse pressed: pos: {mouse_pos:?}");
         match self.build_mode {
             BuildMode::Clear => {
-                map.path_grid.clear_tile(&mouse_pos);
+                map.path_grid.get_tile_mut(&mouse_pos).clear();
             }
             BuildMode::Yield => {
                 if let Tile::Road(road) = map.path_grid.get_tile_mut(&mouse_pos) {
@@ -487,7 +487,7 @@ impl UiState {
                     }
                 }
                 BuildMode::Clear => {
-                    map.path_grid.clear_tile(&pos);
+                    map.path_grid.get_tile_mut(&pos).clear();
                 }
                 _ => {}
             }

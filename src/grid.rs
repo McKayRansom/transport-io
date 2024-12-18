@@ -4,8 +4,6 @@ mod position;
 pub use position::*;
 mod direction;
 pub use direction::*;
-mod connections;
-pub use connections::*;
 mod build;
 // pub use build::*;
 
@@ -144,19 +142,6 @@ impl Grid {
         }
     }
 
-    pub fn clear_tile(&mut self, pos: &Position) {
-        let tile = self.get_tile_mut(pos);
-        *tile = Tile::Empty;
-    }
-
-    pub fn _is_driveable(&self, pos: &Position) -> bool {
-        if let Tile::Road(road) = self.get_tile(pos) {
-            !road.reserved.is_some()
-        } else {
-            false
-        }
-    }
-
     pub fn reserve_position(&mut self, pos: &Position, id: Id) -> ReservationStatus {
         self.get_tile_mut(pos)
             .reserve(id)
@@ -208,6 +193,7 @@ impl Grid {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 tile.ground.draw(self.pos(x as i16, y as i16), tileset);
+                tile.bridge.draw_bridge(self.pos(x as i16, y as i16), tileset);
             }
         }
     }
@@ -221,14 +207,6 @@ impl Grid {
             }
         }
     }
-
-    // pub fn should_yield(&self, pos: &Position) -> bool {
-    //     if let Some(tile) = self.get_tile(pos) {
-    //         tile.should_yield()
-    //     } else {
-    //         false
-    //     }
-    // }
 }
 
 #[cfg(test)]

@@ -68,24 +68,24 @@ impl Position {
         }
     }
 
-    pub fn iter_line_to(&self, destination: Position, max: (i16, i16)) -> PositionIterator {
+    pub fn iter_line_to(&self, destination: Position, max: (i16, i16)) -> (PositionIterator, Direction) {
         let direction = self.direction_to(destination);
         let count: usize = match direction {
             Direction::Down | Direction::Up => (destination.y - self.y).abs() as usize,
             Direction::Left | Direction::Right => (destination.x - self.x).abs() as usize,
         };
-        PositionIterator {
+        (PositionIterator {
             position: Some(*self),
             max: max,
             direction: direction,
             count: count + 1, // include the destination position
-        }
+        }, direction)
     }
 }
 
 pub struct PositionIterator {
     position: Option<Position>,
-    pub direction: Direction,
+    direction: Direction,
     count: usize,
     max: (i16, i16)
 }
@@ -185,10 +185,8 @@ mod position_tests {
     fn test_iter_line_to() {
         let start_pos: Position = pos(0, 0);
         let end_pos: Position = pos(3, 0);
-        let iter = start_pos.iter_line_to(end_pos, (4, 4));
-        assert_eq!(iter.position, Some(start_pos));
-        assert_eq!(iter.direction, Direction::Right);
-        assert_eq!(iter.count, 4);
+        let (iter, direction) = start_pos.iter_line_to(end_pos, (4, 4));
+        assert_eq!(direction, Direction::Right);
 
         let line: Vec<Position> = iter.collect();
         assert_eq!(

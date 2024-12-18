@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::Direction;
+use crate::grid::Direction;
 
 pub enum ConnectionLayer {
     Road = 0,

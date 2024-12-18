@@ -1,24 +1,19 @@
-use super::{ConnectionLayer, Grid, Position, Z_BRIDGE};
+use crate::tile::ConnectionLayer;
+
+use super::{Grid, Position, Z_BRIDGE};
 
 
 impl Grid {
 
     pub fn build_bridge(&mut self, start_pos: Position, end_pos: Position) {
-        let iter = start_pos.iter_line_to(end_pos, self.size);
-        let dir = iter.direction;
+        let (iter, dir) = start_pos.iter_line_to(end_pos, self.size);
         for pos in iter {
-            let build_pos = if pos == start_pos {
-                pos
-            } else {
-                pos.clone_on_layer(Z_BRIDGE)
-            };
-
-            let build_layer = if pos == start_pos {
-                ConnectionLayer::Up
+            let (build_pos, build_layer) = if pos == start_pos {
+                (pos, ConnectionLayer::Up)
             } else if pos == end_pos {
-                ConnectionLayer::Down
+                (pos.clone_on_layer(Z_BRIDGE), ConnectionLayer::Down)
             } else {
-                ConnectionLayer::Road
+                (pos.clone_on_layer(Z_BRIDGE), ConnectionLayer::Road)
             };
 
             self.get_tile_mut(&build_pos)

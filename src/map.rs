@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use macroquad::rand::{self, srand};
 
 use crate::{
-    grid::{self, ConnectionsIterator, Direction, Grid, Id, Position},
-    tile::{House, Tile},
+    grid::{self, Direction, Grid, Id, Position},
+    tile::{ConnectionLayer, ConnectionsIterator, House, Tile},
     tileset::Tileset,
     vehicle::{Status, Vehicle},
 };
@@ -57,7 +57,7 @@ impl Map {
                 Position::new_from_move(&self.path_grid.pos(x, y), dir, self.path_grid.size)
             {
                 if let Tile::Road(road) = self.path_grid.get_tile_mut(&road_pos) {
-                    road.connect_layer(dir.inverse(), grid::ConnectionLayer::Driveway);
+                    road.connect_layer(dir.inverse(), ConnectionLayer::Driveway);
                 }
             }
         }

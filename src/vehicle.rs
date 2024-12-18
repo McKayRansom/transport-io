@@ -9,6 +9,7 @@ use crate::grid::Grid;
 use crate::grid::Path;
 use crate::grid::Position;
 use crate::grid::ReservationStatus;
+use crate::tile::ConnectionLayer;
 use crate::tile::Tile;
 use crate::grid::GRID_CELL_SIZE;
 use crate::tileset::Tileset;
@@ -122,7 +123,7 @@ impl Vehicle {
         if let Tile::Road(road) = path_grid.get_tile(position) {
             // For each direction that feeds into this tile in question
             for dir in road
-                .iter_connections_inverse(crate::grid::ConnectionLayer::Road)
+                .iter_connections_inverse(ConnectionLayer::Road)
             {
                 if let Some(yield_to_pos) = Position::new_from_move(position, dir, path_grid.size) {
 
