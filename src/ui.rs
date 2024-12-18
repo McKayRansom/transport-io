@@ -1,5 +1,6 @@
 use crate::{
-    grid::{Position, Tile},
+    grid::Position,
+    tile::Tile,
     map::Map, tileset::Tileset, vehicle::Vehicle,
 };
 use macroquad::{

@@ -9,7 +9,7 @@ use crate::grid::Grid;
 use crate::grid::Path;
 use crate::grid::Position;
 use crate::grid::ReservationStatus;
-use crate::grid::Tile;
+use crate::tile::Tile;
 use crate::grid::GRID_CELL_SIZE;
 use crate::tileset::Tileset;
 

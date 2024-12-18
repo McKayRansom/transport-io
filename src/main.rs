@@ -2,6 +2,7 @@ mod grid;
 mod map;
 mod tileset;
 mod vehicle;
+mod tile;
 mod ui;
 use ui::UiState;
 use map::Map;

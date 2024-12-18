@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use macroquad::rand::{self, srand};
 
 use crate::{
-    grid::{self, ConnectionsIterator, Direction, Grid, House, Id, Position, Tile},
+    tile::{Tile, House},
+    grid::{self, ConnectionsIterator, Direction, Grid, Id, Position},
     tileset::Tileset,
     vehicle::{Status, Vehicle},
 };
