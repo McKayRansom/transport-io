@@ -1,7 +1,10 @@
 use macroquad::math::Rect;
-use pathfinding::num_traits::AsPrimitive;
 
 use super::{Direction, GRID_CELL_SIZE};
+
+// pub const Z_TUNNEL = 0
+pub const Z_GROUND: i16 = 0;
+pub const Z_BRIDGE: i16 = 1;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
 pub struct Position {
@@ -11,20 +14,35 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(x: i16, y: i16) -> Self {
-        let z = 0;
-        Position { x, y, z }
+    pub fn new(x: i16, y: i16, max: (i16, i16)) -> Option<Self> {
+        if x < 0 || x >= max.0 || y < 0 || y >= max.1 {
+            None
+        } else {
+            let z = Z_GROUND;
+            Some(Position { x, y, z })
+        }
+    }
+
+    pub fn clone_on_layer(&self, z: i16) -> Self {
+        Position {
+            x: self.x, y: self.y, z: z
+        }
     }
 
     pub fn _new_z(x: i16, y: i16, z: i16) -> Self {
         Position { x, y, z }
     }
 
-    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32) -> Self {
+    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32, max: (i16, i16)) -> Option<Self> {
         Position::new(
             ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
             ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1) as i16,
+            max,
         )
+    }
+
+    pub fn distance(&self, other: &Position) -> u32 {
+        (self.x.abs_diff(other.x) + self.y.abs_diff(other.y)) as u32
     }
 
     pub fn direction_to(self: Position, new_pos: Position) -> Direction {
@@ -41,23 +59,24 @@ impl Position {
         }
     }
 
-    pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
+    pub fn new_from_move(pos: &Position, dir: Direction, max: (i16, i16)) -> Option<Self> {
         match dir {
-            Direction::Up => Position::new(pos.x, pos.y - 1),
-            Direction::Down => Position::new(pos.x, pos.y + 1),
-            Direction::Left => Position::new(pos.x - 1, pos.y),
-            Direction::Right => Position::new(pos.x + 1, pos.y),
+            Direction::Up => Position::new(pos.x, pos.y - 1, max),
+            Direction::Down => Position::new(pos.x, pos.y + 1, max),
+            Direction::Left => Position::new(pos.x - 1, pos.y, max),
+            Direction::Right => Position::new(pos.x + 1, pos.y, max),
         }
     }
 
-    pub fn iter_line_to(&self, destination: Position) -> PositionIterator {
+    pub fn iter_line_to(&self, destination: Position, max: (i16, i16)) -> PositionIterator {
         let direction = self.direction_to(destination);
         let count: usize = match direction {
             Direction::Down | Direction::Up => (destination.y - self.y).abs() as usize,
             Direction::Left | Direction::Right => (destination.x - self.x).abs() as usize,
         };
         PositionIterator {
-            position: *self,
+            position: Some(*self),
+            max: max,
             direction: direction,
             count: count + 1, // include the destination position
         }
@@ -65,19 +84,21 @@ impl Position {
 }
 
 pub struct PositionIterator {
-    position: Position,
+    position: Option<Position>,
     pub direction: Direction,
     count: usize,
+    max: (i16, i16)
 }
 
 impl Iterator for PositionIterator {
     type Item = Position;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.count > 0 {
+        if self.count == 0 {
+            None
+        } else if let Some(position) = self.position {
             self.count -= 1;
-            let position = self.position;
-            self.position = Position::new_from_move(&self.position, self.direction);
+            self.position = Position::new_from_move(&position, self.direction, self.max);
             Some(position)
         } else {
             None
@@ -96,42 +117,36 @@ impl From<Position> for Rect {
     }
 }
 
-impl<T> From<(T, T)> for Position
-where
-    T: AsPrimitive<i16>,
-{
-    fn from(pos: (T, T)) -> Self {
-        Position::new(pos.0.as_(), pos.1.as_())
-    }
-}
-
 #[cfg(test)]
 mod position_tests {
 
     use super::*;
 
+    fn pos(x: i16, y: i16) -> Position {
+        Position::new(x, y, (4,4)).unwrap()
+    }
+
     #[test]
     fn test_init() {
-        let pos = Position::new(0, 0);
-        assert_eq!(pos, Position { x: 0, y: 0, z: 0 });
+        assert_eq!(pos(0, 0), Position { x: 0, y: 0, z: 0 });
     }
 
     #[test]
     fn test_from_position() {
         assert_eq!(
-            Position::new(0, 0).direction_to((3, 0).into()),
+            pos(0, 0).direction_to(pos(3, 0)),
             Direction::Right
         );
         assert_eq!(
-            Position::new(0, 3).direction_to((0, 0).into()),
+            pos(0, 3).direction_to(pos(0, 0)),
             Direction::Up
         );
         assert_eq!(
-            Position::new(3, 0).direction_to((0, 0).into()),
+            pos(3, 0).direction_to(pos(0, 0)),
             Direction::Left
         );
         assert_eq!(
-            Position::new(0, 0).direction_to((0, 3).into()),
+            pos(0, 0).direction_to(pos(0, 3)),
             Direction::Down
         );
     }
@@ -139,46 +154,46 @@ mod position_tests {
     #[test]
     fn test_from_position_diagonal() {
         assert_eq!(
-            Position::new(0, 0).direction_to((3, 1).into()),
+            pos(0, 0).direction_to(pos(3, 1)),
             Direction::Right
         );
         assert_eq!(
-            Position::new(1, 3).direction_to((0, 0).into()),
+            pos(1, 3).direction_to(pos(0, 0)),
             Direction::Up
         );
         assert_eq!(
-            Position::new(3, 1).direction_to((0, 0).into()),
+            pos(3, 1).direction_to(pos(0, 0)),
             Direction::Left
         );
         assert_eq!(
-            Position::new(0, 0).direction_to((1, 3).into()),
+            pos(0, 0).direction_to(pos(1, 3)),
             Direction::Down
         );
 
         // for even let's just pick Left/Right??
         assert_eq!(
-            Position::new(3, 3).direction_to((0, 0).into()),
+            pos(3, 3).direction_to(pos(0, 0)),
             Direction::Left
         );
         assert_eq!(
-            Position::new(0, 0).direction_to((3, 3).into()),
+            pos(0, 0).direction_to(pos(3, 3)),
             Direction::Right
         );
     }
 
     #[test]
     fn test_iter_line_to() {
-        let start_pos: Position = (0, 0).into();
-        let end_pos: Position = (3, 0).into();
-        let iter = start_pos.iter_line_to(end_pos);
-        assert_eq!(iter.position, start_pos);
+        let start_pos: Position = pos(0, 0);
+        let end_pos: Position = pos(3, 0);
+        let iter = start_pos.iter_line_to(end_pos, (4, 4));
+        assert_eq!(iter.position, Some(start_pos));
         assert_eq!(iter.direction, Direction::Right);
         assert_eq!(iter.count, 4);
 
         let line: Vec<Position> = iter.collect();
         assert_eq!(
             line,
-            vec![(0, 0).into(), (1, 0).into(), (2, 0).into(), (3, 0).into()]
+            vec![pos(0, 0), pos(1, 0), pos(2, 0), pos(3, 0)]
         );
     }
 }

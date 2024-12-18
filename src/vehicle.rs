@@ -114,24 +114,23 @@ impl Vehicle {
     ) -> ShouldWeYieldStatus {
         // never yield from an intersection
         if let Tile::Road(road) = my_tile {
-            if road.connections.count() > 1 {
+            if road.connection_count() > 1 {
                 return ShouldWeYieldStatus::Clear;
             }
         }
 
-        if let Some(Tile::Road(road)) = path_grid.get_tile(position) {
+        if let Tile::Road(road) = path_grid.get_tile(position) {
             // For each direction that feeds into this tile in question
             for dir in road
-                .connections
-                .iter_inverse(crate::grid::ConnectionLayer::Road)
+                .iter_connections_inverse(crate::grid::ConnectionLayer::Road)
             {
-                let yield_to_pos = Position::new_from_move(position, dir);
+                if let Some(yield_to_pos) = Position::new_from_move(position, dir, path_grid.size) {
 
                 // Get the road
-                if let Some(Tile::Road(yield_to_road)) = path_grid.get_tile(&yield_to_pos) {
+                if let Tile::Road(yield_to_road) = path_grid.get_tile(&yield_to_pos) {
                     // if it's reserved and connects to our road
                     if yield_to_road.reserved.is_some()
-                        && yield_to_road.connections.has(dir.inverse())
+                        && yield_to_road.is_connected(dir.inverse())
                     {
                         match my_tile {
                             // alway yield from a house
@@ -145,7 +144,7 @@ impl Vehicle {
                             Tile::Road(_) => {
                                 // Always yield when entering an interseciton (if we aren't an intersection)
                                 // because of the check above we know we are NOT an intersection
-                                if yield_to_road.connections.count() > 1 {
+                                if yield_to_road.connection_count() > 1 {
                                     return ShouldWeYieldStatus::Yield(yield_to_pos);
                                 }
                                 // otherwise if the tile is a normal road we probably don't need to yield
@@ -154,6 +153,7 @@ impl Vehicle {
                     }
                 }
             }
+            }
         }
 
         return ShouldWeYieldStatus::Clear;
@@ -161,7 +161,7 @@ impl Vehicle {
 
     fn reserve_path(&self, path_grid: &mut Grid) -> ReservePathStatus {
         // let mut should_yield = path_grid.should_yield(&self.pos);
-        let my_tile = *path_grid.get_tile(&self.pos).unwrap();
+        let my_tile = *path_grid.get_tile(&self.pos);
         let mut reserved = Vec::<Position>::new();
         // println!("should_yield: {}", should_yield);
         if self.path.is_none() {
@@ -239,7 +239,7 @@ impl Vehicle {
 
     fn update_position(&mut self, path_grid: &mut Grid) -> Status {
         if let Some(blocking_tile) = self.blocking_tile {
-            if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
+            if let Tile::Road(road) = path_grid.get_tile(&blocking_tile) {
                 if road.reserved.is_some() {
                     // don't bother
                     return Status::EnRoute;
@@ -374,8 +374,8 @@ mod vehicle_tests {
     #[test]
     fn test_init() {
         let mut grid = Grid::new_from_string(">>>>");
-        let start_pos = Position::new(0, 0);
-        let end_pos = Position::new(3, 0);
+        let start_pos = grid.pos(0, 0);
+        let end_pos = grid.pos(3, 0);
         assert!(Vehicle::new(start_pos, 0, end_pos, &mut grid).is_some());
 
         assert_eq!(
@@ -389,9 +389,9 @@ mod vehicle_tests {
     #[test]
     fn test_status() {
         let mut grid = Grid::new_from_string(">>>>");
-        let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
-        grid.reserve_position(&(1, 0).into(), 1);
+        grid.reserve_position(&grid.pos(1, 0), 1);
 
         assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
     }
@@ -399,7 +399,7 @@ mod vehicle_tests {
     #[test]
     fn test_late() {
         let mut grid = Grid::new_from_string(">>>>");
-        let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0).into(), &mut grid).unwrap();
 
         vehicle.update(&mut grid);
 
@@ -413,7 +413,7 @@ mod vehicle_tests {
     #[test]
     fn test_trip() {
         let mut grid = Grid::new_from_string(">>>>");
-        let mut vehicle = Vehicle::new((0, 0).into(), 0, (3, 0).into(), &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
         let trip_length: u32 = 3;
         let trip_time = SPEED_TICKS_PER_TILE as u32 * (trip_length - 0);
@@ -463,8 +463,8 @@ mod vehicle_tests {
     fn test_reserved() {
         let mut grid = Grid::new_from_string(">>>>");
 
-        let start_pos = (0, 0).into();
-        let end_pos = (3, 0).into();
+        let start_pos = grid.pos(0, 0);
+        let end_pos = grid.pos(3, 0);
 
         let _ = Vehicle::new(start_pos, 0, end_pos, &mut grid).unwrap();
 
@@ -482,8 +482,8 @@ mod vehicle_tests {
     #[test]
     fn test_update_speed() {
         let mut grid = Grid::new_from_string(">>>>");
-        let start_pos = Position::new(0, 0);
-        let end_pos = Position::new(3, 0);
+        let start_pos = grid.pos(0, 0);
+        let end_pos = grid.pos(3, 0);
         let mut vehicle = Vehicle::new(start_pos, 0, end_pos, &mut grid).unwrap();
 
         vehicle.update_speed();
@@ -504,10 +504,10 @@ mod vehicle_tests {
 
         // println!("grid: {:?}", &grid);
 
-        let start_pos = Position::new(1, 1);
-        let yield_to_pos = Position::new(0, 0);
-        let intersection_pos = Position::new(1, 0);
-        let mut vehicle = Vehicle::new(start_pos, 0, Position::new(3, 0), &mut grid).unwrap();
+        let start_pos = grid.pos(1, 1);
+        let yield_to_pos = grid.pos(0, 0);
+        let intersection_pos = grid.pos(1, 0);
+        let mut vehicle = Vehicle::new(start_pos, 0, grid.pos(3, 0), &mut grid).unwrap();
 
         assert_eq!(
             grid.reserve_position(&yield_to_pos, 1),
@@ -536,16 +536,16 @@ mod vehicle_tests {
         );
 
         let mut vehicle_top =
-            Vehicle::new(Position::new(2, 1), 0, Position::new(2, 4), &mut grid).unwrap();
+            Vehicle::new(grid.pos(2, 1), 0, grid.pos(2, 4), &mut grid).unwrap();
 
         let mut vehicle_left =
-            Vehicle::new(Position::new(1, 3), 1, Position::new(5, 3), &mut grid).unwrap();
+            Vehicle::new(grid.pos(1, 3), 1, grid.pos(5, 3), &mut grid).unwrap();
 
         let mut vehicle_bottom =
-            Vehicle::new(Position::new(3, 4), 2, Position::new(3, 0), &mut grid).unwrap();
+            Vehicle::new(grid.pos(3, 4), 2, grid.pos(3, 0), &mut grid).unwrap();
 
         let mut vehicle_right =
-            Vehicle::new(Position::new(4, 2), 3, Position::new(0, 2), &mut grid).unwrap();
+            Vehicle::new(grid.pos(4, 2), 3, grid.pos(0, 2), &mut grid).unwrap();
 
         assert!(vehicle_top.path.is_some());
         assert!(vehicle_left.path.is_some());
@@ -578,9 +578,9 @@ mod vehicle_tests {
         );
 
         let mut vehicle =
-            Vehicle::new(Position::new(1, 2), 0, Position::new(3, 1), &mut grid).unwrap();
+            Vehicle::new(grid.pos(1, 2), 0, grid.pos(3, 1), &mut grid).unwrap();
 
-        let yield_to_pos = Position::new(0, 1);
+        let yield_to_pos = grid.pos(0, 1);
 
         assert_eq!(vehicle.path.is_some(), true);
 
@@ -594,7 +594,7 @@ mod vehicle_tests {
         grid.unreserve_position(&yield_to_pos);
 
         // reserve position accross the street
-        let do_not_yield_to_pos = Position::new(1, 0);
+        let do_not_yield_to_pos = grid.pos(1, 0);
         grid.reserve_position(&do_not_yield_to_pos, 1);
 
         vehicle.update(&mut grid);

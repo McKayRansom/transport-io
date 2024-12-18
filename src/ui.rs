@@ -1,7 +1,5 @@
 use crate::{
-    grid::Position,
-    tile::Tile,
-    map::Map, tileset::Tileset, vehicle::Vehicle,
+    grid::Position, map::Map, tile::Tile, tileset::Tileset, vehicle::Vehicle
 };
 use macroquad::{
     color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, ui::{
@@ -42,7 +40,7 @@ pub struct UiState {
     pub zoom: f32,
     pub camera: (f32, f32),
     mouse_pressed: bool,
-    last_mouse_pos: Position,
+    last_mouse_pos: Option<Position>,
     bridge_start_pos: Option<Position>,
     build_mode: BuildMode,
     toolbar_items: Vec<ToolbarItem>,
@@ -56,7 +54,7 @@ impl UiState {
             zoom: 1.,
             camera: (0., 0.),
             mouse_pressed: false,
-            last_mouse_pos: Position::new(0, 0),
+            last_mouse_pos: None,
             bridge_start_pos: None,
             build_mode: BuildMode::None,
             toolbar_items: vec![
@@ -243,12 +241,12 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
-        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom);
+        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom, map.path_grid.size);
 
         if is_mouse_button_down(MouseButton::Left) {
             // macroquad::ui::
-            if !self.mouse_pressed {
-                self.mouse_button_down_event(pos, map)
+            if !self.mouse_pressed && pos.is_some() {
+                self.mouse_button_down_event(pos.unwrap(), map)
             }
             self.mouse_pressed = true;
         } else {
@@ -256,7 +254,9 @@ impl UiState {
         }
 
         if self.last_mouse_pos != pos {
-            self.mouse_motion_event(pos, map);
+            if pos.is_some() {
+                self.mouse_motion_event(pos.unwrap(), map);
+            }
             self.last_mouse_pos = pos;
         }
     }
@@ -299,33 +299,31 @@ impl UiState {
         build_mode
     }
 
-    fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
+    fn draw_vehicle_details(ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
         ui.label(None, &format!("Vehicle Trip: {:?}", vehicle.trip_completed_percent()));
         ui.label(None, &format!("Vehicle Late: {:?}", vehicle.trip_late()));
         vehicle.draw_detail(tileset);
     }
 
-    fn draw_tile_details(&self, ui: &mut Ui, map: &Map, tileset: &Tileset) {
-        if let Some(tile) = map.path_grid.get_tile(&self.last_mouse_pos) {
-            match tile {
-                Tile::Empty => {
-                    ui.label(None, &format!("Empty"));
-                }
-                Tile::House(house) => {
-                    ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
-                    if let Some(vehicle_id) = house.vehicle_on_the_way {
-                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
-                            // vehicle.draw_detail(tileset);
-                            self.draw_vehicle_details(ui, tileset, vehicle);
-                        }
+    fn draw_tile_details(pos: Position, ui: &mut Ui, map: &Map, tileset: &Tileset) {
+        match map.path_grid.get_tile(&pos) {
+            Tile::Empty => {
+                ui.label(None, &format!("Empty"));
+            }
+            Tile::House(house) => {
+                ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
+                if let Some(vehicle_id) = house.vehicle_on_the_way {
+                    if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                        // vehicle.draw_detail(tileset);
+                        UiState::draw_vehicle_details(ui, tileset, vehicle);
                     }
                 }
-                Tile::Road(road) => {
-                    ui.label(None, &format!("Road {:?}", road.reserved));
-                    if let Some(vehicle_id) = road.reserved {
-                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
-                            self.draw_vehicle_details(ui, tileset, vehicle);
-                        }
+            }
+            Tile::Road(road) => {
+                ui.label(None, &format!("Road {:?}", road.reserved));
+                if let Some(vehicle_id) = road.reserved {
+                    if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                        UiState::draw_vehicle_details(ui, tileset, vehicle);
                     }
                 }
             }
@@ -346,7 +344,9 @@ impl UiState {
         .label("Details")
         .movable(false)
         .ui(&mut *root_ui(), |ui| {
-            self.draw_tile_details(ui, map, tileset);
+            if let Some(pos) = self.last_mouse_pos {
+                UiState::draw_tile_details(pos, ui, map, tileset);
+            }
         });
     }
 
@@ -369,25 +369,27 @@ impl UiState {
         });
     }
 
-    fn draw_selected(&self, tileset: &Tileset) {
+    fn draw_selected(&self, map: &Map, tileset: &Tileset) {
         // draw selected
-        match self.build_mode {
-            BuildMode::Bridge => {
-                if let Some(start_pos) = self.bridge_start_pos {
-                    for pos in start_pos.iter_line_to(self.last_mouse_pos) {
-                        tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
+        if let Some(last_mouse_pos) = self.last_mouse_pos {
+            match self.build_mode {
+                BuildMode::Bridge => {
+                    if let Some(start_pos) = self.bridge_start_pos {
+                        for pos in start_pos.iter_line_to(last_mouse_pos, map.path_grid.size) {
+                            tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
+                        }
+                    } else {
+                        tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
                     }
-                } else {
-                    tileset.draw_rect(&Rect::from(self.last_mouse_pos), SELECTED_BUILD);
                 }
-            }
-            _ => {
-                let color = if self.build_mode == BuildMode::Clear {
-                    SELECTED_DELETE
-                } else {
-                    SELECTED_BUILD
-                };
-                tileset.draw_rect(&Rect::from(self.last_mouse_pos), color);
+                _ => {
+                    let color = if self.build_mode == BuildMode::Clear {
+                        SELECTED_DELETE
+                    } else {
+                        SELECTED_BUILD
+                    };
+                    tileset.draw_rect(&Rect::from(last_mouse_pos), color);
+                }
             }
         }
 
@@ -408,7 +410,7 @@ impl UiState {
 
         self.draw_paused();
 
-        self.draw_selected(tileset);
+        self.draw_selected(map, tileset);
 
         // profiler
         macroquad_profiler::profiler(ProfilerParams{fps_counter_pos: vec2(0., 50.)});
@@ -436,29 +438,23 @@ impl UiState {
         }
     }
 
-    fn mouse_button_down_event(&mut self, pos: Position, map: &mut Map) {
-        println!("Mouse pressed: pos: {pos:?}");
+    fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) {
+        println!("Mouse pressed: pos: {mouse_pos:?}");
         match self.build_mode {
             BuildMode::Clear => {
-                map.path_grid.clear_tile(&pos);
+                map.path_grid.clear_tile(&mouse_pos);
             }
             BuildMode::Yield => {
-                if let Some(Tile::Road(road)) = map.path_grid.get_tile_mut(&pos) {
+                if let Tile::Road(road) = map.path_grid.get_tile_mut(&mouse_pos) {
                     road.should_yield = !road.should_yield;
                 }
             }
             BuildMode::Bridge => {
                 if let Some(start_pos) = self.bridge_start_pos {
-                    let iter = start_pos.iter_line_to(pos);
-                    let dir = iter.direction;
-                    for pos in iter {
-                        // TODO: Add bridge connection
-                        map.path_grid.add_tile_connection(&pos, dir);
-                    }
-
+                    map.path_grid.build_bridge(start_pos, mouse_pos);
                     self.bridge_start_pos = None;
                 } else {
-                    self.bridge_start_pos = Some(pos);
+                    self.bridge_start_pos = Some(mouse_pos);
                 }
             }
             // BuildMode::Roundabout => {
@@ -477,13 +473,18 @@ impl UiState {
         if is_mouse_button_down(MouseButton::Left) {
             match self.build_mode {
                 BuildMode::AddRoad => {
-                    let dir = self.last_mouse_pos.direction_to(pos);
-                    map.path_grid.add_tile_connection(&self.last_mouse_pos, dir);
+                    if let Some(last_mouse_pos) = self.last_mouse_pos {
+                        let dir = last_mouse_pos.direction_to(pos);
+                        map.path_grid.get_tile_mut(&last_mouse_pos)
+                            .edit_road(|road| road.connect(dir));
+                    }
                 }
                 BuildMode::RemoveRoad => {
-                    let dir = self.last_mouse_pos.direction_to(pos);
-                    map.path_grid
-                        .remove_tile_connection(&self.last_mouse_pos, dir);
+                    if let Some(last_mouse_pos) = self.last_mouse_pos {
+                        let dir = last_mouse_pos.direction_to(pos);
+                        map.path_grid.get_tile_mut(&last_mouse_pos)
+                            .edit_road(|road| road.disconnect(dir));
+                    }
                 }
                 BuildMode::Clear => {
                     map.path_grid.clear_tile(&pos);
