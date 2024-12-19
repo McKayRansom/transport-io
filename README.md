@@ -3,6 +3,8 @@
 Transport game insired by a mix of shapez.io, mini metro, mini motorways, OpenTTD and Factorio.
 Currently Pre-alpha.
 
+Try it live at -> https://mckayransom.github.io/transport-io/
+
 Development guidlines:
  - The fun is the network! IMO these types of games are about building and upgrading transport networks. Side features like Combat, Signal managment, Vehicle managment, etc... aren't interesting. 
  - I started this game because I love factorio but feel like it overcomplicated things, and I love OpenTTD but think it's a little to hard to build a big network. Mini Metro and Mini Motorways show that you can build an interesting network with much simpler mechanics, but they are missing the scaling aspect.
