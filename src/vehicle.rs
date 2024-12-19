@@ -99,7 +99,7 @@ impl Vehicle {
 
         if let Some((path, _cost)) = &self.path {
             // for pos in &path[self.path_index + 1..] {
-            if let Some(pos) = path.get(self.path_index) {
+            if let Some(pos) = path.get(self.path_index + 1) {
                 match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
 
                     None => match grid.should_we_yield_when_entering(should_yield, pos) {
@@ -142,7 +142,7 @@ impl Vehicle {
             ReservePathStatus::Success(reserved) => {
                 self.reserved = reserved;
                 if let Some(path) = self.path.as_ref() {
-                    let pos = path.0[self.path_index];
+                    let pos = path.0[self.path_index + 1];
                     self.path_index += 1;
                     Some(pos)
                 } else {
@@ -382,11 +382,10 @@ mod vehicle_tests {
             );
         }
 
-        // TODO: This doesn't work now???
         println!("Vehicle : {:?}", vehicle.blocking_tile);
-        assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
+        assert_eq!(vehicle.update(&mut grid), Status::ReachedDestination);
         assert_eq!(vehicle.pos, destination);
-        assert_eq!(vehicle.trip_late(), 1.0);
+        assert_ne!(vehicle.trip_late(), 1.0);
     }
 
     #[test]

@@ -209,4 +209,9 @@ mod map_tests {
         map.update_rating(false);
         assert_eq!(map.rating, 0.9);
     }
+
+    #[test]
+    fn test_map_serialize() {
+
+    }
 }
