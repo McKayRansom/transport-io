@@ -99,8 +99,9 @@ impl Vehicle {
 
         if let Some((path, _cost)) = &self.path {
             // for pos in &path[self.path_index + 1..] {
-            if let Some(pos) = path.get(self.path_index + 1) {
+            if let Some(pos) = path.get(self.path_index) {
                 match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
+
                     None => match grid.should_we_yield_when_entering(should_yield, pos) {
                         ShouldWeYieldStatus::Yield(yield_to_pos) => {
                             return ReservePathStatus::Blocking(yield_to_pos)

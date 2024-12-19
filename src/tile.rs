@@ -13,7 +13,7 @@ mod reservation;
 pub use reservation::*;
 
 use crate::{
-    grid::{Id, Position, ReservationError},
+    grid::{Direction, Id, Position, ReservationError},
     tileset::Tileset,
 };
 
@@ -23,7 +23,13 @@ const HOUSE_SPRITE: u32 = 16;
 pub enum YieldType {
     Always,
     IfAtIntersection,
-    Never
+    Never,
+}
+
+#[derive(PartialEq)]
+pub enum YieldTo {
+    Intersection,
+    Road,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -118,11 +124,29 @@ impl Tile {
             Tile::House(_) => YieldType::Always,
             // if we are somehow in a weird state, I guess yield?
             Tile::Empty => YieldType::Always,
-            Tile::Road(road) => if road.connection_count() > 1 {
-                YieldType::Never
+            Tile::Road(road) => {
+                if road.connection_count() > 1 {
+                    YieldType::Never
+                } else {
+                    YieldType::IfAtIntersection
+                }
+            }
+        }
+    }
+
+    pub fn yield_to(&self, dir_from: Direction) -> Option<YieldTo> {
+        if let Tile::Road(road) = self {
+            if road.reserved.is_reserved() && road.is_connected(dir_from.inverse()) {
+                if road.connection_count() > 1 {
+                    Some(YieldTo::Intersection)
+                } else {
+                    Some(YieldTo::Road)
+                }
             } else {
-                YieldType::IfAtIntersection
-            },
+                None
+            }
+        } else {
+            None
         }
     }
 
