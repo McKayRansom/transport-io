@@ -10,7 +10,7 @@ mod build;
 use macroquad::math::Rect;
 use pathfinding::prelude::astar;
 
-use crate::tile::Tile;
+use crate::tile::{ConnectionLayer, Tile, YieldType};
 use crate::tileset::Tileset;
 
 pub type Id = u64;
@@ -27,6 +27,12 @@ pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
+
+
+pub enum ShouldWeYieldStatus {
+    Yield(Position),
+    Clear,
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct GridTile {
@@ -174,6 +180,46 @@ impl Grid {
                 }
             })
             .collect()
+    }
+
+
+    pub fn should_we_yield_when_entering(
+        &self,
+        should_yield: YieldType,
+        position: &Position,
+    ) -> ShouldWeYieldStatus {
+        // never yield from an intersection
+        if should_yield == YieldType::Never {
+            return ShouldWeYieldStatus::Clear;
+        }
+
+        if let Tile::Road(road) = self.get_tile(position) {
+            // For each direction that feeds into this tile in question
+            for dir in road.iter_connections_inverse(ConnectionLayer::Road) {
+                if let Some(yield_to_pos) = Position::new_from_move(position, dir, self.size) {
+                    // Get the road
+                    if let Tile::Road(yield_to_road) = self.get_tile(&yield_to_pos) {
+                        // if it's reserved and connects to our road
+                        if yield_to_road.reserved.is_reserved()
+                            && yield_to_road.is_connected(dir.inverse())
+                        {
+                            if should_yield == YieldType::Always {
+                                    return ShouldWeYieldStatus::Yield(yield_to_pos);
+                                } else {
+                                    // Always yield when entering an interseciton (if we aren't an intersection)
+                                    // because of the check above we know we are NOT an intersection
+                                    if yield_to_road.connection_count() > 1 {
+                                        return ShouldWeYieldStatus::Yield(yield_to_pos);
+                                    }
+                                    // otherwise if the tile is a normal road we probably don't need to yield
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return ShouldWeYieldStatus::Clear;
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
