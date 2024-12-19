@@ -9,12 +9,22 @@ pub use road::*;
 mod connections;
 pub use connections::*;
 
+mod reservation;
+pub use reservation::*;
+
 use crate::{
-    grid::{Id, Position, ReservationStatus},
+    grid::{Id, Position, ReservationError},
     tileset::Tileset,
 };
 
 const HOUSE_SPRITE: u32 = (16 * 1) + 0;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum YieldType {
+    Always,
+    IfAtIntersection,
+    Never
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct House {
@@ -23,7 +33,9 @@ pub struct House {
 
 impl House {
     pub fn new() -> Self {
-        House { vehicle_on_the_way: None }
+        House {
+            vehicle_on_the_way: None,
+        }
     }
 
     pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
@@ -36,7 +48,7 @@ impl House {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Tile {
     Empty,
     House(House),
@@ -90,31 +102,29 @@ impl Tile {
         }
     }
 
-
-    pub fn reserve(&mut self, id: Id) -> ReservationStatus {
+    pub fn reserve(&mut self, id: Id) -> Result<Reservation, ReservationError> {
         match self {
-            Tile::Road(road) => {
-                if road.reserved.is_some()
-                /* TODO: Add check for intersection full */
-                {
-                    ReservationStatus::TileReserved
-                // } else if road.connections.safe_to_block() {
-                // road.reserved = true;
-                // ReservationStatus::TileBlockable
-                } else {
-                    road.reserved = Some(id);
-                    ReservationStatus::TileSuccess
-                    // ReservationStatus::TileDoNotBlock
-                }
-            }
-            Tile::House(_) => ReservationStatus::TileSuccess,
-            Tile::Empty => ReservationStatus::TileInvalid,
+            Tile::Road(road) => road
+                .reserved
+                .try_reserve(id)
+                .ok_or(ReservationError::TileReserved),
+
+            Tile::House(_) => Ok(Reservation::new_for_house()),
+            Tile::Empty => Err(ReservationError::TileInvalid),
         }
     }
 
-    pub fn unreserve(&mut self) {
-        if let Tile::Road(road) = self {
-            road.reserved = None;
+    pub fn should_yield(&self) -> YieldType {
+        match self {
+            // alway yield from a house
+            Tile::House(_) => YieldType::Always,
+            // if we are somehow in a weird state, I guess yield?
+            Tile::Empty => YieldType::Always,
+            Tile::Road(road) => if road.connection_count() > 1 {
+                YieldType::Never
+            } else {
+                YieldType::IfAtIntersection
+            },
         }
     }
 

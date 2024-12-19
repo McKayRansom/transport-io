@@ -28,7 +28,7 @@ pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct GridTile {
     ground: Tile,
     bridge: Tile,
@@ -59,10 +59,9 @@ pub struct Grid {
 impl Position {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ReservationStatus {
+pub enum ReservationError {
     TileInvalid,
     TileReserved,
-    TileSuccess,
     // TileDoNotBlock,
 }
 
@@ -76,7 +75,7 @@ impl fmt::Debug for Grid {
         for y in 0..self.tiles.len() {
             write!(f, "{}", y)?;
             for x in 0..self.tiles[y].len() {
-                match self.tiles[y][x].ground {
+                match &self.tiles[y][x].ground {
                     Tile::Empty => write!(f, "e")?,
                     Tile::Road(road) => road.fmt(f)?,
                     Tile::House(_) => write!(f, "h")?,
@@ -142,16 +141,6 @@ impl Grid {
         }
     }
 
-    pub fn reserve_position(&mut self, pos: &Position, id: Id) -> ReservationStatus {
-        self.get_tile_mut(pos)
-            .reserve(id)
-    }
-
-    pub fn unreserve_position(&mut self, pos: &Position) {
-        self.get_tile_mut(pos)
-            .unreserve();
-    }
-
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
         let result = astar(
             start,
@@ -163,7 +152,7 @@ impl Grid {
         result
     }
 
-    fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
+    pub fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
         tile.iter_connections()
             .filter_map(|dir| {
@@ -172,7 +161,7 @@ impl Grid {
                         new_pos,
                         match self.get_tile(&new_pos) {
                             Tile::Road(road) => {
-                                if road.reserved.is_some() {
+                                if road.reserved.is_reserved() {
                                     OCCUPIED_COST
                                 } else {
                                     DEFAULT_COST
@@ -216,7 +205,30 @@ mod grid_tests {
     #[test]
     fn test_new() {
         let grid = Grid::new_from_string(">>>");
-        assert_eq!(grid.tiles[0][0].ground, Tile::new_from_char('>'));
+        assert_eq!(*grid.get_tile(&grid.pos(0, 0)), Tile::new_from_char('>'));
+    }
+
+    #[test]
+    fn test_successors() {
+        let grid = Grid::new_from_string(">>>");
+        let suc = grid.successors(&grid.pos(1, 0));
+        assert_eq!(suc, vec![(grid.pos(2, 0), 1)]);
+    }
+
+    #[test]
+    fn test_path() {
+        let grid = Grid::new_from_string(">>>");
+
+        let path = grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).unwrap();
+        assert_eq!(path.0, vec![grid.pos(0, 0), grid.pos(1, 0), grid.pos(2, 0)]);
+        assert_eq!(path.1, 2);
+    }
+
+    #[test]
+    fn test_path_fail() {
+        let grid = Grid::new_from_string("<<<");
+
+        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).is_none());
     }
 
 }

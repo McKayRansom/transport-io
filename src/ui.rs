@@ -320,8 +320,8 @@ impl UiState {
                 }
             }
             Tile::Road(road) => {
-                ui.label(None, &format!("Road {:?}", road.reserved));
-                if let Some(vehicle_id) = road.reserved {
+                ui.label(None, &format!("Road {:?}", road));
+                if let Some(vehicle_id) = road.reserved.get_reserved_id() {
                     if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
                         UiState::draw_vehicle_details(ui, tileset, vehicle);
                     }

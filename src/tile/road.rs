@@ -1,19 +1,19 @@
 
 use macroquad::{color::WHITE, math::Rect};
 
-use crate::{grid::{Direction, Id}, tileset::Tileset};
+use crate::{grid::Direction, tileset::Tileset};
 
-use super::{ConnectionLayer, Connections, ConnectionsIterator};
+use super::{ConnectionLayer, Connections, ConnectionsIterator, Reserved};
 
 const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
 const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Road {
     pub should_yield: bool,
-    pub reserved: Option<Id>,
+    pub reserved: Reserved,
     connections: Connections,
 }
 
@@ -21,7 +21,7 @@ impl Road {
     pub fn new() -> Self {
         Road {
             should_yield: false,
-            reserved: None,
+            reserved: Reserved::new(),
             connections: Connections::new(),
         }
     }
@@ -138,7 +138,7 @@ impl Road {
 
 impl std::fmt::Debug for Road {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.reserved.is_some() {
+        if self.reserved.is_reserved() {
             write!(f, "o")
         }
         else {

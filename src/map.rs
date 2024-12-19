@@ -118,7 +118,7 @@ impl Map {
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
         let id = self.vehicle_id;
-        if let Some(vehicle) =
+        if let Ok(vehicle) =
             Vehicle::new(start_pos, self.vehicle_id, end_pos, &mut self.path_grid)
         {
             self.vehicles.insert(id, vehicle);
@@ -176,7 +176,6 @@ impl Map {
             if let Tile::House(house) = self.path_grid.get_tile_mut(&vehicle.destination) {
                 house.vehicle_on_the_way = None;
             }
-            vehicle.delete(&mut self.path_grid);
             self.vehicles.remove(&id.0);
 
             self.update_rating(id.1 == Status::ReachedDestination);
