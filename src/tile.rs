@@ -17,7 +17,7 @@ use crate::{
     tileset::Tileset,
 };
 
-const HOUSE_SPRITE: u32 = (16 * 1) + 0;
+const HOUSE_SPRITE: u32 = 16;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum YieldType {
@@ -44,7 +44,7 @@ impl House {
         } else {
             WHITE
         };
-        tileset.draw_tile(HOUSE_SPRITE, color, &rect, 0.0);
+        tileset.draw_tile(HOUSE_SPRITE, color, rect, 0.0);
     }
 }
 
@@ -87,18 +87,16 @@ impl Tile {
     pub fn draw(&self, pos: Position, tileset: &Tileset) {
         let rect = Rect::from(pos);
 
-        match self {
-            Tile::Road(road) => road.draw(&rect, tileset),
-            _ => {}
+        if let Tile::Road(road) = self {
+            road.draw(&rect, tileset);
         }
     }
 
     pub fn draw_bridge(&self, pos: Position, tileset: &Tileset) {
         let mut rect = Rect::from(pos);
         rect.y -= 10.;
-        match self {
-            Tile::Road(road) => road.draw(&rect, tileset),
-            _ => {}
+        if let Tile::Road(road) = self {
+            road.draw(&rect, tileset);
         }
     }
 

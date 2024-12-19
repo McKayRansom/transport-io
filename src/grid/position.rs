@@ -25,7 +25,7 @@ impl Position {
 
     pub fn clone_on_layer(&self, z: i16) -> Self {
         Position {
-            x: self.x, y: self.y, z: z
+            x: self.x, y: self.y, z
         }
     }
 
@@ -71,13 +71,13 @@ impl Position {
     pub fn iter_line_to(&self, destination: Position, max: (i16, i16)) -> (PositionIterator, Direction) {
         let direction = self.direction_to(destination);
         let count: usize = match direction {
-            Direction::Down | Direction::Up => (destination.y - self.y).abs() as usize,
-            Direction::Left | Direction::Right => (destination.x - self.x).abs() as usize,
+            Direction::Down | Direction::Up => (destination.y - self.y).unsigned_abs() as usize,
+            Direction::Left | Direction::Right => (destination.x - self.x).unsigned_abs() as usize,
         };
         (PositionIterator {
             position: Some(*self),
-            max: max,
-            direction: direction,
+            max,
+            direction,
             count: count + 1, // include the destination position
         }, direction)
     }
@@ -111,8 +111,8 @@ impl From<Position> for Rect {
         Rect::new(
             pos.x as f32 * GRID_CELL_SIZE.0,
             pos.y as f32 * GRID_CELL_SIZE.1,
-            GRID_CELL_SIZE.0 as f32,
-            GRID_CELL_SIZE.1 as f32,
+            GRID_CELL_SIZE.0,
+            GRID_CELL_SIZE.1,
         )
     }
 }

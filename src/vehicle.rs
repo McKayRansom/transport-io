@@ -58,16 +58,16 @@ impl Vehicle {
         let reservation = grid.get_tile_mut(&pos).reserve(id)?;
 
         let mut vehicle = Vehicle {
-            id: id,
+            id,
             path: None,
             path_time_ticks: 0,
             path_index: 0,
             elapsed_ticks: 0,
-            pos: pos,
+            pos,
             lag_pos_pixels: 0,
             dir: Direction::Right,
             blocking_tile: None,
-            destination: destination,
+            destination,
             reserved: vec![reservation],
         };
 
@@ -88,7 +88,7 @@ impl Vehicle {
                 reserved.push(reservation);
                 None
             }
-            Err(err) => return Some(err),
+            Err(err) => Some(err),
         }
     }
 
@@ -98,9 +98,10 @@ impl Vehicle {
         let mut reserved = Vec::<Reservation>::new();
 
         if let Some((path, _cost)) = &self.path {
-            for pos in &path[self.path_index + 1..] {
+            // for pos in &path[self.path_index + 1..] {
+            if let Some(pos) = path.get(self.path_index + 1) {
                 match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
-                    None => match grid.should_we_yield_when_entering(should_yield, &pos) {
+                    None => match grid.should_we_yield_when_entering(should_yield, pos) {
                         ShouldWeYieldStatus::Yield(yield_to_pos) => {
                             return ReservePathStatus::Blocking(yield_to_pos)
                         }
@@ -117,7 +118,7 @@ impl Vehicle {
 
             ReservePathStatus::Success(reserved)
         } else {
-            return ReservePathStatus::InvalidPath;
+            ReservePathStatus::InvalidPath
         }
     }
 
@@ -142,21 +143,21 @@ impl Vehicle {
                 if let Some(path) = self.path.as_ref() {
                     let pos = path.0[self.path_index];
                     self.path_index += 1;
-                    return Some(pos);
+                    Some(pos)
                 } else {
-                    return None;
+                    None
                 }
             }
             ReservePathStatus::InvalidPath => {
                 self.find_path(grid);
                 Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
-                return None;
+                None
             }
             ReservePathStatus::Blocking(blocking_pos) => {
                 self.blocking_tile = Some(blocking_pos);
                 Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
                 // grid.reserve_position(&self.pos, self.id);
-                return None;
+                None
             }
         }
     }
@@ -326,7 +327,7 @@ mod vehicle_tests {
     fn test_late() {
         let mut grid = Grid::new_from_string(">>>>");
         let mut vehicle =
-            Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0).into(), &mut grid).unwrap();
+            Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
         vehicle.update(&mut grid);
 
@@ -344,7 +345,7 @@ mod vehicle_tests {
         let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, destination, &mut grid).unwrap();
 
         let trip_length: u32 = 3;
-        let trip_time = SPEED_TICKS_PER_TILE as u32 * (trip_length - 0);
+        let trip_time = SPEED_TICKS_PER_TILE as u32 * trip_length;
 
         assert_eq!(vehicle.path_time_ticks, trip_time);
 
@@ -504,7 +505,7 @@ mod vehicle_tests {
 
         let yield_to_pos = grid.pos(0, 1);
 
-        assert_eq!(vehicle.path.is_some(), true);
+        assert!(vehicle.path.is_some());
 
         // reserve position we should yield to
         let reservation = reserve(&mut grid, yield_to_pos).unwrap();

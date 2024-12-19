@@ -27,7 +27,7 @@ impl Connections {
     }
 
     pub fn add(&mut self, layer: ConnectionLayer, dir: Direction) {
-        self.connection_bitfield |= (dir as u32) << layer as u32 * LAYER_SIZE;
+        self.connection_bitfield |= (dir as u32) << (layer as u32 * LAYER_SIZE);
     }
 
     pub fn remove(&mut self, dir: Direction) {
@@ -131,7 +131,7 @@ impl Iterator for ConnectionsIterator {
             self.connection_bitfield -= Direction::Left as u32;
             Some(Direction::Left)
         } else if self.connection_bitfield != 0 {
-            self.connection_bitfield = self.connection_bitfield >> LAYER_SIZE;
+            self.connection_bitfield >>= LAYER_SIZE;
             self.next()
         } else {
             None

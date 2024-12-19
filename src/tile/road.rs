@@ -5,7 +5,7 @@ use crate::{grid::Direction, tileset::Tileset};
 
 use super::{ConnectionLayer, Connections, ConnectionsIterator, Reserved};
 
-const ROAD_INTERSECTION_SPRITE: u32 = (16 * 3) + 0;
+const ROAD_INTERSECTION_SPRITE: u32 = 16 * 3;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
 const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
@@ -114,7 +114,7 @@ impl Road {
         let connection_count = self.connections.count();
 
         if connection_count != 1 {
-            tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, &rect, 0.0);
+            tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
         }
 
         for dir in self.connections.iter_layer(ConnectionLayer::Road) {
@@ -124,9 +124,9 @@ impl Road {
                 } else {
                     ROAD_STRAIGHT_SPRITE
                 };
-                tileset.draw_tile(sprite, WHITE, &rect, dir.to_radians());
+                tileset.draw_tile(sprite, WHITE, rect, dir.to_radians());
             } else {
-                tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, &rect, dir.to_radians());
+                tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
             }
         }
 

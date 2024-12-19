@@ -47,7 +47,7 @@ impl Tileset {
             DrawTextureParams {
                 dest_size: Some(vec2(dest.w * self.zoom, dest.h * self.zoom)),
                 source: Some(spr_rect),
-                rotation: rotation,
+                rotation,
                 ..Default::default()
             },
         );

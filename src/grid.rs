@@ -75,7 +75,7 @@ impl fmt::Debug for Grid {
         for x in 0..self.tiles[0].len() {
             write!(f, "{}", x % 10)?;
         }
-        write!(f, "\n")?;
+        writeln!(f)?;
         for y in 0..self.tiles.len() {
             write!(f, "{}", y)?;
             for x in 0..self.tiles[y].len() {
@@ -86,7 +86,7 @@ impl fmt::Debug for Grid {
                     // => write!(f, "b")?,
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -95,7 +95,7 @@ impl fmt::Debug for Grid {
 impl Grid {
     pub fn new(size_x: usize, size_y: usize) -> Self {
         Grid {
-            tiles: vec![vec![GridTile::new(); size_x as usize]; size_y as usize],
+            tiles: vec![vec![GridTile::new(); size_x]; size_y],
             size: (size_x as i16, size_y as i16),
         }
     }
@@ -119,7 +119,7 @@ impl Grid {
             .split_ascii_whitespace()
             .map(|line| {
                 line.chars()
-                    .map(|chr| GridTile::new_from_char(chr))
+                    .map(GridTile::new_from_char)
                     .collect()
             })
             .collect();
@@ -146,22 +146,20 @@ impl Grid {
     }
 
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
-        let result = astar(
+        astar(
             start,
             |p| self.successors(p),
             |p| p.distance(end) / 3,
             |p| p == end,
-        );
-
-        result
+        )
     }
 
     pub fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
         tile.iter_connections()
             .filter_map(|dir| {
-                if let Some(new_pos) = Position::new_from_move(pos, dir, self.size) {
-                    Some((
+                Position::new_from_move(pos, dir, self.size).map(|new_pos| {
+                    (
                         new_pos,
                         match self.get_tile(&new_pos) {
                             Tile::Road(road) => {
@@ -174,10 +172,8 @@ impl Grid {
                             Tile::House(_) => DEFAULT_COST * 2,
                             Tile::Empty => DEFAULT_COST * 3,
                         },
-                    ))
-                } else {
-                    None
-                }
+                    )
+                })
             })
             .collect()
     }
@@ -219,7 +215,7 @@ impl Grid {
             }
         }
 
-        return ShouldWeYieldStatus::Clear;
+        ShouldWeYieldStatus::Clear
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {

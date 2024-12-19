@@ -246,24 +246,26 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
-        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom, map.path_grid.size);
+        if let Some(pos) = Position::from_screen(new_mouse_pos, self.camera, self.zoom, map.path_grid.size) {
 
-        if is_mouse_button_down(MouseButton::Left) {
-            // macroquad::ui::
-            if !self.mouse_pressed && pos.is_some() {
-                self.mouse_button_down_event(pos.unwrap(), map)
+            if is_mouse_button_down(MouseButton::Left) {
+                // macroquad::ui::
+                if !self.mouse_pressed {
+                    self.mouse_button_down_event(pos, map)
+                }
+                self.mouse_pressed = true;
+            } else {
+                self.mouse_pressed = false;
             }
-            self.mouse_pressed = true;
-        } else {
-            self.mouse_pressed = false;
+
+
+            if self.last_mouse_pos.is_none_or(|last_moust_pos| last_moust_pos != pos ) {
+                self.mouse_motion_event(pos, map);
+                self.last_mouse_pos = Some(pos);
+            }
+
         }
 
-        if self.last_mouse_pos != pos {
-            if pos.is_some() {
-                self.mouse_motion_event(pos.unwrap(), map);
-            }
-            self.last_mouse_pos = pos;
-        }
     }
 
     fn draw_toolbar(&self) -> BuildMode {
@@ -286,7 +288,7 @@ impl UiState {
         )
         .titlebar(false)
         .movable(false)
-        .ui(&mut *root_ui(), |ui| {
+        .ui(&mut root_ui(), |ui| {
             let mut position = vec2(0., 0.);
             for toolbar_item in &self.toolbar_items {
                 let tag = if self.build_mode == toolbar_item.build_mode {
@@ -313,7 +315,7 @@ impl UiState {
     fn draw_tile_details(pos: Position, ui: &mut Ui, map: &Map, tileset: &Tileset) {
         match map.path_grid.get_tile(&pos) {
             Tile::Empty => {
-                ui.label(None, &format!("Empty"));
+                ui.label(None, "Empty");
             }
             Tile::House(house) => {
                 ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
@@ -348,7 +350,7 @@ impl UiState {
         )
         .label("Details")
         .movable(false)
-        .ui(&mut *root_ui(), |ui| {
+        .ui(&mut root_ui(), |ui| {
             if let Some(pos) = self.last_mouse_pos {
                 UiState::draw_tile_details(pos, ui, map, tileset);
             }
@@ -365,7 +367,7 @@ impl UiState {
         )
         .label("Time")
         .movable(false)
-        .ui(&mut *root_ui(), |ui| {
+        .ui(&mut root_ui(), |ui| {
             let label = if self.paused { "**play**" } else { "pause" };
 
             if ui.button(None, label) {
@@ -410,7 +412,7 @@ impl UiState {
         widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 50.))
             .label("Score")
             .movable(false)
-            .ui(&mut *root_ui(), |ui| {
+            .ui(&mut root_ui(), |ui| {
                 ui.label(None, &format!("Rating: {}", map.rating));
             });
 
@@ -427,7 +429,7 @@ impl UiState {
     }
 
     fn key_down_event(&mut self, ch: char) {
-        if ch >= '1' && ch < '9' {
+        if ('1'..'9').contains(&ch) {
             let toolbar_count: usize = ch as usize - '1' as usize;
             if toolbar_count < self.toolbar_items.len() {
                 self.build_mode = self.toolbar_items[toolbar_count].build_mode;
