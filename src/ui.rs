@@ -25,6 +25,7 @@ enum BuildMode {
     Bridge,
     Clear,
     Yield,
+    Debug,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -78,6 +79,10 @@ impl UiState {
                     build_mode: BuildMode::Yield,
                     label: "Yield",
                 },
+                ToolbarItem {
+                    build_mode: BuildMode::Debug,
+                    label: "Debug",
+                }
             ],
         }
     }
@@ -380,6 +385,11 @@ impl UiState {
                         }
                     } else {
                         tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
+                    }
+                }
+                BuildMode::Debug => {
+                    for (pos, _) in  map.path_grid.successors(&last_mouse_pos) {
+                        tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
                     }
                 }
                 _ => {

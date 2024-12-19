@@ -48,8 +48,6 @@ impl GridTile {
             bridge: Tile::Empty,
         }
     }
-
-
 }
 pub struct Grid {
     tiles: Vec<Vec<GridTile>>,
@@ -182,7 +180,8 @@ impl Grid {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 tile.ground.draw(self.pos(x as i16, y as i16), tileset);
-                tile.bridge.draw_bridge(self.pos(x as i16, y as i16), tileset);
+                tile.bridge
+                    .draw_bridge(self.pos(x as i16, y as i16), tileset);
             }
         }
     }
@@ -210,9 +209,13 @@ mod grid_tests {
 
     #[test]
     fn test_successors() {
-        let grid = Grid::new_from_string(">>>");
-        let suc = grid.successors(&grid.pos(1, 0));
-        assert_eq!(suc, vec![(grid.pos(2, 0), 1)]);
+        let grid = Grid::new_from_string(
+            "___
+             >>>
+             ___",
+        );
+        let suc = grid.successors(&grid.pos(1, 1));
+        assert_eq!(suc, vec![(grid.pos(2, 1), 1)]);
     }
 
     #[test]
@@ -230,5 +233,4 @@ mod grid_tests {
 
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).is_none());
     }
-
 }

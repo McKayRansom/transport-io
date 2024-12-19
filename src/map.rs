@@ -67,8 +67,8 @@ impl Map {
         let mut success = false;
         if let Some(pos) = self.path_grid.try_pos(x, y) {
             let tile = self.path_grid.get_tile_mut(&pos);
-            success = true;
             tile.build(|| {
+                success = true;
                 Tile::House(House::new())
             })
         }
