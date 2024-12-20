@@ -7,10 +7,32 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum Direction {
-    Up = 1,
-    Down = 2,
-    Left = 4,
-    Right = 8,
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+}
+
+
+impl From<Direction> for usize {
+    fn from(dir: Direction) -> Self {
+        dir as usize
+    }
+}
+use std::convert::TryFrom;
+
+impl TryFrom<usize> for Direction {
+    type Error = ();
+
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        match v {
+            x if x == Direction::Up as usize => Ok(Direction::Up),
+            x if x == Direction::Down as usize => Ok(Direction::Down),
+            x if x == Direction::Left as usize => Ok(Direction::Left),
+            x if x == Direction::Right as usize => Ok(Direction::Right),
+            _ => Err(()),
+        }
+    }
 }
 
 impl Direction {
@@ -62,12 +84,3 @@ impl Direction {
 }
 
 
-// #[cfg(test)]
-// mod direction_tests {
-
-//     use crate::grid::Position;
-
-//     use super::*;
-
-
-// }

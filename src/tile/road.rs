@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{grid::Direction, tileset::Tileset};
 
-use super::{ConnectionLayer, Connections, ConnectionsIterator, Reserved};
+use super::{ConnectionIterator, ConnectionType, Connections, Reserved};
 
 const ROAD_INTERSECTION_SPRITE: u32 = 16 * 3;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
@@ -68,10 +68,10 @@ impl Road {
                 road.connect(Direction::Up);
             }
             'u' => {
-                road.connect_layer(Direction::Right, ConnectionLayer::Up);
+                road.connect_layer(Direction::Right, ConnectionType::Up);
             }
             'd' => {
-                road.connect_layer(Direction::Right, ConnectionLayer::Down);
+                road.connect_layer(Direction::Right, ConnectionType::Down);
             }
             _ => {
                 return None;
@@ -89,10 +89,10 @@ impl Road {
     }
 
     pub fn connect(&mut self, dir: Direction) {
-        self.connections.add(ConnectionLayer::Road, dir);
+        self.connections.add(ConnectionType::Road, dir);
     }
 
-    pub fn connect_layer(&mut self, dir: Direction, layer: ConnectionLayer) {
+    pub fn connect_layer(&mut self, dir: Direction, layer: ConnectionType) {
         self.connections.add(layer, dir);
     }
 
@@ -104,12 +104,12 @@ impl Road {
         self.connections.count()
     }
 
-    pub fn iter_connections(&self) -> ConnectionsIterator {
+    pub fn iter_connections(&self) -> ConnectionIterator {
         self.connections.iter()
     }
 
-    pub fn iter_connections_inverse(&self, layer: ConnectionLayer) -> ConnectionsIterator {
-        self.connections.iter_inverse(layer)
+    pub fn iter_connections_inverse(&self) -> ConnectionIterator {
+        self.connections.iter_inverse()
     }
 
     pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
@@ -119,7 +119,7 @@ impl Road {
             tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
         }
 
-        for dir in self.connections.iter_layer(ConnectionLayer::Road) {
+        for dir in self.connections.iter() {
             if connection_count == 1 {
                 let sprite = if self.should_yield {
                     ROAD_STRAIGHT_SPRITE + 2

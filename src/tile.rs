@@ -83,11 +83,11 @@ impl Tile {
         }
     }
 
-    pub fn iter_connections(&self) -> ConnectionsIterator {
+    pub fn iter_connections(&self) -> ConnectionIterator {
         match self {
             Tile::Road(road) => road.iter_connections(),
-            Tile::House(_) => ConnectionsIterator::all_directions(),
-            Tile::Empty => ConnectionsIterator::no_directions(),
+            Tile::House(_) => ALL_DIRECTIONS.iter(),
+            Tile::Empty => NO_DIRECTIONS.iter(),
         }
     }
 
@@ -197,6 +197,14 @@ impl Tile {
         }
     }
 
+    pub(crate) fn is_road(&self) -> bool {
+        if let Tile::Road(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+    
     // pub fn add(&mut self, other: &Tile) {
     //     match self {
     //         Tile::Road(road) => {road.add(other) },

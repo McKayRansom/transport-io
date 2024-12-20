@@ -1,4 +1,4 @@
-use crate::tile::ConnectionLayer;
+use crate::tile::ConnectionType;
 
 use super::{Grid, Position, Z_BRIDGE};
 
@@ -9,11 +9,11 @@ impl Grid {
         let (iter, dir) = start_pos.iter_line_to(end_pos, self.size);
         for pos in iter {
             let (build_pos, build_layer) = if pos == start_pos {
-                (pos, ConnectionLayer::Up)
+                (pos, ConnectionType::Up)
             } else if pos == end_pos {
-                (pos.clone_on_layer(Z_BRIDGE), ConnectionLayer::Down)
+                (pos.clone_on_layer(Z_BRIDGE), ConnectionType::Down)
             } else {
-                (pos.clone_on_layer(Z_BRIDGE), ConnectionLayer::Road)
+                (pos.clone_on_layer(Z_BRIDGE), ConnectionType::Road)
             };
 
             self.get_tile_mut(&build_pos)
@@ -38,7 +38,7 @@ mod grid_build_tests {
         assert_eq!(grid.tiles[0][0].ground, Tile::new_from_char('>'));
 
         grid.get_tile_mut(&grid.pos(0, 0))
-            .edit_road(|road| road.connect_layer(Direction::Up, ConnectionLayer::Road));
+            .edit_road(|road| road.connect_layer(Direction::Up, ConnectionType::Road));
         assert_eq!(grid.tiles[0][0].ground, Tile::new_from_char('R'));
     }
 

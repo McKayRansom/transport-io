@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     grid::{self, Direction, Grid, Id, Position},
-    tile::{ConnectionLayer, ConnectionsIterator, House, Tile},
+    tile::{House, Tile},
     tileset::Tileset,
     vehicle::{Status, Vehicle},
 };
@@ -84,19 +84,6 @@ impl Map {
         }
     }
 
-    pub fn generate_driveways(&mut self, x: i16, y: i16) {
-        // add driveways
-        for dir in ConnectionsIterator::all_directions() {
-            if let Some(road_pos) =
-                Position::new_from_move(&self.grid.pos(x, y), dir, self.grid.size)
-            {
-                if let Tile::Road(road) = self.grid.get_tile_mut(&road_pos) {
-                    road.connect_layer(dir.inverse(), ConnectionLayer::Driveway);
-                }
-            }
-        }
-    }
-
     pub fn generate_house(&mut self, x: i16, y: i16) -> bool {
         let mut success = false;
         if let Some(pos) = self.grid.try_pos(x, y) {
@@ -121,9 +108,7 @@ impl Map {
         // houses (all for now)
         for i in 0..CITY_BLOCK_SIZE {
             for j in 0..CITY_BLOCK_SIZE {
-                if self.generate_house(x + i, y + j) {
-                    self.generate_driveways(x + i, y + j);
-                }
+                self.generate_house(x + i, y + j);
             }
         }
     }

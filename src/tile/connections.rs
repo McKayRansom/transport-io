@@ -1,74 +1,95 @@
-use std::fmt;
+use std::{
+    fmt,
+    iter::{Enumerate, FilterMap},
+};
 
 use serde::{Deserialize, Serialize};
 
 use crate::grid::Direction;
 
-pub enum ConnectionLayer {
-    Road = 0,
-    Driveway = 1,
+#[derive(Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ConnectionType {
+    #[default]
+    None = 0,
+    Road = 1,
     Up = 2,
     Down = 3,
 }
 
-const CONNECTIONS_ALL: u32 = 0b1111;
+pub type ConnectionIterator<'b> = FilterMap<
+    Enumerate<std::slice::Iter<'b, ConnectionType>>,
+    for<'a> fn((usize, &'a ConnectionType)) -> std::option::Option<Direction>,
+>;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Connections {
-    connection_bitfield: u32,
+    connections: [ConnectionType; 4],
 }
 
-const LAYER_SIZE: u32 = 4;
-const LAYER_MASK: u32 = 0b1111;
+pub const ALL_DIRECTIONS: Connections = Connections {
+    connections: [ConnectionType::Road; 4],
+};
+
+pub const NO_DIRECTIONS: Connections = Connections {
+    connections: [ConnectionType::None; 4],
+};
 
 impl Connections {
     pub fn new() -> Connections {
         Connections {
-            connection_bitfield: 0,
+            ..Default::default()
         }
     }
 
-    pub fn add(&mut self, layer: ConnectionLayer, dir: Direction) {
-        self.connection_bitfield |= (dir as u32) << (layer as u32 * LAYER_SIZE);
+    pub fn add(&mut self, conn: ConnectionType, dir: Direction) {
+        self.connections[dir as usize] = conn;
     }
 
     pub fn remove(&mut self, dir: Direction) {
-        self.connection_bitfield &= !(dir as u32);
+        self.connections[dir as usize] = ConnectionType::None;
     }
 
     pub fn count(&self) -> u32 {
-        (self.connection_bitfield & LAYER_MASK).count_ones()
+        self.connections.iter().map(|conn| (*conn as u32).min(1)).sum()
     }
 
-    pub fn iter_layer(&self, layer: ConnectionLayer) -> ConnectionsIterator {
-        ConnectionsIterator {
-            connection_bitfield: (self.connection_bitfield >> (layer as u32 * LAYER_SIZE))
-                & LAYER_MASK,
+    pub fn filter_has_connection(my_arg: (usize, &ConnectionType)) -> Option<Direction> {
+        if *my_arg.1 != ConnectionType::None {
+            my_arg.0.try_into().ok()
+        } else {
+            None
         }
     }
 
-    pub fn iter(&self) -> ConnectionsIterator {
-        ConnectionsIterator {
-            connection_bitfield: self.connection_bitfield,
+    pub fn filter_has_no_connection(my_arg: (usize, &ConnectionType)) -> Option<Direction> {
+        if *my_arg.1 == ConnectionType::None {
+            my_arg.0.try_into().ok()
+        } else {
+            None
         }
     }
 
-    pub fn iter_inverse(&self, layer: ConnectionLayer) -> ConnectionsIterator {
-        ConnectionsIterator {
-            connection_bitfield: (!self.connection_bitfield
-                & LAYER_MASK << (LAYER_SIZE & layer as u32)),
-        }
+    pub fn iter(&self) -> ConnectionIterator {
+        self.connections
+            .iter()
+            .enumerate()
+            .filter_map(Connections::filter_has_connection)
+    }
+
+    pub fn iter_inverse(&self) -> ConnectionIterator {
+        self.connections
+            .iter()
+            .enumerate()
+            .filter_map(Connections::filter_has_no_connection)
     }
 
     pub fn has(&self, dir: Direction) -> bool {
-        (self.connection_bitfield & dir as u32) != 0
+        self.connections[dir as usize] != ConnectionType::None
     }
 
-    pub fn has_layer(&self, dir: Direction, layer: ConnectionLayer) -> bool {
-        ((self.connection_bitfield >> (LAYER_SIZE * layer as u32)) & dir as u32) != 0
+    pub fn has_layer(&self, dir: Direction, layer: ConnectionType) -> bool {
+        self.connections[dir as usize] == layer
     }
-
 }
 
 impl fmt::Debug for Connections {
@@ -89,9 +110,9 @@ impl fmt::Debug for Connections {
             write!(f, "^")
         } else if self.has(Direction::Down) {
             write!(f, ".")
-        } else if self.has_layer(Direction::Right, ConnectionLayer::Up) {
+        } else if self.has_layer(Direction::Right, ConnectionType::Up) {
             write!(f, "u")
-        } else if self.has_layer(Direction::Right, ConnectionLayer::Down) {
+        } else if self.has_layer(Direction::Right, ConnectionType::Down) {
             write!(f, "d")
         } else {
             write!(f, "?")
@@ -99,88 +120,53 @@ impl fmt::Debug for Connections {
     }
 }
 
-pub struct ConnectionsIterator {
-    connection_bitfield: u32,
-}
-
-impl ConnectionsIterator {
-    pub fn all_directions() -> Self {
-        ConnectionsIterator {
-            connection_bitfield: CONNECTIONS_ALL,
-        }
-    }
-
-    pub fn no_directions() -> Self {
-        ConnectionsIterator {
-            connection_bitfield: 0,
-        }
-    }
-}
-
-impl Iterator for ConnectionsIterator {
-    type Item = Direction;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.connection_bitfield & Direction::Up as u32 != 0 {
-            self.connection_bitfield -= Direction::Up as u32;
-            Some(Direction::Up)
-        } else if self.connection_bitfield & Direction::Down as u32 != 0 {
-            self.connection_bitfield -= Direction::Down as u32;
-            Some(Direction::Down)
-        } else if self.connection_bitfield & Direction::Right as u32 != 0 {
-            self.connection_bitfield -= Direction::Right as u32;
-            Some(Direction::Right)
-        } else if self.connection_bitfield & Direction::Left as u32 != 0 {
-            self.connection_bitfield -= Direction::Left as u32;
-            Some(Direction::Left)
-        } else if self.connection_bitfield != 0 {
-            self.connection_bitfield >>= LAYER_SIZE;
-            self.next()
-        } else {
-            None
-        }
-    }
-}
-
 #[cfg(test)]
 mod connections_tests {
+    // use std::mem;
+
     use super::*;
 
     #[test]
     fn test_new() {
-        assert!(Connections::new().count() == 0);
+        let connections = Connections::new();
+        assert_eq!(connections.count(), 0, "Connections: {:?}", connections);
+
+        // assert_eq!(mem::size_of::<ConnectionTest>(), 4);
     }
 
     #[test]
     fn test_iter() {
         let mut connection = Connections::new();
-        connection.add(ConnectionLayer::Road, Direction::Right);
-        connection.add(ConnectionLayer::Road, Direction::Left);
-        assert!(
-            connection.iter().collect::<Vec<Direction>>()
-                == vec![Direction::Right, Direction::Left]
+        connection.add(ConnectionType::Road, Direction::Right);
+        connection.add(ConnectionType::Up, Direction::Left);
+        assert_eq!(
+            connection.iter().collect::<Vec<Direction>>(),
+            vec![Direction::Left, Direction::Right]
         );
 
-        // assert!(connection.safe_to_block() == false);
+        assert_eq!(
+            connection.iter_inverse().collect::<Vec<Direction>>(),
+            vec![Direction::Up, Direction::Down]
+        );
     }
 
     #[test]
     fn test_layer() {
         let mut connection = Connections::new();
-        connection.add(ConnectionLayer::Driveway, Direction::Right);
-        connection.add(ConnectionLayer::Road, Direction::Left);
+        connection.add(ConnectionType::Up, Direction::Right);
+        connection.add(ConnectionType::Road, Direction::Left);
         assert!(
             connection.iter().collect::<Vec<Direction>>()
                 == vec![Direction::Left, Direction::Right]
         );
-        assert!(
-            connection
-                .iter_layer(ConnectionLayer::Driveway)
-                .collect::<Vec<Direction>>()
-                == vec![Direction::Right]
-        );
+        // assert!(
+        //     connection
+        //         .iter_layer(ConnectionType::Up)
+        //         .collect::<Vec<Direction>>()
+        //         == vec![Direction::Right]
+        // );
 
-        assert!(connection.count() == 1);
+        assert_eq!(connection.count(), 2);
         // assert!(connection.safe_to_block() == true);
     }
 }

@@ -5,13 +5,12 @@ pub use position::*;
 mod direction;
 pub use direction::*;
 mod build;
-// pub use build::*;
 
 use macroquad::math::Rect;
-use pathfinding::prelude::astar;
+use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
-use crate::tile::{ConnectionLayer, Tile, YieldType};
+use crate::tile::{Tile, YieldType};
 use crate::tileset::Tileset;
 
 pub type Id = u64;
@@ -26,8 +25,7 @@ pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
-#[derive(Serialize, Deserialize)]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GridTile {
     ground: Tile,
     bridge: Tile,
@@ -112,11 +110,7 @@ impl Grid {
     pub fn new_from_string(string: &str) -> Grid {
         let tiles: Vec<Vec<GridTile>> = string
             .split_ascii_whitespace()
-            .map(|line| {
-                line.chars()
-                    .map(GridTile::new_from_char)
-                    .collect()
-            })
+            .map(|line| line.chars().map(GridTile::new_from_char).collect())
             .collect();
 
         let size = (tiles[0].len() as i16, tiles.len() as i16);
@@ -141,29 +135,62 @@ impl Grid {
     }
 
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
+        if let Some(start_path) = self.find_road(start) {
+            if let Some(end_path) = self.find_road(end) {
+                if let Some(middle_path) = self.find_road_path(
+                    start_path.0.last().unwrap_or(start),
+                    end_path.0.last().unwrap_or(end),
+                ) {
+                    // start_path + middle_path + end_path
+                    let mut full_path = Vec::new();
+                    full_path.extend(start_path.0);
+                    full_path.extend(middle_path.0);
+                    full_path.extend(end_path.0.iter().rev());
+
+                    let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
+
+                    Some((full_path, full_cost))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn find_road_path(&self, start: &Position, end: &Position) -> Path {
         astar(
             start,
-            |p| self.successors(p),
+            |p| self.road_successors(p),
             |p| p.distance(end) / 3,
             |p| p == end,
         )
     }
 
-    pub fn successors(&self, pos: &Position) -> Vec<(Position, u32)> {
+    pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
         tile.iter_connections()
             .filter_map(|dir| {
-                Position::new_from_move(pos, dir, self.size).map(|new_pos| {
-                    (
-                        new_pos,
-                        self.get_tile(&new_pos)
-                            .cost()
-                    )
-                })
+                Position::new_from_move(pos, dir, self.size)
+                    .map(|new_pos| (new_pos, self.get_tile(&new_pos).cost()))
             })
             .collect()
     }
 
+    pub fn find_road(&self, start: &Position) -> Path {
+        if self.get_tile(start).is_road() {
+            Some((Vec::new(), 0))
+        } else {
+            dijkstra(
+                start,
+                |p| self.road_successors(p),
+                |p| self.get_tile(p).is_road(),
+            )
+        }
+    }
 
     pub fn should_we_yield_when_entering(
         &self,
@@ -177,11 +204,12 @@ impl Grid {
 
         if let Tile::Road(road) = self.get_tile(position) {
             // For each direction that feeds into this tile in question
-            for dir in road.iter_connections_inverse(ConnectionLayer::Road) {
-
+            for dir in road.iter_connections_inverse() {
                 if let Some(yield_to_pos) = Position::new_from_move(position, dir, self.size) {
-
-                    if self.get_tile(&yield_to_pos).should_be_yielded_to(should_yield, dir) {
+                    if self
+                        .get_tile(&yield_to_pos)
+                        .should_be_yielded_to(should_yield, dir)
+                    {
                         return Some(yield_to_pos);
                     }
                 }
@@ -229,7 +257,7 @@ mod grid_tests {
              >>>
              ___",
         );
-        let suc = grid.successors(&grid.pos(1, 1));
+        let suc = grid.road_successors(&grid.pos(1, 1));
         assert_eq!(suc, vec![(grid.pos(2, 1), 1)]);
     }
 
@@ -248,4 +276,20 @@ mod grid_tests {
 
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).is_none());
     }
+
+    #[test]
+    fn test_path_house() {
+        let grid = Grid::new_from_string("hh>>hh");
+
+        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_some());
+    }
+
+    #[test]
+    fn test_path_house_fail() {
+        let grid = Grid::new_from_string("_h>>h_");
+
+        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
+        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_none());
+    }
+
 }

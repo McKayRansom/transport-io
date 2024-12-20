@@ -390,8 +390,12 @@ impl UiState {
                     }
                 }
                 BuildMode::Debug => {
-                    for (pos, _) in  map.grid.successors(&last_mouse_pos) {
-                        tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
+                    if let Some((path, _cost)) = map.grid.find_road(&last_mouse_pos)
+                    {
+                        for pos in path {
+                            tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
+                        }
+
                     }
                 }
                 _ => {
