@@ -1,9 +1,13 @@
 use std::rc::{Rc, Weak};
 
-use crate::grid::Id;
+use serde::{Deserialize, Serialize};
+
+use crate::grid::{Id, Position};
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Reserved {
+    #[serde(skip_serializing, skip_deserializing)]
     weak_id: Weak<Id>,
 }
 
@@ -22,11 +26,11 @@ impl Reserved {
         self.weak_id.strong_count() > 0
     }
 
-    pub fn try_reserve(&mut self, id: Id) -> Option<Reservation> {
+    pub fn try_reserve(&mut self, id: Id, pos: Position) -> Option<Reservation> {
         if !self.is_reserved() {
             let rc = Rc::new(id);
             self.weak_id = Rc::<u64>::downgrade(&rc);
-            Some(Reservation { _strong_id: rc })
+            Some(Reservation { _strong_id: rc, pos })
         } else {
             None
         }
@@ -42,14 +46,19 @@ impl PartialEq for Reserved {
 impl Eq for Reserved {}
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Reservation {
+    #[serde(skip_serializing, skip_deserializing)]
     _strong_id: Rc<Id>,
+    // we need to be able to re-reserve upon reserializing
+    pub pos: Position,
 }
 
 impl Reservation {
-    pub fn new_for_house() -> Self {
+    pub fn new_for_house(pos: Position) -> Self {
         Reservation {
             _strong_id: Rc::new(0),
+            pos,
         }
     }
 }
@@ -63,11 +72,14 @@ mod reservation_tests {
         let mut reserved = Reserved::new();
         assert!(!reserved.is_reserved());
 
-        let reservation = reserved.try_reserve(1234).unwrap();
+        let pos =Position::new(0, 0, (1,1)).unwrap();
+
+        let reservation = reserved.try_reserve(1234, pos).unwrap();
         assert!(reserved.is_reserved());
         assert_eq!(reserved.get_reserved_id().unwrap(), 1234);
 
         assert_eq!(Rc::<u64>::into_inner(reservation._strong_id).unwrap(), 1234);
+        assert_eq!(reservation.pos, pos);
 
         // drop(reservation);
 

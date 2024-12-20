@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::Path};
 
 use macroquad::rand::{self, srand};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     grid::{self, Direction, Grid, Id, Position},
@@ -14,8 +15,9 @@ const CITY_BLOCK_COUNT: i16 = 4;
 
 pub const GRID_SIZE: (i16, i16) = (30, 30);
 
+#[derive(Serialize, Deserialize)]
 pub struct Map {
-    pub path_grid: Grid,
+    pub grid: Grid,
     pub vehicle_id: grid::Id,
     pub vehicles: HashMap<grid::Id, Vehicle>,
     pub rating: f32,
@@ -25,17 +27,49 @@ impl Map {
     pub fn new() -> Self {
         srand(1234);
         Map {
-            path_grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
+            grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
             vehicle_id: 1,
             vehicles: HashMap::new(),
             rating: 1.0,
         }
     }
 
+    pub fn load_from_file(path: &Path) -> std::io::Result<Map> {
+        let mut file = File::open(path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+
+        let mut map: Map = serde_json::from_str(&contents)?;
+
+        map.fixup();
+
+        Ok(map)
+    }
+
+    pub fn save_to_file(&self, path: &Path) -> std::io::Result<()> {
+
+        let _ = fs::create_dir_all(path.parent().unwrap());
+
+        let mut file = File::create(path)?;
+
+        let buf = serde_json::to_string(self).unwrap();
+
+        file.write_all(buf.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn fixup(&mut self) {
+        // Any way to not allow this to be called twice?
+        for (_id, vehicle) in &mut self.vehicles {
+            vehicle.fixup(&mut self.grid);
+        }
+    }
+
     #[allow(unused)]
     pub fn new_from_string(string: &str) -> Self {
         Map {
-            path_grid: Grid::new_from_string(string),
+            grid: Grid::new_from_string(string),
             vehicle_id: 1,
             vehicles: HashMap::new(),
             rating: 1.0,
@@ -43,8 +77,8 @@ impl Map {
     }
 
     pub fn generate_road(&mut self, x: i16, y: i16, dir: Direction) {
-        if let Some(pos) = self.path_grid.try_pos(x, y) {
-            self.path_grid
+        if let Some(pos) = self.grid.try_pos(x, y) {
+            self.grid
                 .get_tile_mut(&pos)
                 .edit_road(|road| road.connect(dir));
         }
@@ -54,9 +88,9 @@ impl Map {
         // add driveways
         for dir in ConnectionsIterator::all_directions() {
             if let Some(road_pos) =
-                Position::new_from_move(&self.path_grid.pos(x, y), dir, self.path_grid.size)
+                Position::new_from_move(&self.grid.pos(x, y), dir, self.grid.size)
             {
-                if let Tile::Road(road) = self.path_grid.get_tile_mut(&road_pos) {
+                if let Tile::Road(road) = self.grid.get_tile_mut(&road_pos) {
                     road.connect_layer(dir.inverse(), ConnectionLayer::Driveway);
                 }
             }
@@ -65,8 +99,8 @@ impl Map {
 
     pub fn generate_house(&mut self, x: i16, y: i16) -> bool {
         let mut success = false;
-        if let Some(pos) = self.path_grid.try_pos(x, y) {
-            let tile = self.path_grid.get_tile_mut(&pos);
+        if let Some(pos) = self.grid.try_pos(x, y) {
+            let tile = self.grid.get_tile_mut(&pos);
             tile.build(|| {
                 success = true;
                 Tile::House(House::new())
@@ -110,7 +144,7 @@ impl Map {
         let house_x = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
         let house_y = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
 
-        self.path_grid.try_pos(
+        self.grid.try_pos(
             (block_x * CITY_BLOCK_SIZE) + house_x,
             (block_y * CITY_BLOCK_SIZE) + house_y,
         )
@@ -118,9 +152,7 @@ impl Map {
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
         let id = self.vehicle_id;
-        if let Ok(vehicle) =
-            Vehicle::new(start_pos, self.vehicle_id, end_pos, &mut self.path_grid)
-        {
+        if let Ok(vehicle) = Vehicle::new(start_pos, self.vehicle_id, end_pos, &mut self.grid) {
             self.vehicles.insert(id, vehicle);
             self.vehicle_id += 1;
 
@@ -140,15 +172,15 @@ impl Map {
         let start_pos = start_pos.unwrap();
         let end_pos = end_pos.unwrap();
 
-        if let Tile::House(_) = self.path_grid.get_tile(&start_pos) {
-            if let Tile::House(start_house) = self.path_grid.get_tile(&end_pos) {
+        if let Tile::House(_) = self.grid.get_tile(&start_pos) {
+            if let Tile::House(start_house) = self.grid.get_tile(&end_pos) {
                 if start_house.vehicle_on_the_way.is_some() {
                     return;
                 }
 
                 let vehicle = self.add_vehicle(start_pos, end_pos);
 
-                if let Tile::House(start_house_again) = self.path_grid.get_tile_mut(&end_pos) {
+                if let Tile::House(start_house_again) = self.grid.get_tile_mut(&end_pos) {
                     start_house_again.vehicle_on_the_way = vehicle;
                 }
             }
@@ -166,14 +198,14 @@ impl Map {
     pub fn update(&mut self) {
         let mut to_remove: Vec<(grid::Id, Status)> = Vec::new();
         for s in self.vehicles.iter_mut() {
-            let status = s.1.update(&mut self.path_grid);
+            let status = s.1.update(&mut self.grid);
             if status != Status::EnRoute {
                 to_remove.push((*s.0, status));
             }
         }
         for id in to_remove {
             let vehicle = self.vehicles.get_mut(&id.0).unwrap();
-            if let Tile::House(house) = self.path_grid.get_tile_mut(&vehicle.destination) {
+            if let Tile::House(house) = self.grid.get_tile_mut(&vehicle.destination) {
                 house.vehicle_on_the_way = None;
             }
             self.vehicles.remove(&id.0);
@@ -185,13 +217,13 @@ impl Map {
     }
 
     pub fn draw(&self, tileset: &Tileset) {
-        self.path_grid.draw_tiles(tileset);
+        self.grid.draw_tiles(tileset);
 
         for s in self.vehicles.iter() {
             s.1.draw(tileset);
         }
 
-        self.path_grid.draw_houses(tileset);
+        self.grid.draw_houses(tileset);
     }
 }
 
@@ -212,6 +244,30 @@ mod map_tests {
 
     #[test]
     fn test_map_serialize() {
+        let mut map = Map::new();
 
+        map.generate_road(0, 0, Direction::Right);
+
+        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
+
+        let test_path = Path::new("saves/test_map.json");
+
+        map.save_to_file(test_path).unwrap();
+
+        let mut deserialized: Map = Map::load_from_file(test_path).unwrap();
+
+        assert_eq!(
+            deserialized.grid.get_tile(&deserialized.grid.pos(0, 0)),
+            map.grid.get_tile(&deserialized.grid.pos(0, 0)),
+        );
+
+        let pos = deserialized.grid.pos(0, 0);
+
+        assert!(deserialized
+            .grid
+            .get_tile_mut(&pos)
+            .reserve(1234, pos)
+            .is_err())
     }
+
 }

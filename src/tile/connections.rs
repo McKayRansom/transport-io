@@ -1,5 +1,7 @@
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::grid::Direction;
 
 pub enum ConnectionLayer {
@@ -12,6 +14,7 @@ pub enum ConnectionLayer {
 const CONNECTIONS_ALL: u32 = 0b1111;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub struct Connections {
     connection_bitfield: u32,
 }

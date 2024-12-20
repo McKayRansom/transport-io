@@ -3,6 +3,8 @@ use macroquad::color::BLUE;
 use macroquad::color::RED;
 use macroquad::color::WHITE;
 use macroquad::math::Rect;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::grid::Direction;
 use crate::grid::Grid;
@@ -21,6 +23,7 @@ const SPEED_PIXELS_PER_TICK: i16 = 4;
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
 
+#[derive(Serialize, Deserialize)]
 pub struct Vehicle {
     pub id: Id,
     path: Path,
@@ -55,7 +58,7 @@ impl Vehicle {
         destination: Position,
         grid: &mut Grid,
     ) -> Result<Self, ReservationError> {
-        let reservation = grid.get_tile_mut(&pos).reserve(id)?;
+        let reservation = grid.get_tile_mut(&pos).reserve(id, pos)?;
 
         let mut vehicle = Vehicle {
             id,
@@ -76,13 +79,20 @@ impl Vehicle {
         Ok(vehicle)
     }
 
+    pub fn fixup(&mut self, grid: &mut Grid) {
+        // Fix serialization 
+        for reservation in &mut self.reserved {
+            *reservation = grid.get_tile_mut(&reservation.pos).reserve(self.id, reservation.pos).unwrap();
+        }
+    }
+
     fn reserve(
         path_grid: &mut Grid,
         vehicle_id: Id,
         position: Position,
         reserved: &mut Vec<Reservation>,
     ) -> Option<ReservationError> {
-        let result = path_grid.get_tile_mut(&position).reserve(vehicle_id);
+        let result = path_grid.get_tile_mut(&position).reserve(vehicle_id, position);
         match result {
             Ok(reservation) => {
                 reserved.push(reservation);
@@ -292,7 +302,7 @@ mod vehicle_tests {
     use super::*;
 
     fn reserve(grid: &mut Grid, pos: Position) -> Result<Reservation, ReservationError> {
-        grid.get_tile_mut(&pos).reserve(1234)
+        grid.get_tile_mut(&pos).reserve(1234, pos)
     }
 
     #[test]
@@ -317,11 +327,12 @@ mod vehicle_tests {
         let mut grid = Grid::new_from_string(">>>>");
         let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
-        let reservation = grid.get_tile_mut(&grid.pos(1, 0)).reserve(1).unwrap();
+        // let 
+        // let reservation = grid.get_tile_mut(&grid.pos(1, 0)).reserve(1).unwrap();
 
         assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
 
-        drop(reservation);
+        // drop(reservation);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use macroquad::math::Rect;
+use serde::*;
 
 use super::{Direction, GRID_CELL_SIZE};
 
@@ -6,7 +7,7 @@ use super::{Direction, GRID_CELL_SIZE};
 pub const Z_GROUND: i16 = 0;
 pub const Z_BRIDGE: i16 = 1;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Position {
     pub x: i16,
     pub y: i16,

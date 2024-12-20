@@ -4,6 +4,10 @@ mod tileset;
 mod vehicle;
 mod tile;
 mod ui;
+mod menu;
+use std::path::Path;
+
+use menu::MenuSelect;
 use ui::UiState;
 use map::Map;
 use miniquad::window::set_window_size;
@@ -11,7 +15,9 @@ use tileset::Tileset;
 
 use macroquad::prelude::*;
 
+
 struct GameState {
+    menu: bool,
     map: Map,
     ui: UiState,
 }
@@ -19,6 +25,7 @@ struct GameState {
 impl GameState {
     pub fn new() -> Self {
         GameState {
+            menu: true,
             map: Map::new(),
             ui: UiState::new(),
         }
@@ -37,8 +44,26 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        self.ui.draw(&self.map, tileset);
+        if self.menu {
+            menu::draw();
+            match menu::draw() {
+                Some(MenuSelect::Continue) => {
+                    self.map = Map::load_from_file(Path::new("saves/game.json")).unwrap();
+                }
 
+                Some(MenuSelect::NewGame) => {
+                    self.menu = false;
+                }
+
+                Some(MenuSelect::SaveGame) => {
+                    self.map.save_to_file(Path::new("saves/game.json")).unwrap();
+                }
+
+                _ => {}
+            }
+        } else {
+            self.ui.draw(&self.map, tileset);
+        }
     }
 
 }

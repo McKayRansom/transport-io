@@ -9,6 +9,7 @@ mod build;
 
 use macroquad::math::Rect;
 use pathfinding::prelude::astar;
+use serde::{Deserialize, Serialize};
 
 use crate::tile::{ConnectionLayer, Tile, YieldTo, YieldType};
 use crate::tileset::Tileset;
@@ -34,6 +35,7 @@ pub enum ShouldWeYieldStatus {
     Clear,
 }
 
+#[derive(Serialize, Deserialize)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct GridTile {
     ground: Tile,
@@ -55,6 +57,8 @@ impl GridTile {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
 pub struct Grid {
     tiles: Vec<Vec<GridTile>>,
     pub size: (i16, i16),

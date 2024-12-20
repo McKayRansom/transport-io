@@ -1,5 +1,6 @@
 
 use macroquad::{color::WHITE, math::Rect};
+use serde::{Deserialize, Serialize};
 
 use crate::{grid::Direction, tileset::Tileset};
 
@@ -11,6 +12,7 @@ const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
 
 
 #[derive(Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
     pub reserved: Reserved,

@@ -1,9 +1,11 @@
 use std::f32::consts::PI;
 
 use macroquad::input::KeyCode;
+use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum Direction {
     Up = 1,
     Down = 2,

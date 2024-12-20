@@ -2,6 +2,7 @@ target
 deploy
 
 examples/
+saves/
 
 Cargo.lock
 

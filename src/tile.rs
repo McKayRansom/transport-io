@@ -11,6 +11,7 @@ pub use connections::*;
 
 mod reservation;
 pub use reservation::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     grid::{Direction, Id, Position, ReservationError},
@@ -33,6 +34,7 @@ pub enum YieldTo {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct House {
     pub vehicle_on_the_way: Option<Id>,
 }
@@ -55,6 +57,7 @@ impl House {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Tile {
     Empty,
     House(House),
@@ -106,14 +109,14 @@ impl Tile {
         }
     }
 
-    pub fn reserve(&mut self, id: Id) -> Result<Reservation, ReservationError> {
+    pub fn reserve(&mut self, id: Id, pos: Position) -> Result<Reservation, ReservationError> {
         match self {
             Tile::Road(road) => road
                 .reserved
-                .try_reserve(id)
+                .try_reserve(id, pos)
                 .ok_or(ReservationError::TileReserved),
 
-            Tile::House(_) => Ok(Reservation::new_for_house()),
+            Tile::House(_) => Ok(Reservation::new_for_house(pos)),
             Tile::Empty => Err(ReservationError::TileInvalid),
         }
     }
