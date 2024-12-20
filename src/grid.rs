@@ -11,13 +11,10 @@ use macroquad::math::Rect;
 use pathfinding::prelude::astar;
 use serde::{Deserialize, Serialize};
 
-use crate::tile::{ConnectionLayer, Tile, YieldTo, YieldType};
+use crate::tile::{ConnectionLayer, Tile, YieldType};
 use crate::tileset::Tileset;
 
 pub type Id = u64;
-
-const DEFAULT_COST: u32 = 1;
-const OCCUPIED_COST: u32 = 2;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;
@@ -28,12 +25,6 @@ pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
-
-
-pub enum ShouldWeYieldStatus {
-    Yield(Position),
-    Clear,
-}
 
 #[derive(Serialize, Deserialize)]
 #[derive(Clone, PartialEq, Eq)]
@@ -165,17 +156,8 @@ impl Grid {
                 Position::new_from_move(pos, dir, self.size).map(|new_pos| {
                     (
                         new_pos,
-                        match self.get_tile(&new_pos) {
-                            Tile::Road(road) => {
-                                if road.reserved.is_reserved() {
-                                    OCCUPIED_COST
-                                } else {
-                                    DEFAULT_COST
-                                }
-                            }
-                            Tile::House(_) => DEFAULT_COST * 2,
-                            Tile::Empty => DEFAULT_COST * 3,
-                        },
+                        self.get_tile(&new_pos)
+                            .cost()
                     )
                 })
             })
@@ -187,10 +169,10 @@ impl Grid {
         &self,
         should_yield: YieldType,
         position: &Position,
-    ) -> ShouldWeYieldStatus {
+    ) -> Option<Position> {
         // never yield from an intersection
         if should_yield == YieldType::Never {
-            return ShouldWeYieldStatus::Clear;
+            return None;
         }
 
         if let Tile::Road(road) = self.get_tile(position) {
@@ -199,23 +181,14 @@ impl Grid {
 
                 if let Some(yield_to_pos) = Position::new_from_move(position, dir, self.size) {
 
-                    if let Some(yield_to) = self.get_tile(&yield_to_pos).yield_to(dir) {
-                        if should_yield == YieldType::Always {
-                            return ShouldWeYieldStatus::Yield(yield_to_pos);
-                        } else {
-                            // Always yield when entering an interseciton (if we aren't an intersection)
-                            // because of the check above we know we are NOT an intersection
-                            if yield_to == YieldTo::Intersection {
-                                return ShouldWeYieldStatus::Yield(yield_to_pos);
-                            }
-                            // otherwise if the tile is a normal road we probably don't need to yield
-                        }
+                    if self.get_tile(&yield_to_pos).should_be_yielded_to(should_yield, dir) {
+                        return Some(yield_to_pos);
                     }
                 }
             }
         }
 
-        ShouldWeYieldStatus::Clear
+        None
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {

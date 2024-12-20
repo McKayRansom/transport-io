@@ -20,6 +20,9 @@ use crate::{
 
 const HOUSE_SPRITE: u32 = 16;
 
+const DEFAULT_COST: u32 = 1;
+const OCCUPIED_COST: u32 = 2;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum YieldType {
     Always,
@@ -27,11 +30,6 @@ pub enum YieldType {
     Never,
 }
 
-#[derive(PartialEq)]
-pub enum YieldTo {
-    Intersection,
-    Road,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[derive(Serialize, Deserialize)]
@@ -137,19 +135,35 @@ impl Tile {
         }
     }
 
-    pub fn yield_to(&self, dir_from: Direction) -> Option<YieldTo> {
+    pub fn should_be_yielded_to(&self, should_yield: YieldType, dir_from: Direction) -> bool {
         if let Tile::Road(road) = self {
             if road.reserved.is_reserved() && road.is_connected(dir_from.inverse()) {
-                if road.connection_count() > 1 {
-                    Some(YieldTo::Intersection)
+                if should_yield == YieldType::Always {
+                    true
+                } else if road.connection_count() > 1 {
+                    true
                 } else {
-                    Some(YieldTo::Road)
+                    false
                 }
             } else {
-                None
+                false
             }
         } else {
-            None
+            false
+        }
+    }
+
+    pub fn cost(&self) -> u32 {
+        match self {
+            Tile::Road(road) => {
+                if road.reserved.is_reserved() {
+                    OCCUPIED_COST
+                } else {
+                    DEFAULT_COST
+                }
+            }
+            Tile::House(_) => DEFAULT_COST * 2,
+            Tile::Empty => DEFAULT_COST * 3,
         }
     }
 

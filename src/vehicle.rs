@@ -11,7 +11,6 @@ use crate::grid::Grid;
 use crate::grid::Path;
 use crate::grid::Position;
 use crate::grid::ReservationError;
-use crate::grid::ShouldWeYieldStatus;
 use crate::grid::GRID_CELL_SIZE;
 use crate::tile::Reservation;
 use crate::tile::Tile;
@@ -113,10 +112,10 @@ impl Vehicle {
                 match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
 
                     None => match grid.should_we_yield_when_entering(should_yield, pos) {
-                        ShouldWeYieldStatus::Yield(yield_to_pos) => {
+                        Some(yield_to_pos) => {
                             return ReservePathStatus::Blocking(yield_to_pos)
                         }
-                        ShouldWeYieldStatus::Clear => return ReservePathStatus::Success(reserved),
+                        None => return ReservePathStatus::Success(reserved),
                     },
                     Some(ReservationError::TileInvalid) => {
                         return ReservePathStatus::InvalidPath;
