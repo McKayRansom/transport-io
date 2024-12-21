@@ -28,11 +28,13 @@ impl Tileset {
 
     fn sprite_rect(&self, sprite: u32) -> Rect {
         Rect {
-            // spr_rect.x + 1.1 TODO: WHY was it like this before? A: Maybe due to weird drawing in webasm?
-            x: ((sprite % self.columns) * TILE_SIZE) as f32,
-            y: ((sprite / self.columns) * TILE_SIZE) as f32,
-            w: TILE_SIZE as f32,
-            h: TILE_SIZE as f32,
+            // Adding the 0.1 margin helps avoid slight gaps between tiles
+            // I'm not totally sure why, it seems to be a floating point error?
+            // See: https://github.com/not-fl3/macroquad/blob/master/tiled/src/lib.rs#L80
+            x: ((sprite % self.columns) * TILE_SIZE) as f32 + 0.1,
+            y: ((sprite / self.columns) * TILE_SIZE) as f32 + 0.1,
+            w: TILE_SIZE as f32 - 0.2,
+            h: TILE_SIZE as f32 - 0.2,
         }
     }
 
