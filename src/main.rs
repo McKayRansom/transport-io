@@ -48,7 +48,10 @@ impl GameState {
             menu::draw();
             match menu::draw() {
                 Some(MenuSelect::Continue) => {
-                    self.map = Map::load_from_file(Path::new("saves/game.json")).unwrap();
+                    if let Ok(map) = Map::load_from_file(Path::new("saves/game.json")) {
+                        self.map = map;
+                        self.menu = false;
+                    }
                 }
 
                 Some(MenuSelect::NewGame) => {

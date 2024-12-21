@@ -16,6 +16,12 @@ pub enum ConnectionType {
     Down = 3,
 }
 
+// #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// pub struct Conn {
+//     t: ConnectionType,
+//     dir: Direction,
+// }
+
 pub type ConnectionIterator<'b> = FilterMap<
     Enumerate<std::slice::Iter<'b, ConnectionType>>,
     for<'a> fn((usize, &'a ConnectionType)) -> std::option::Option<Direction>,

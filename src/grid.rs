@@ -136,18 +136,20 @@ impl Grid {
 
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
         if let Some(start_path) = self.find_road(start) {
-            if let Some(end_path) = self.find_road(end) {
+            if let Some(mut end_path) = self.find_road(end) {
                 if let Some(middle_path) = self.find_road_path(
                     start_path.0.last().unwrap_or(start),
                     end_path.0.last().unwrap_or(end),
                 ) {
                     // start_path + middle_path + end_path
                     let mut full_path = Vec::new();
-                    full_path.extend(start_path.0);
-                    full_path.extend(middle_path.0);
+                    full_path.extend(&start_path.0[0..start_path.0.len() - 1]);
+                    full_path.extend(&middle_path.0);
+
+                    end_path.0.pop();
                     full_path.extend(end_path.0.iter().rev());
 
-                    let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
+                    let full_cost: u32 = (start_path.1 + middle_path.1 + end_path.1) - 2;
 
                     Some((full_path, full_cost))
                 } else {
@@ -182,7 +184,7 @@ impl Grid {
 
     pub fn find_road(&self, start: &Position) -> Path {
         if self.get_tile(start).is_road() {
-            Some((Vec::new(), 0))
+            Some((vec![*start], 1))
         } else {
             dijkstra(
                 start,
@@ -281,7 +283,10 @@ mod grid_tests {
     fn test_path_house() {
         let grid = Grid::new_from_string("hh>>hh");
 
-        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_some());
+        assert_eq!(
+            grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).unwrap(),
+            ((0..6).map(|i| grid.pos(i, 0)).collect(), 5)
+        );
     }
 
     #[test]
@@ -291,5 +296,4 @@ mod grid_tests {
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_none());
     }
-
 }

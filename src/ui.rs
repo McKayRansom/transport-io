@@ -1,8 +1,10 @@
+use std::char::MAX;
+
 use crate::{
     grid::Position, map::Map, tile::Tile, tileset::Tileset, vehicle::Vehicle
 };
 use macroquad::{
-    color::Color, input::{get_char_pressed, is_mouse_button_down, mouse_position, mouse_wheel, MouseButton}, math::{vec2, Rect, RectOffset}, ui::{
+    color::Color, input::{get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{vec2, Rect, RectOffset}, ui::{
         hash, root_ui, widgets::{self}, Skin, Ui
     }, window::{screen_height, screen_width}
 };
@@ -12,8 +14,11 @@ const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
 const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
 
 const WASD_MOVE_SENSITIVITY: f32 = 10.;
-const SCROLL_SENSITIVITY: f32 = 0.9;
+const SCROLL_SENSITIVITY: f32 = 0.05;
 const PLUS_MINUS_SENSITVITY: f32 = 0.8;
+
+const MIN_ZOOM: f32 = 0.4;
+const MAX_ZOOM: f32 = 4.;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BuildMode {
@@ -229,6 +234,21 @@ impl UiState {
             self.key_down_event(key);
         }
 
+        // check WASD
+        if is_key_down(KeyCode::W) {
+            self.camera.1 -= WASD_MOVE_SENSITIVITY / self.zoom;
+        } 
+        if is_key_down(KeyCode::A) {
+            self.camera.0 -= WASD_MOVE_SENSITIVITY / self.zoom;
+        } 
+        if is_key_down(KeyCode::S) {
+            self.camera.1 += WASD_MOVE_SENSITIVITY / self.zoom;
+        }
+        if is_key_down(KeyCode::D) {
+            self.camera.0 += WASD_MOVE_SENSITIVITY / self.zoom;
+        }
+
+
         let new_mouse_wheel = mouse_wheel();
         let new_mouse_pos = mouse_position();
 
@@ -237,12 +257,7 @@ impl UiState {
         }
 
         if new_mouse_wheel.1 != 0. {
-            if new_mouse_wheel.1 > 0. {
-                self.zoom *= /*new_mouse_wheel.1 * */SCROLL_SENSITIVITY;
-            } else {
-                self.zoom /= /*(-new_mouse_wheel.1) * */SCROLL_SENSITIVITY;
-            }
-
+            self.change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
@@ -432,21 +447,39 @@ impl UiState {
         macroquad_profiler::profiler(ProfilerParams{fps_counter_pos: vec2(0., 50.)});
     }
 
+    fn change_zoom(&mut self, amount: f32) {
+
+        let new_zoom = self.zoom + amount;
+
+        if new_zoom <= MIN_ZOOM || new_zoom >= MAX_ZOOM {
+            return;
+        }
+
+        let old_screen_zoom = 1./self.zoom;
+        let new_screen_zoom = 1./new_zoom;
+        self.camera.0 += screen_width() * (old_screen_zoom - new_screen_zoom) / 2.;
+        self.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
+
+        self.zoom += amount;
+    }
+
     fn key_down_event(&mut self, ch: char) {
         if ('1'..'9').contains(&ch) {
             let toolbar_count: usize = ch as usize - '1' as usize;
             if toolbar_count < self.toolbar_items.len() {
-                self.build_mode = self.toolbar_items[toolbar_count].build_mode;
+                let new_build_mode = self.toolbar_items[toolbar_count].build_mode;
+                if self.build_mode != new_build_mode {
+                    self.build_mode = new_build_mode;
+                } else {
+                    self.build_mode = BuildMode::None;
+                }
             }
             return;
         }
         match ch {
             'q' => self.request_quit = true,
             ' ' => self.paused = !self.paused,
-            'w' => self.camera.1 -= WASD_MOVE_SENSITIVITY,
-            'a' => self.camera.0 -= WASD_MOVE_SENSITIVITY,
-            's' => self.camera.1 += WASD_MOVE_SENSITIVITY,
-            'd' => self.camera.0 += WASD_MOVE_SENSITIVITY,
+
             '-' => self.zoom *= PLUS_MINUS_SENSITVITY,
             '=' => self.zoom /= PLUS_MINUS_SENSITVITY,
 

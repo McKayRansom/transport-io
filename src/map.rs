@@ -11,7 +11,7 @@ use crate::{
 };
 
 const CITY_BLOCK_SIZE: i16 = 8;
-const CITY_BLOCK_COUNT: i16 = 4;
+const CITY_BLOCK_COUNT: i16 = 1;
 
 pub const GRID_SIZE: (i16, i16) = (30, 30);
 
