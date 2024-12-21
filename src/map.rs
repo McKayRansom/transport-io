@@ -13,7 +13,8 @@ use crate::{
 const CITY_BLOCK_SIZE: i16 = 8;
 const CITY_BLOCK_COUNT: i16 = 1;
 
-pub const GRID_SIZE: (i16, i16) = (30, 30);
+pub const GRID_SIZE: (i16, i16) = (64, 64);
+pub const GRID_CENTER: (i16, i16) = (33, 33);
 
 #[derive(Serialize, Deserialize)]
 pub struct Map {
@@ -21,6 +22,8 @@ pub struct Map {
     pub vehicle_id: grid::Id,
     pub vehicles: HashMap<grid::Id, Vehicle>,
     pub rating: f32,
+    pub grow_ticks: u32,
+    pub houses: Vec<Position>,
 }
 
 impl Map {
@@ -31,6 +34,8 @@ impl Map {
             vehicle_id: 1,
             vehicles: HashMap::new(),
             rating: 1.0,
+            grow_ticks: 0,
+            houses: Vec::new(),
         }
     }
 
@@ -73,6 +78,8 @@ impl Map {
             vehicle_id: 1,
             vehicles: HashMap::new(),
             rating: 1.0,
+            grow_ticks: 0,
+            houses: Vec::new(),
         }
     }
 
@@ -91,12 +98,15 @@ impl Map {
             tile.build(|| {
                 success = true;
                 Tile::House(House::new())
-            })
+            });
+            if success {
+                self.houses.push(pos);
+            }
         }
-        success
+       success
     }
 
-    pub fn generate_block(&mut self, x: i16, y: i16) {
+    pub fn _generate_block(&mut self, x: i16, y: i16) {
         // top
         for i in 0..CITY_BLOCK_SIZE {
             self.generate_road(x + i, y, Direction::Right);
@@ -113,12 +123,46 @@ impl Map {
         }
     }
 
-    pub fn generate(&mut self) {
-        for i in 0..CITY_BLOCK_COUNT {
-            for j in 0..CITY_BLOCK_COUNT {
-                self.generate_block(i * CITY_BLOCK_SIZE, j * CITY_BLOCK_SIZE);
+    fn generate_center_roads(&mut self) {
+        for i in -5..5 {
+            self.grid.build_two_way_road(self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1), Direction::Left);
+            self.grid.build_two_way_road(self.grid.pos(GRID_CENTER.0 + 0, GRID_CENTER.1 + i), Direction::Down);
+        }
+    }
+
+    fn grow_house(&mut self) {
+        let i = rand::gen_range(0, self.houses.len());
+        if let Some(mut house_pos) = self.houses.get(i).cloned() {
+            let dir = Direction::random();
+            while let Some(pos) = Position::new_from_move(&house_pos, dir, self.grid.size) {
+                house_pos = pos;
+                if self.generate_house(pos.x, pos.y) {
+                    return;
+                }
             }
         }
+    }
+
+    fn generate_first_houses(&mut self) {
+        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1);
+        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2);
+        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1);
+        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2);
+
+        for _ in 0..50 {
+            self.grow_house();
+        }
+    }
+
+    pub fn generate(&mut self) {
+        self.generate_center_roads();
+        self.generate_first_houses();
+        // the oofs
+        // for i in 0..CITY_BLOCK_COUNT {
+            // for j in 0..CITY_BLOCK_COUNT {
+                // self.generate_block(i * CITY_BLOCK_SIZE, j * CITY_BLOCK_SIZE);
+            // }
+        // }
     }
 
     pub fn random_house(&self) -> Option<Position> {
@@ -148,8 +192,11 @@ impl Map {
     }
 
     fn generate_cars(&mut self) {
-        let start_pos = self.random_house();
-        let end_pos = self.random_house();
+        let start_index = rand::gen_range(0, self.houses.len());
+        let end_index = rand::gen_range(0, self.houses.len());
+
+        let start_pos = self.houses.get(start_index).cloned();
+        let end_pos = self.houses.get(end_index).cloned();
         if start_pos.is_none() || end_pos.is_none() {
             return;
         }
@@ -168,7 +215,11 @@ impl Map {
                 if let Tile::House(start_house_again) = self.grid.get_tile_mut(&end_pos) {
                     start_house_again.vehicle_on_the_way = vehicle;
                 }
+            } else {
+                self.houses.swap_remove(end_index);
             }
+        } else {
+            self.houses.swap_remove(start_index);
         }
     }
 
@@ -199,6 +250,14 @@ impl Map {
         }
 
         self.generate_cars();
+
+        if self.rating > 0.9 {
+            self.grow_ticks += 1;
+            if self.grow_ticks > 60 {
+                self.grow_house();
+                self.grow_ticks = 0;
+            }
+        }
     }
 
     pub fn draw(&self, tileset: &Tileset) {

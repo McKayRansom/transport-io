@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use macroquad::input::KeyCode;
+use macroquad::{input::KeyCode, prelude::rand};
 use serde::{Deserialize, Serialize};
 
 
@@ -42,6 +42,19 @@ impl Direction {
             Direction::Down => Direction::Up,
             Direction::Left => Direction::Right,
             Direction::Right => Direction::Left,
+        }
+    }
+
+    pub fn random() -> Self {
+        (rand::gen_range(0, 4) as usize).try_into().unwrap()
+    }
+
+    pub fn is_horizontal(self) -> bool {
+        match self {
+            Direction::Up => false,
+            Direction::Down => false,
+            Direction::Left => true,
+            Direction::Right => true,
         }
     }
 

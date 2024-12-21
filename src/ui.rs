@@ -1,7 +1,6 @@
-use std::char::MAX;
 
 use crate::{
-    grid::Position, map::Map, tile::Tile, tileset::Tileset, vehicle::Vehicle
+    grid::{Position, GRID_CELL_SIZE}, map::{Map, GRID_CENTER}, tile::Tile, tileset::Tileset, vehicle::Vehicle
 };
 use macroquad::{
     color::Color, input::{get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode, MouseButton}, math::{vec2, Rect, RectOffset}, ui::{
@@ -27,6 +26,7 @@ enum BuildMode {
     // Station,
     AddRoad,
     RemoveRoad,
+    TwoLaneRoad,
     Bridge,
     Clear,
     Yield,
@@ -58,7 +58,7 @@ impl UiState {
             request_quit: false,
             paused: false,
             zoom: 1.,
-            camera: (0., 0.),
+            camera: (GRID_CENTER.0 as f32 * GRID_CELL_SIZE.0 - screen_width() / 2., GRID_CENTER.1 as f32 * GRID_CELL_SIZE.1 - screen_height() / 2.),
             mouse_pressed: false,
             last_mouse_pos: None,
             bridge_start_pos: None,
@@ -71,6 +71,10 @@ impl UiState {
                 ToolbarItem {
                     build_mode: BuildMode::RemoveRoad,
                     label: "Road-",
+                },
+                ToolbarItem {
+                    build_mode: BuildMode::TwoLaneRoad,
+                    label: "TwoLane",
                 },
                 ToolbarItem {
                     build_mode: BuildMode::Bridge,
@@ -461,6 +465,7 @@ impl UiState {
         self.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
 
         self.zoom += amount;
+        // let self.zoom = self.zoom.round();
     }
 
     fn key_down_event(&mut self, ch: char) {
@@ -533,6 +538,12 @@ impl UiState {
                         let dir = last_mouse_pos.direction_to(pos);
                         map.grid.get_tile_mut(&last_mouse_pos)
                             .edit_road(|road| road.disconnect(dir));
+                    }
+                }
+                BuildMode::TwoLaneRoad => {
+                    if let Some(last_mouse_pos) = self.last_mouse_pos {
+                        let dir = last_mouse_pos.direction_to(pos);
+                        map.grid.build_two_way_road(last_mouse_pos, dir);
                     }
                 }
                 BuildMode::Clear => {

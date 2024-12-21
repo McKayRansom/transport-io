@@ -1,5 +1,5 @@
 use macroquad::{
-    color::GRAY,
+    color::{BLACK, WHITE},
     math::vec2,
     text::draw_text,
     ui::{hash, root_ui, widgets},
@@ -22,12 +22,23 @@ pub fn draw() -> Option<MenuSelect> {
     let menu_item_height = 25.;
     let menu_item_pad = 5.;
 
+    let x =-300. + screen_width() / 2.;
+    let y = -menu_height + screen_height() / 2.;
+    let font_size = 120.0;
+
+    let shadow_y = y + 5.;
+    let shadow_x = x + 5.;
+
     draw_text(
         "Transport IO",
-        -300. + screen_width() / 2.,
-        -menu_height + screen_height() / 2.,
-        120.0,
-        GRAY,
+        shadow_x, shadow_y, font_size,
+        BLACK,
+    );
+
+    draw_text(
+        "Transport IO",
+        x, y, font_size,
+        WHITE,
     );
 
     widgets::Window::new(

@@ -94,8 +94,10 @@ impl Tile {
     pub fn draw(&self, pos: Position, tileset: &Tileset) {
         let rect = Rect::from(pos);
 
-        if let Tile::Road(road) = self {
-            road.draw(&rect, tileset);
+        match self {
+            Tile::Road(road) => road.draw(&rect, tileset),
+            // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
+            _ => {},
         }
     }
 
@@ -163,6 +165,7 @@ impl Tile {
                 }
             }
             Tile::House(_) => DEFAULT_COST * 2,
+            // we run into this for dead-end turn around
             Tile::Empty => DEFAULT_COST * 3,
         }
     }

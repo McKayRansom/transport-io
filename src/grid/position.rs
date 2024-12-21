@@ -34,6 +34,14 @@ impl Position {
         Position { x, y, z }
     }
 
+    pub fn round_to(&self, amount: i16) -> Self {
+        Position {
+            x: self.x - self.x % amount,
+            y: self.y - self.y % amount,
+            z: self.z,
+        }
+    }
+
     pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32, max: (i16, i16)) -> Option<Self> {
         Position::new(
             ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
@@ -130,6 +138,12 @@ mod position_tests {
     #[test]
     fn test_init() {
         assert_eq!(pos(0, 0), Position { x: 0, y: 0, z: 0 });
+    }
+
+    #[test]
+    fn test_round() {
+        assert_eq!(pos(3, 3).round_to(2), Position { x: 2, y: 2, z: 0 });
+        assert_eq!(pos(2, 2).round_to(2), Position { x: 2, y: 2, z: 0 });
     }
 
     #[test]

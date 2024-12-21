@@ -47,7 +47,7 @@ impl GridTile {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct Grid {
     tiles: Vec<Vec<GridTile>>,
     pub size: (i16, i16),
@@ -149,7 +149,7 @@ impl Grid {
                     end_path.0.pop();
                     full_path.extend(end_path.0.iter().rev());
 
-                    let full_cost: u32 = (start_path.1 + middle_path.1 + end_path.1) - 2;
+                    let full_cost: u32 = (start_path.1 + middle_path.1 + end_path.1);
 
                     Some((full_path, full_cost))
                 } else {
@@ -176,19 +176,38 @@ impl Grid {
         let tile = self.get_tile(pos);
         tile.iter_connections()
             .filter_map(|dir| {
-                Position::new_from_move(pos, dir, self.size)
-                    .map(|new_pos| (new_pos, self.get_tile(&new_pos).cost()))
+                Position::new_from_move(pos, dir, self.size).map(|new_pos| {
+                    let tile = self.get_tile(&new_pos);
+                    (
+                        if tile.is_road() {
+                            new_pos
+                        } else {
+                            Position::new_from_move(pos, dir.rotate_left(), self.size)
+                                .unwrap_or(new_pos)
+                        },
+                        tile.cost(),
+                    )
+                })
+            })
+            .collect()
+    }
+
+    pub fn house_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
+        let tile = self.get_tile(pos);
+        tile.iter_connections()
+            .filter_map(|dir| {
+                Position::new_from_move(pos, dir, self.size).map(|new_pos| (new_pos, 1))
             })
             .collect()
     }
 
     pub fn find_road(&self, start: &Position) -> Path {
         if self.get_tile(start).is_road() {
-            Some((vec![*start], 1))
+            Some((vec![*start], 0))
         } else {
             dijkstra(
                 start,
-                |p| self.road_successors(p),
+                |p| self.house_successors(p),
                 |p| self.get_tile(p).is_road(),
             )
         }
@@ -295,5 +314,19 @@ mod grid_tests {
 
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_none());
+    }
+
+    #[test]
+    fn test_path_dead_end() {
+        let grid = Grid::new_from_string(
+            "<_
+>_
+            ",
+        );
+
+        assert_eq!(
+            grid.find_path(&grid.pos(0, 1), &grid.pos(0, 0)).unwrap(),
+            (vec![grid.pos(0, 1), grid.pos(0, 0)], 3)
+        );
     }
 }
