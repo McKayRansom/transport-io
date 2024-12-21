@@ -8,14 +8,19 @@ use crate::{
 };
 use grades::Grades;
 use macroquad::{
-    color::{Color, RED}, input::{
+    color::{Color, RED},
+    input::{
         get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode,
         MouseButton,
-    }, math::{vec2, Rect, RectOffset}, text::draw_text, ui::{
+    },
+    math::{vec2, Rect, RectOffset},
+    text::draw_text,
+    ui::{
         hash, root_ui,
         widgets::{self},
         Skin, Ui,
-    }, window::{screen_height, screen_width}
+    },
+    window::{screen_height, screen_width},
 };
 use macroquad_profiler::ProfilerParams;
 
@@ -279,12 +284,18 @@ impl UiState {
 
     pub fn draw_build_err(&self) {
         if let Some(build_err) = &self.build_err {
-            draw_text(format!("{:?}", build_err.err).as_str(), build_err.screen_pos.0, build_err.screen_pos.1 - build_err.time as f32, 24., RED);
+            draw_text(
+                format!("{:?}", build_err.err).as_str(),
+                build_err.screen_pos.0,
+                build_err.screen_pos.1 - build_err.time as f32,
+                24.,
+                RED,
+            );
         }
     }
 
     pub fn on_build_err(&mut self, err: BuildError, pos: (f32, f32)) {
-        self.build_err = Some(BuildErrorMsg{
+        self.build_err = Some(BuildErrorMsg {
             screen_pos: pos,
             err,
             time: 0,
@@ -324,8 +335,7 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
-        if let Some(pos) =
-            Position::from_screen(new_mouse_pos, self.camera, self.zoom, map.grid.size)
+        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom);
         {
             if is_mouse_button_down(MouseButton::Left) {
                 // macroquad::ui::
@@ -343,7 +353,7 @@ impl UiState {
                 .last_mouse_pos
                 .is_none_or(|last_moust_pos| last_moust_pos != pos)
             {
-                if let Err(err) =self.mouse_motion_event(pos, map) {
+                if let Err(err) = self.mouse_motion_event(pos, map) {
                     self.on_build_err(err, new_mouse_pos);
                 }
                 self.last_mouse_pos = Some(pos);
@@ -481,7 +491,7 @@ impl UiState {
             match self.build_mode {
                 BuildMode::Bridge => {
                     if let Some(start_pos) = self.bridge_start_pos {
-                        for pos in start_pos.iter_line_to(last_mouse_pos, map.grid.size).0 {
+                        for pos in start_pos.iter_line_to(last_mouse_pos).0 {
                             tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
                         }
                     } else {

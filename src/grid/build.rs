@@ -47,7 +47,7 @@ impl Tile {
 
 impl Grid {
     pub fn build_bridge(&mut self, start_pos: Position, end_pos: Position) -> BuildResult {
-        let (iter, dir) = start_pos.iter_line_to(end_pos, self.size);
+        let (iter, dir) = start_pos.iter_line_to(end_pos);
         for pos in iter {
             let (build_pos, build_layer) = if pos == start_pos {
                 (pos, ConnectionType::Up)

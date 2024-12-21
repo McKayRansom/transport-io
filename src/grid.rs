@@ -96,15 +96,7 @@ impl Grid {
 
     #[allow(dead_code)]
     pub fn pos(&self, x: i16, y: i16) -> Position {
-        Position {
-            x: x.clamp(0, self.size.0 - 1),
-            y: y.clamp(0, self.size.1 - 1),
-            z: 0,
-        }
-    }
-
-    pub fn try_pos(&self, x: i16, y: i16) -> Option<Position> {
-        Position::new(x, y, self.size)
+        Position::new(x, y)
     }
 
     #[allow(dead_code)]
@@ -143,7 +135,11 @@ impl Grid {
         // }
     }
 
-    pub fn reserve(&mut self, pos: &Position, vehicle_id: Id) -> Result<Reservation, ReservationError> {
+    pub fn reserve(
+        &mut self,
+        pos: &Position,
+        vehicle_id: Id,
+    ) -> Result<Reservation, ReservationError> {
         self.get_tile_mut(pos)
             .ok_or(ReservationError::TileInvalid)?
             .reserve(vehicle_id, *pos)
@@ -187,18 +183,16 @@ impl Grid {
         let tile = tile.unwrap();
         tile.iter_connections()
             .filter_map(|dir| {
-                Position::new_from_move(pos, dir, self.size).and_then(|new_pos| {
-                    self.get_tile(&new_pos).map(|tile| {
-                        (
-                            if tile.is_road() {
-                                new_pos
-                            } else {
-                                Position::new_from_move(pos, dir.rotate_left(), self.size)
-                                    .unwrap_or(new_pos)
-                            },
-                            tile.cost(),
-                        )
-                    })
+                let new_pos = Position::new_from_move(pos, dir);
+                self.get_tile(&new_pos).map(|tile| {
+                    (
+                        if tile.is_road() {
+                            new_pos
+                        } else {
+                            Position::new_from_move(pos, dir.rotate_left())
+                        },
+                        tile.cost(),
+                    )
                 })
             })
             .collect()
@@ -211,9 +205,7 @@ impl Grid {
         }
         let tile = tile.unwrap();
         tile.iter_connections()
-            .filter_map(|dir| {
-                Position::new_from_move(pos, dir, self.size).map(|new_pos| (new_pos, 1))
-            })
+            .map(|dir| (Position::new_from_move(pos, dir), 1))
             .collect()
     }
 
@@ -230,6 +222,11 @@ impl Grid {
         }
     }
 
+    pub fn should_be_yielded_to(&self, should_yield: YieldType, pos: &Position, dir_from: Direction) -> bool {
+        self.get_tile(pos)
+            .is_some_and(|tile| tile.should_be_yielded_to(should_yield, dir_from))
+    }
+
     pub fn should_we_yield_when_entering(
         &self,
         should_yield: YieldType,
@@ -243,13 +240,9 @@ impl Grid {
         if let Some(Tile::Road(road)) = self.get_tile(position) {
             // For each direction that feeds into this tile in question
             for dir in road.iter_connections_inverse() {
-                if let Some(yield_to_pos) = Position::new_from_move(position, dir, self.size) {
-                    if self
-                        .get_tile(&yield_to_pos)?
-                        .should_be_yielded_to(should_yield, dir)
-                    {
-                        return Some(yield_to_pos);
-                    }
+                let yield_to_pos = Position::new_from_move(position, dir);
+                if self.should_be_yielded_to(should_yield, &yield_to_pos, dir) {
+                    return Some(yield_to_pos);
                 }
             }
         }

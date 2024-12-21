@@ -15,13 +15,9 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(x: i16, y: i16, max: (i16, i16)) -> Option<Self> {
-        if x < 0 || x >= max.0 || y < 0 || y >= max.1 {
-            None
-        } else {
-            let z = Z_GROUND;
-            Some(Position { x, y, z })
-        }
+    pub fn new(x: i16, y: i16) -> Self {
+        let z = Z_GROUND;
+        Position { x, y, z }
     }
 
     pub fn clone_on_layer(&self, z: i16) -> Self {
@@ -42,11 +38,10 @@ impl Position {
         }
     }
 
-    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32, max: (i16, i16)) -> Option<Self> {
+    pub fn from_screen(screen_pos: (f32, f32), camera_pos: (f32, f32), zoom: f32) -> Self {
         Position::new(
             ((camera_pos.0 + (screen_pos.0 / zoom)) / GRID_CELL_SIZE.0) as i16,
             ((camera_pos.1 + (screen_pos.1 / zoom)) / GRID_CELL_SIZE.1) as i16,
-            max,
         )
     }
 
@@ -68,24 +63,23 @@ impl Position {
         }
     }
 
-    pub fn new_from_move(pos: &Position, dir: Direction, max: (i16, i16)) -> Option<Self> {
+    pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
         match dir {
-            Direction::Up => Position::new(pos.x, pos.y - 1, max),
-            Direction::Down => Position::new(pos.x, pos.y + 1, max),
-            Direction::Left => Position::new(pos.x - 1, pos.y, max),
-            Direction::Right => Position::new(pos.x + 1, pos.y, max),
+            Direction::Up => Position::new(pos.x, pos.y - 1),
+            Direction::Down => Position::new(pos.x, pos.y + 1),
+            Direction::Left => Position::new(pos.x - 1, pos.y),
+            Direction::Right => Position::new(pos.x + 1, pos.y),
         }
     }
 
-    pub fn iter_line_to(&self, destination: Position, max: (i16, i16)) -> (PositionIterator, Direction) {
+    pub fn iter_line_to(&self, destination: Position) -> (PositionIterator, Direction) {
         let direction = self.direction_to(destination);
         let count: usize = match direction {
             Direction::Down | Direction::Up => (destination.y - self.y).unsigned_abs() as usize,
             Direction::Left | Direction::Right => (destination.x - self.x).unsigned_abs() as usize,
         };
         (PositionIterator {
-            position: Some(*self),
-            max,
+            position: *self,
             direction,
             count: count + 1, // include the destination position
         }, direction)
@@ -93,10 +87,9 @@ impl Position {
 }
 
 pub struct PositionIterator {
-    position: Option<Position>,
+    position: Position,
     direction: Direction,
     count: usize,
-    max: (i16, i16)
 }
 
 impl Iterator for PositionIterator {
@@ -105,13 +98,12 @@ impl Iterator for PositionIterator {
     fn next(&mut self) -> Option<Self::Item> {
         if self.count == 0 {
             None
-        } else if let Some(position) = self.position {
-            self.count -= 1;
-            self.position = Position::new_from_move(&position, self.direction, self.max);
-            Some(position)
         } else {
-            None
-        }
+            self.count -= 1;
+            let old_pos = self.position;
+            self.position = Position::new_from_move(&self.position, self.direction);
+            Some(old_pos)
+        } 
     }
 }
 
@@ -132,7 +124,7 @@ mod position_tests {
     use super::*;
 
     fn pos(x: i16, y: i16) -> Position {
-        Position::new(x, y, (4,4)).unwrap()
+        Position::new(x, y)
     }
 
     #[test]
@@ -200,7 +192,7 @@ mod position_tests {
     fn test_iter_line_to() {
         let start_pos: Position = pos(0, 0);
         let end_pos: Position = pos(3, 0);
-        let (iter, direction) = start_pos.iter_line_to(end_pos, (4, 4));
+        let (iter, direction) = start_pos.iter_line_to(end_pos);
         assert_eq!(direction, Direction::Right);
 
         let line: Vec<Position> = iter.collect();

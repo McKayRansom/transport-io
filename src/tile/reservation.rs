@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::grid::{Id, Position};
 
-#[derive(Clone, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Reserved {
     #[serde(skip_serializing, skip_deserializing)]
     weak_id: Weak<Id>,
@@ -30,7 +29,10 @@ impl Reserved {
         if !self.is_reserved() {
             let rc = Rc::new(id);
             self.weak_id = Rc::<u64>::downgrade(&rc);
-            Some(Reservation { _strong_id: rc, pos })
+            Some(Reservation {
+                _strong_id: rc,
+                pos,
+            })
         } else {
             None
         }
@@ -45,8 +47,7 @@ impl PartialEq for Reserved {
 
 impl Eq for Reserved {}
 
-#[derive(Clone, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Reservation {
     #[serde(skip_serializing, skip_deserializing)]
     _strong_id: Rc<Id>,
@@ -72,7 +73,7 @@ mod reservation_tests {
         let mut reserved = Reserved::new();
         assert!(!reserved.is_reserved());
 
-        let pos =Position::new(0, 0, (1,1)).unwrap();
+        let pos = Position::new(0, 0);
 
         let reservation = reserved.try_reserve(1234, pos).unwrap();
         assert!(reserved.is_reserved());

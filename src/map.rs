@@ -93,13 +93,13 @@ impl Map {
     }
 
     pub fn generate_road(&mut self, x: i16, y: i16, dir: Direction) -> BuildResult {
-        let pos = self.grid.try_pos(x, y).ok_or(BuildError::InvalidTile)?;
+        let pos = self.grid.pos(x, y);
 
         self.grid.build_road(&pos, dir)
     }
 
     pub fn generate_house(&mut self, x: i16, y: i16) -> BuildResult {
-        let pos = self.grid.try_pos(x, y).ok_or(BuildError::InvalidTile)?;
+        let pos = self.grid.pos(x, y);
 
         self.grid.build_house(&pos)?;
 
@@ -146,7 +146,8 @@ impl Map {
         let i = rand::gen_range(0, self.houses.len());
         if let Some(mut house_pos) = self.houses.get(i).cloned() {
             let dir = Direction::random();
-            while let Some(pos) = Position::new_from_move(&house_pos, dir, self.grid.size) {
+            loop { 
+                let pos = Position::new_from_move(&house_pos, dir);
                 house_pos = pos;
                 match self.generate_house(pos.x, pos.y) {
                     Ok(_) => break,
