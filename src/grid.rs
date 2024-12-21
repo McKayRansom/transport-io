@@ -149,7 +149,7 @@ impl Grid {
                     end_path.0.pop();
                     full_path.extend(end_path.0.iter().rev());
 
-                    let full_cost: u32 = (start_path.1 + middle_path.1 + end_path.1);
+                    let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
 
                     Some((full_path, full_cost))
                 } else {

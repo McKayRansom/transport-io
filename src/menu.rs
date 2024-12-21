@@ -6,15 +6,16 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum MenuSelect {
+    None,
     Continue,
     NewGame,
-    SaveGame,
-    LoadGame,
+    Save,
 }
 
-pub fn draw() -> Option<MenuSelect> {
-    let mut result: Option<MenuSelect> = None;
+pub fn draw() -> MenuSelect {
+    let mut result: MenuSelect = MenuSelect::None;
 
     let menu_width = 100.;
     let menu_height = 100.;
@@ -54,20 +55,20 @@ pub fn draw() -> Option<MenuSelect> {
     .ui(&mut root_ui(), |ui| {
         let mut position = vec2(0., 0.);
         if ui.button(position, "Continue") {
-            result = Some(MenuSelect::Continue)
+            result = MenuSelect::Continue
         }
         position.y += menu_item_height + menu_item_pad;
         if ui.button(position, "New Game") {
-            result = Some(MenuSelect::NewGame)
+            result = MenuSelect::NewGame
         }
         position.y += menu_item_height + menu_item_pad;
-        if ui.button(position, "Save Game") {
-            result = Some(MenuSelect::SaveGame)
+        if ui.button(position, "Save") {
+            result = MenuSelect::Save
         }
-        position.y += menu_item_height + menu_item_pad;
-        if ui.button(position, "Load Game") {
-            result = Some(MenuSelect::LoadGame)
-        }
+        // position.y += menu_item_height + menu_item_pad;
+        // if ui.button(position, "Load Game") {
+            // result = MenuSelect::LoadGame
+        // }
     });
 
     result

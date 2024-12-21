@@ -23,11 +23,11 @@ struct GameState {
 }
 
 impl GameState {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         GameState {
             menu: true,
             map: Map::new(),
-            ui: UiState::new(),
+            ui: UiState::new().await,
         }
     }
 
@@ -44,28 +44,23 @@ impl GameState {
 
         self.map.draw(tileset);
 
-        if self.menu {
-            menu::draw();
-            match menu::draw() {
-                Some(MenuSelect::Continue) => {
-                    if let Ok(map) = Map::load_from_file(Path::new("saves/game.json")) {
-                        self.map = map;
-                        self.menu = false;
-                    }
-                }
-
-                Some(MenuSelect::NewGame) => {
+        match self.ui.draw(&self.map, tileset) {
+            MenuSelect::Continue => {
+                if let Ok(map) = Map::load_from_file(Path::new("saves/game.json")) {
+                    self.map = map;
                     self.menu = false;
                 }
-
-                Some(MenuSelect::SaveGame) => {
-                    self.map.save_to_file(Path::new("saves/game.json")).unwrap();
-                }
-
-                _ => {}
             }
-        } else {
-            self.ui.draw(&self.map, tileset);
+
+            MenuSelect::NewGame => {
+                self.menu = false;
+            }
+
+            MenuSelect::Save => {
+                self.map.save_to_file(Path::new("saves/game.json")).unwrap();
+            }
+
+            _ => {}
         }
     }
 
@@ -74,7 +69,7 @@ impl GameState {
 #[macroquad::main("Transport IO")]
 async fn main() {
     // Next we create a new instance of our GameState struct, which implements EventHandler
-    let mut state = GameState::new();
+    let mut state = GameState::new().await;
     let speed = 1. / 8.;
 
     set_window_size(800, 800);
