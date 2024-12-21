@@ -32,11 +32,9 @@ impl GameState {
     }
 
     pub fn load_level(&mut self) {
-        self.map.generate();
-    }
-
-    fn update(&mut self) {
-        self.map.update();
+        if self.map.generate().is_err() {
+            println!("ERROR GENERATING LEVEL??!?!?");
+        }
     }
 
     fn draw(&mut self, tileset: &Tileset) {
@@ -70,7 +68,7 @@ impl GameState {
 async fn main() {
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let mut state = GameState::new().await;
-    let speed = 1. / 8.;
+    let speed = 1. / 60.;
 
     set_window_size(800, 800);
 
@@ -94,19 +92,24 @@ async fn main() {
     let mut last_update = get_time();
 
     loop {
-        state.ui.update(&mut state.map);
 
-        if !state.ui.paused && get_time() - last_update > speed {
+
+        if get_time() - last_update > speed {
+
+            state.ui.update(&mut state.map);
+
             last_update = get_time();
+            if !state.ui.paused {
 
-            state.update();
+                state.map.update();
+            }
         }
 
         tileset.zoom = state.ui.zoom;
         tileset.camera = state.ui.camera;
         state.draw(&tileset);
 
-        // TODO: Take quit request confirmation from example
+        // LATER: Take quit request confirmation from example
         if state.ui.request_quit {
             break;
         }

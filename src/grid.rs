@@ -5,12 +5,13 @@ pub use position::*;
 mod direction;
 pub use direction::*;
 mod build;
+pub use build::*;
 
 use macroquad::math::Rect;
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
-use crate::tile::{Tile, YieldType};
+use crate::tile::{Reservation, Tile, YieldType};
 use crate::tileset::Tileset;
 
 pub type Id = u64;
@@ -118,49 +119,55 @@ impl Grid {
         Grid { tiles, size }
     }
 
-    pub fn get_tile(&self, pos: &Position) -> &Tile {
-        if pos.z == 1 {
-            &self.tiles[pos.y as usize][pos.x as usize].bridge
-        } else {
-            &self.tiles[pos.y as usize][pos.x as usize].ground
-        }
+    pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
+        self.tiles.get(pos.y as usize).and_then(|row| {
+            row.get(pos.x as usize).map(|grid_tile| {
+                if pos.z == 0 {
+                    &grid_tile.ground
+                } else {
+                    &grid_tile.bridge
+                }
+            })
+        })
     }
 
-    pub fn get_tile_mut(&mut self, pos: &Position) -> &mut Tile {
-        if pos.z == 1 {
-            &mut self.tiles[pos.y as usize][pos.x as usize].bridge
-        } else {
-            &mut self.tiles[pos.y as usize][pos.x as usize].ground
-        }
+    pub fn get_tile_mut(&mut self, pos: &Position) -> Option<&mut Tile> {
+        self.tiles
+            .get_mut(pos.y as usize)?
+            .get_mut(pos.x as usize)
+            .map(|grid_tile| &mut grid_tile.ground)
+        // if pos.z == 1 {
+        // &mut self.tiles[pos.y as usize][pos.x as usize].bridge
+        // } else {
+        // &mut self.tiles[pos.y as usize][pos.x as usize].ground
+        // }
+    }
+
+    pub fn reserve(&mut self, pos: &Position, vehicle_id: Id) -> Result<Reservation, ReservationError> {
+        self.get_tile_mut(pos)
+            .ok_or(ReservationError::TileInvalid)?
+            .reserve(vehicle_id, *pos)
     }
 
     pub fn find_path(&self, start: &Position, end: &Position) -> Path {
-        if let Some(start_path) = self.find_road(start) {
-            if let Some(mut end_path) = self.find_road(end) {
-                if let Some(middle_path) = self.find_road_path(
-                    start_path.0.last().unwrap_or(start),
-                    end_path.0.last().unwrap_or(end),
-                ) {
-                    // start_path + middle_path + end_path
-                    let mut full_path = Vec::new();
-                    full_path.extend(&start_path.0[0..start_path.0.len() - 1]);
-                    full_path.extend(&middle_path.0);
+        let start_path = self.find_road(start)?;
+        let mut end_path = self.find_road(end)?;
+        let middle_path = self.find_road_path(
+            start_path.0.last().unwrap_or(start),
+            end_path.0.last().unwrap_or(end),
+        )?;
 
-                    end_path.0.pop();
-                    full_path.extend(end_path.0.iter().rev());
+        // start_path + middle_path + end_path
+        let mut full_path = Vec::new();
+        full_path.extend(&start_path.0[0..start_path.0.len() - 1]);
+        full_path.extend(&middle_path.0);
 
-                    let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
+        end_path.0.pop();
+        full_path.extend(end_path.0.iter().rev());
 
-                    Some((full_path, full_cost))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
+
+        Some((full_path, full_cost))
     }
 
     pub fn find_road_path(&self, start: &Position, end: &Position) -> Path {
@@ -174,19 +181,24 @@ impl Grid {
 
     pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
+        if tile.is_none() {
+            return Vec::new();
+        }
+        let tile = tile.unwrap();
         tile.iter_connections()
             .filter_map(|dir| {
-                Position::new_from_move(pos, dir, self.size).map(|new_pos| {
-                    let tile = self.get_tile(&new_pos);
-                    (
-                        if tile.is_road() {
-                            new_pos
-                        } else {
-                            Position::new_from_move(pos, dir.rotate_left(), self.size)
-                                .unwrap_or(new_pos)
-                        },
-                        tile.cost(),
-                    )
+                Position::new_from_move(pos, dir, self.size).and_then(|new_pos| {
+                    self.get_tile(&new_pos).map(|tile| {
+                        (
+                            if tile.is_road() {
+                                new_pos
+                            } else {
+                                Position::new_from_move(pos, dir.rotate_left(), self.size)
+                                    .unwrap_or(new_pos)
+                            },
+                            tile.cost(),
+                        )
+                    })
                 })
             })
             .collect()
@@ -194,6 +206,10 @@ impl Grid {
 
     pub fn house_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
+        if tile.is_none() {
+            return Vec::new();
+        }
+        let tile = tile.unwrap();
         tile.iter_connections()
             .filter_map(|dir| {
                 Position::new_from_move(pos, dir, self.size).map(|new_pos| (new_pos, 1))
@@ -202,13 +218,14 @@ impl Grid {
     }
 
     pub fn find_road(&self, start: &Position) -> Path {
-        if self.get_tile(start).is_road() {
+        let tile = self.get_tile(start)?;
+        if tile.is_road() {
             Some((vec![*start], 0))
         } else {
             dijkstra(
                 start,
                 |p| self.house_successors(p),
-                |p| self.get_tile(p).is_road(),
+                |p| self.get_tile(p).map_or(false, Tile::is_road),
             )
         }
     }
@@ -223,12 +240,12 @@ impl Grid {
             return None;
         }
 
-        if let Tile::Road(road) = self.get_tile(position) {
+        if let Some(Tile::Road(road)) = self.get_tile(position) {
             // For each direction that feeds into this tile in question
             for dir in road.iter_connections_inverse() {
                 if let Some(yield_to_pos) = Position::new_from_move(position, dir, self.size) {
                     if self
-                        .get_tile(&yield_to_pos)
+                        .get_tile(&yield_to_pos)?
                         .should_be_yielded_to(should_yield, dir)
                     {
                         return Some(yield_to_pos);
@@ -268,7 +285,10 @@ mod grid_tests {
     #[test]
     fn test_new() {
         let grid = Grid::new_from_string(">>>");
-        assert_eq!(*grid.get_tile(&grid.pos(0, 0)), Tile::new_from_char('>'));
+        assert_eq!(
+            *grid.get_tile(&grid.pos(0, 0)).unwrap(),
+            Tile::new_from_char('>')
+        );
     }
 
     #[test]

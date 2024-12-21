@@ -44,9 +44,8 @@ pub enum Status {
     HopelesslyLate,
 }
 
-pub enum ReservePathStatus {
+pub enum ReservePathError {
     InvalidPath,
-    Success(Vec<Reservation>),
     Blocking(Position),
 }
 
@@ -57,7 +56,10 @@ impl Vehicle {
         destination: Position,
         grid: &mut Grid,
     ) -> Result<Self, ReservationError> {
-        let reservation = grid.get_tile_mut(&pos).reserve(id, pos)?;
+        let reservation = grid
+            .get_tile_mut(&pos)
+            .ok_or(ReservationError::TileInvalid)?
+            .reserve(id, pos)?;
 
         let mut vehicle = Vehicle {
             id,
@@ -78,11 +80,13 @@ impl Vehicle {
         Ok(vehicle)
     }
 
-    pub fn fixup(&mut self, grid: &mut Grid) {
-        // Fix serialization 
+    pub fn fixup(&mut self, grid: &mut Grid) -> Result<(), ReservationError> {
+        // Fix serialization
         for reservation in &mut self.reserved {
-            *reservation = grid.get_tile_mut(&reservation.pos).reserve(self.id, reservation.pos).unwrap();
+            *reservation = grid.reserve(&reservation.pos, self.id)?
         }
+
+        Ok(())
     }
 
     fn reserve(
@@ -90,46 +94,46 @@ impl Vehicle {
         vehicle_id: Id,
         position: Position,
         reserved: &mut Vec<Reservation>,
-    ) -> Option<ReservationError> {
-        let result = path_grid.get_tile_mut(&position).reserve(vehicle_id, position);
-        match result {
-            Ok(reservation) => {
-                reserved.push(reservation);
-                None
-            }
-            Err(err) => Some(err),
-        }
+    ) -> Result<(), ReservationError> {
+        let reservation = path_grid.reserve(&position, vehicle_id)?;
+        reserved.push(reservation);
+        Ok(())
     }
 
-    fn reserve_path(&self, grid: &mut Grid) -> ReservePathStatus {
-        let should_yield = grid.get_tile(&self.pos).should_yield();
+    fn reserve_path(&self, grid: &mut Grid) -> Result<Vec<Reservation>, ReservePathError> {
+        // TODO: Move to grid
+
+        let should_yield = grid
+            .get_tile(&self.pos)
+            .ok_or(ReservePathError::InvalidPath)?
+            .should_yield();
+
+        let (path, _cost) = self.path.as_ref().ok_or(ReservePathError::InvalidPath)?;
 
         let mut reserved = Vec::<Reservation>::new();
 
-        if let Some((path, _cost)) = &self.path {
-            // for pos in &path[self.path_index + 1..] {
-            if let Some(pos) = path.get(self.path_index + 1) {
-                match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
-
-                    None => match grid.should_we_yield_when_entering(should_yield, pos) {
-                        Some(yield_to_pos) => {
-                            return ReservePathStatus::Blocking(yield_to_pos)
-                        }
-                        None => return ReservePathStatus::Success(reserved),
-                    },
-                    Some(ReservationError::TileInvalid) => {
-                        return ReservePathStatus::InvalidPath;
+        // for pos in &path[self.path_index + 1..] {
+        if let Some(pos) = path.get(self.path_index + 1) {
+            // TODO Make function
+            match Vehicle::reserve(grid, self.id, *pos, &mut reserved) {
+                Ok(_) => {
+                    if let Some(yield_to_pos) =
+                        grid.should_we_yield_when_entering(should_yield, pos)
+                    {
+                        return Err(ReservePathError::Blocking(yield_to_pos));
                     }
-                    Some(ReservationError::TileReserved) => {
-                        return ReservePathStatus::Blocking(*pos);
-                    }
+                    // Fall through
+                }
+                Err(ReservationError::TileInvalid) => {
+                    return Err(ReservePathError::InvalidPath);
+                }
+                Err(ReservationError::TileReserved) => {
+                    return Err(ReservePathError::Blocking(*pos));
                 }
             }
-
-            ReservePathStatus::Success(reserved)
-        } else {
-            ReservePathStatus::InvalidPath
         }
+
+        Ok(reserved)
     }
 
     fn update_speed(&mut self) {
@@ -148,7 +152,7 @@ impl Vehicle {
 
     fn get_next_pos(&mut self, grid: &mut Grid) -> Option<Position> {
         match self.reserve_path(grid) {
-            ReservePathStatus::Success(reserved) => {
+            Ok(reserved) => {
                 self.reserved = reserved;
                 if let Some(path) = self.path.as_ref() {
                     let pos = path.0[self.path_index + 1];
@@ -158,14 +162,16 @@ impl Vehicle {
                     None
                 }
             }
-            ReservePathStatus::InvalidPath => {
+            Err(ReservePathError::InvalidPath) => {
                 self.find_path(grid);
-                Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
+                // we're pretty well screwed if this happens so maybe don't do this??
+                // TODO: Don't do this, just unreserve when we find a path!
+                let _ = Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
                 None
             }
-            ReservePathStatus::Blocking(blocking_pos) => {
+            Err(ReservePathError::Blocking(blocking_pos)) => {
                 self.blocking_tile = Some(blocking_pos);
-                Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
+                let _ = Vehicle::reserve(grid, self.id, self.pos, &mut self.reserved);
                 // grid.reserve_position(&self.pos, self.id);
                 None
             }
@@ -174,7 +180,7 @@ impl Vehicle {
 
     fn update_position(&mut self, path_grid: &mut Grid) -> Status {
         if let Some(blocking_tile) = self.blocking_tile {
-            if let Tile::Road(road) = path_grid.get_tile(&blocking_tile) {
+            if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
                 if road.reserved.is_reserved() {
                     // don't bother
                     return Status::EnRoute;
@@ -301,7 +307,7 @@ mod vehicle_tests {
     use super::*;
 
     fn reserve(grid: &mut Grid, pos: Position) -> Result<Reservation, ReservationError> {
-        grid.get_tile_mut(&pos).reserve(1234, pos)
+        grid.get_tile_mut(&pos).unwrap().reserve(1234, pos)
     }
 
     #[test]
@@ -326,7 +332,7 @@ mod vehicle_tests {
         let mut grid = Grid::new_from_string(">>>>");
         let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
-        // let 
+        // let
         // let reservation = grid.get_tile_mut(&grid.pos(1, 0)).reserve(1).unwrap();
 
         assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
@@ -337,8 +343,7 @@ mod vehicle_tests {
     #[test]
     fn test_late() {
         let mut grid = Grid::new_from_string(">>>>");
-        let mut vehicle =
-            Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
+        let mut vehicle = Vehicle::new(grid.pos(0, 0), 0, grid.pos(3, 0), &mut grid).unwrap();
 
         vehicle.update(&mut grid);
 
@@ -409,12 +414,12 @@ mod vehicle_tests {
 
         assert_eq!(
             Vehicle::reserve(&mut grid, 12, end_pos, &mut vehicle.reserved),
-            None
+            Ok(())
         );
 
         assert_eq!(
-            Vehicle::reserve(&mut grid, 12, end_pos, &mut vehicle.reserved).unwrap(),
-            ReservationError::TileReserved
+            Vehicle::reserve(&mut grid, 12, end_pos, &mut vehicle.reserved),
+            Err(ReservationError::TileReserved)
         );
     }
 

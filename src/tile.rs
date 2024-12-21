@@ -170,36 +170,6 @@ impl Tile {
         }
     }
 
-    pub fn clear(&mut self) {
-        *self = Tile::Empty;
-    }
-
-    pub fn build<F>(&mut self, func: F)
-    where
-        F: FnOnce() -> Tile,
-    {
-        if *self == Tile::Empty {
-            *self = func()
-        }
-    }
-
-    pub fn edit_road<F>(&mut self, func: F)
-    where
-        F: FnOnce(&mut Road),
-    {
-        match self {
-            Tile::Empty => {
-                let mut road = Road::new();
-                func(&mut road);
-                *self = Tile::Road(road);
-            }
-            Tile::Road(road) => {
-                func(road);
-            }
-            _ => {}
-        }
-    }
-
     pub(crate) fn is_road(&self) -> bool {
         if let Tile::Road(_) = self {
             true

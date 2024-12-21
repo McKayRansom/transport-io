@@ -1,17 +1,22 @@
-use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::Path};
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{Read, Write},
+    path::Path,
+};
 
 use macroquad::rand::{self, srand};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{self, Direction, Grid, Id, Position},
-    tile::{House, Tile},
+    grid::{self, BuildError, BuildResult, Direction, Grid, Id, Position, ReservationError},
+    tile::Tile,
     tileset::Tileset,
     vehicle::{Status, Vehicle},
 };
 
-const CITY_BLOCK_SIZE: i16 = 8;
-const CITY_BLOCK_COUNT: i16 = 1;
+const _CITY_BLOCK_SIZE: i16 = 8;
+const _CITY_BLOCK_COUNT: i16 = 1;
 
 pub const GRID_SIZE: (i16, i16) = (64, 64);
 pub const GRID_CENTER: (i16, i16) = (33, 33);
@@ -46,13 +51,15 @@ impl Map {
 
         let mut map: Map = serde_json::from_str(&contents)?;
 
-        map.fixup();
+        if map.fixup().is_err() {
+            println!("Failed to fixup map!")
+            // Err()
+        }
 
         Ok(map)
     }
 
     pub fn save_to_file(&self, path: &Path) -> std::io::Result<()> {
-
         let _ = fs::create_dir_all(path.parent().unwrap());
 
         let mut file = File::create(path)?;
@@ -64,11 +71,13 @@ impl Map {
         Ok(())
     }
 
-    fn fixup(&mut self) {
+    fn fixup(&mut self) -> Result<(), ReservationError> {
         // Any way to not allow this to be called twice?
         for (_id, vehicle) in &mut self.vehicles {
-            vehicle.fixup(&mut self.grid);
+            vehicle.fixup(&mut self.grid)?
         }
+
+        Ok(())
     }
 
     #[allow(unused)]
@@ -83,51 +92,54 @@ impl Map {
         }
     }
 
-    pub fn generate_road(&mut self, x: i16, y: i16, dir: Direction) {
-        if let Some(pos) = self.grid.try_pos(x, y) {
-            self.grid
-                .get_tile_mut(&pos)
-                .edit_road(|road| road.connect(dir));
-        }
+    pub fn generate_road(&mut self, x: i16, y: i16, dir: Direction) -> BuildResult {
+        let pos = self.grid.try_pos(x, y).ok_or(BuildError::InvalidTile)?;
+
+        self.grid.build_road(&pos, dir)
     }
 
-    pub fn generate_house(&mut self, x: i16, y: i16) -> bool {
-        let mut success = false;
-        if let Some(pos) = self.grid.try_pos(x, y) {
-            let tile = self.grid.get_tile_mut(&pos);
-            tile.build(|| {
-                success = true;
-                Tile::House(House::new())
-            });
-            if success {
-                self.houses.push(pos);
-            }
-        }
-       success
+    pub fn generate_house(&mut self, x: i16, y: i16) -> BuildResult {
+        let pos = self.grid.try_pos(x, y).ok_or(BuildError::InvalidTile)?;
+
+        self.grid.build_house(&pos)?;
+
+        self.houses.push(pos);
+
+        Ok(())
     }
 
-    pub fn _generate_block(&mut self, x: i16, y: i16) {
+    pub fn _generate_block(&mut self, x: i16, y: i16) -> BuildResult {
         // top
-        for i in 0..CITY_BLOCK_SIZE {
-            self.generate_road(x + i, y, Direction::Right);
-            self.generate_road(x + (CITY_BLOCK_SIZE - 1), y + i, Direction::Down);
-            self.generate_road(x + i, y + (CITY_BLOCK_SIZE - 1), Direction::Left);
-            self.generate_road(x, y + i, Direction::Up);
+        for i in 0.._CITY_BLOCK_SIZE {
+            self.generate_road(x + i, y, Direction::Right)?;
+            self.generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::Down)?;
+            self.generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::Left)?;
+            self.generate_road(x, y + i, Direction::Up)?;
         }
 
         // houses (all for now)
-        for i in 0..CITY_BLOCK_SIZE {
-            for j in 0..CITY_BLOCK_SIZE {
-                self.generate_house(x + i, y + j);
+        for i in 0.._CITY_BLOCK_SIZE {
+            for j in 0.._CITY_BLOCK_SIZE {
+                self.generate_house(x + i, y + j)?;
             }
         }
+
+        Ok(())
     }
 
-    fn generate_center_roads(&mut self) {
+    fn generate_center_roads(&mut self) -> BuildResult {
         for i in -5..5 {
-            self.grid.build_two_way_road(self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1), Direction::Left);
-            self.grid.build_two_way_road(self.grid.pos(GRID_CENTER.0 + 0, GRID_CENTER.1 + i), Direction::Down);
+            self.grid.build_two_way_road(
+                self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1),
+                Direction::Left,
+            )?;
+            self.grid.build_two_way_road(
+                self.grid.pos(GRID_CENTER.0 + 0, GRID_CENTER.1 + i),
+                Direction::Down,
+            )?;
         }
+
+        Ok(())
     }
 
     fn grow_house(&mut self) {
@@ -136,47 +148,38 @@ impl Map {
             let dir = Direction::random();
             while let Some(pos) = Position::new_from_move(&house_pos, dir, self.grid.size) {
                 house_pos = pos;
-                if self.generate_house(pos.x, pos.y) {
-                    return;
+                match self.generate_house(pos.x, pos.y) {
+                    Ok(_) => break,
+                    Err(BuildError::OccupiedTile) => continue,
+                    Err(BuildError::InvalidTile) => break,
                 }
             }
         }
     }
 
-    fn generate_first_houses(&mut self) {
-        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1);
-        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2);
-        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1);
-        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2);
+    fn generate_first_houses(&mut self) -> BuildResult {
+        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1)?;
+        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2)?;
+        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1)?;
+        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2)?;
 
         for _ in 0..50 {
             self.grow_house();
         }
+
+        Ok(())
     }
 
-    pub fn generate(&mut self) {
-        self.generate_center_roads();
-        self.generate_first_houses();
+    pub fn generate(&mut self) -> BuildResult {
+        self.generate_center_roads()?;
+        self.generate_first_houses()?;
         // the oofs
         // for i in 0..CITY_BLOCK_COUNT {
-            // for j in 0..CITY_BLOCK_COUNT {
-                // self.generate_block(i * CITY_BLOCK_SIZE, j * CITY_BLOCK_SIZE);
-            // }
+        // for j in 0..CITY_BLOCK_COUNT {
+        // self.generate_block(i * CITY_BLOCK_SIZE, j * CITY_BLOCK_SIZE);
         // }
-    }
-
-    pub fn random_house(&self) -> Option<Position> {
-        // find a random block
-        let block_x = rand::gen_range(0, CITY_BLOCK_COUNT);
-        let block_y = rand::gen_range(0, CITY_BLOCK_COUNT);
-        // find a random house
-        let house_x = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
-        let house_y = rand::gen_range(1, CITY_BLOCK_SIZE - 1);
-
-        self.grid.try_pos(
-            (block_x * CITY_BLOCK_SIZE) + house_x,
-            (block_y * CITY_BLOCK_SIZE) + house_y,
-        )
+        // }
+        Ok(())
     }
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
@@ -204,15 +207,16 @@ impl Map {
         let start_pos = start_pos.unwrap();
         let end_pos = end_pos.unwrap();
 
-        if let Tile::House(_) = self.grid.get_tile(&start_pos) {
-            if let Tile::House(start_house) = self.grid.get_tile(&end_pos) {
+        // TODO Move this to function and use ?
+        if let Some(Tile::House(_)) = self.grid.get_tile(&start_pos) {
+            if let Some(Tile::House(start_house)) = self.grid.get_tile(&end_pos) {
                 if start_house.vehicle_on_the_way.is_some() {
                     return;
                 }
 
                 let vehicle = self.add_vehicle(start_pos, end_pos);
 
-                if let Tile::House(start_house_again) = self.grid.get_tile_mut(&end_pos) {
+                if let Some(Tile::House(start_house_again)) = self.grid.get_tile_mut(&end_pos) {
                     start_house_again.vehicle_on_the_way = vehicle;
                 }
             } else {
@@ -241,7 +245,7 @@ impl Map {
         }
         for id in to_remove {
             let vehicle = self.vehicles.get_mut(&id.0).unwrap();
-            if let Tile::House(house) = self.grid.get_tile_mut(&vehicle.destination) {
+            if let Some(Tile::House(house)) = self.grid.get_tile_mut(&vehicle.destination) {
                 house.vehicle_on_the_way = None;
             }
             self.vehicles.remove(&id.0);
@@ -287,10 +291,28 @@ mod map_tests {
     }
 
     #[test]
+    fn test_map_generate() {
+        let mut map = Map::new_from_string("__");
+
+        map.generate_house(0, 0).unwrap();
+        map.generate_house(1, 0).unwrap();
+
+        assert_eq!(map.houses.len(), 2);
+
+        assert_eq!(map.vehicles.len(), 0);
+        assert_eq!(map.vehicle_id, 1);
+
+        map.generate_cars();
+
+        assert_eq!(map.vehicles.len(), 1);
+        assert_eq!(map.vehicle_id, 2);
+    }
+
+    #[test]
     fn test_map_serialize() {
         let mut map = Map::new();
 
-        map.generate_road(0, 0, Direction::Right);
+        map.generate_road(0, 0, Direction::Right).unwrap();
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 
@@ -310,8 +332,8 @@ mod map_tests {
         assert!(deserialized
             .grid
             .get_tile_mut(&pos)
+            .unwrap()
             .reserve(1234, pos)
             .is_err())
     }
-
 }

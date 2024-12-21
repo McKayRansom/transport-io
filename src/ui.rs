@@ -1,5 +1,5 @@
 use crate::{
-    grid::{Position, GRID_CELL_SIZE},
+    grid::{BuildError, BuildResult, Position, GRID_CELL_SIZE},
     map::{Map, GRID_CENTER},
     menu::{self, MenuSelect},
     tile::Tile,
@@ -8,18 +8,14 @@ use crate::{
 };
 use grades::Grades;
 use macroquad::{
-    color::Color,
-    input::{
+    color::{Color, RED}, input::{
         get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode,
         MouseButton,
-    },
-    math::{vec2, Rect, RectOffset},
-    ui::{
+    }, math::{vec2, Rect, RectOffset}, text::draw_text, ui::{
         hash, root_ui,
         widgets::{self},
         Skin, Ui,
-    },
-    window::{screen_height, screen_width},
+    }, window::{screen_height, screen_width}
 };
 use macroquad_profiler::ProfilerParams;
 
@@ -28,8 +24,8 @@ mod grades;
 const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
 const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
 
-const WASD_MOVE_SENSITIVITY: f32 = 10.;
-const SCROLL_SENSITIVITY: f32 = 0.05;
+const WASD_MOVE_SENSITIVITY: f32 = 20.;
+const SCROLL_SENSITIVITY: f32 = 0.1;
 const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 
 const MIN_ZOOM: f32 = 0.4;
@@ -62,6 +58,14 @@ pub struct ToolbarItem {
     label: &'static str,
 }
 
+const BUILD_ERROR_TIME: u32 = 60 * 3;
+
+pub struct BuildErrorMsg {
+    pub screen_pos: (f32, f32),
+    pub err: BuildError,
+    pub time: u32,
+}
+
 // #[derive(Clone, Copy)]
 pub struct UiState {
     pub request_quit: bool,
@@ -74,7 +78,8 @@ pub struct UiState {
     build_mode: BuildMode,
     toolbar_items: Vec<ToolbarItem>,
     grades: Grades,
-    menuStatus: UiMenuStatus,
+    menu_status: UiMenuStatus,
+    build_err: Option<BuildErrorMsg>,
 }
 
 impl UiState {
@@ -122,7 +127,8 @@ impl UiState {
                 },
             ],
             grades: Grades::new().await,
-            menuStatus: UiMenuStatus::MainMenu,
+            menu_status: UiMenuStatus::MainMenu,
+            build_err: None,
         }
     }
 
@@ -261,6 +267,30 @@ impl UiState {
         root_ui().push_skin(&skin2);
     }
 
+    pub fn update_build_err(&mut self) {
+        if let Some(build_err) = &mut self.build_err {
+            build_err.time += 1;
+            if build_err.time > BUILD_ERROR_TIME {
+                self.build_err = None;
+                return;
+            }
+        }
+    }
+
+    pub fn draw_build_err(&self) {
+        if let Some(build_err) = &self.build_err {
+            draw_text(format!("{:?}", build_err.err).as_str(), build_err.screen_pos.0, build_err.screen_pos.1 - build_err.time as f32, 24., RED);
+        }
+    }
+
+    pub fn on_build_err(&mut self, err: BuildError, pos: (f32, f32)) {
+        self.build_err = Some(BuildErrorMsg{
+            screen_pos: pos,
+            err,
+            time: 0,
+        })
+    }
+
     pub fn update(&mut self, map: &mut Map) {
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
@@ -300,7 +330,9 @@ impl UiState {
             if is_mouse_button_down(MouseButton::Left) {
                 // macroquad::ui::
                 if !self.mouse_pressed {
-                    self.mouse_button_down_event(pos, map)
+                    if let Err(err) = self.mouse_button_down_event(pos, map) {
+                        self.on_build_err(err, new_mouse_pos);
+                    }
                 }
                 self.mouse_pressed = true;
             } else {
@@ -311,10 +343,14 @@ impl UiState {
                 .last_mouse_pos
                 .is_none_or(|last_moust_pos| last_moust_pos != pos)
             {
-                self.mouse_motion_event(pos, map);
+                if let Err(err) =self.mouse_motion_event(pos, map) {
+                    self.on_build_err(err, new_mouse_pos);
+                }
                 self.last_mouse_pos = Some(pos);
             }
         }
+
+        self.update_build_err();
     }
 
     fn draw_toolbar(&self) -> BuildMode {
@@ -367,8 +403,14 @@ impl UiState {
         vehicle.draw_detail(tileset);
     }
 
-    fn draw_tile_details(&self, pos: Position, ui: &mut Ui, map: &Map, tileset: &Tileset) {
-        match map.grid.get_tile(&pos) {
+    fn draw_tile_details(
+        &self,
+        pos: Position,
+        ui: &mut Ui,
+        map: &Map,
+        tileset: &Tileset,
+    ) -> Option<()> {
+        match map.grid.get_tile(&pos)? {
             Tile::Empty => {
                 ui.label(None, "Empty");
             }
@@ -390,6 +432,8 @@ impl UiState {
                 }
             }
         }
+
+        Some(())
     }
 
     fn draw_details(&self, map: &Map, tileset: &Tileset) {
@@ -465,7 +509,7 @@ impl UiState {
 
     pub fn draw(&mut self, map: &Map, tileset: &Tileset) -> MenuSelect {
         // Score
-        match self.menuStatus {
+        match self.menu_status {
             UiMenuStatus::InGame => {
                 widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 100.))
                     .label("Score")
@@ -483,6 +527,8 @@ impl UiState {
 
                 self.draw_selected(map, tileset);
 
+                self.draw_build_err();
+
                 // profiler
                 macroquad_profiler::profiler(ProfilerParams {
                     fps_counter_pos: vec2(0., 50.),
@@ -492,15 +538,15 @@ impl UiState {
             UiMenuStatus::MainMenu => {
                 let status = menu::draw();
                 if status != MenuSelect::None {
-                    self.menuStatus = UiMenuStatus::InGame;
+                    self.menu_status = UiMenuStatus::InGame;
                 }
                 status
-            },
+            }
 
             UiMenuStatus::MenuOpen => {
                 let status = menu::draw();
                 if status != MenuSelect::None {
-                    self.menuStatus = UiMenuStatus::InGame;
+                    self.menu_status = UiMenuStatus::InGame;
                 }
                 status
             }
@@ -544,10 +590,10 @@ impl UiState {
             '=' => self.zoom /= PLUS_MINUS_SENSITVITY,
 
             '\u{1b}' => {
-                if self.menuStatus == UiMenuStatus::InGame {
-                    self.menuStatus = UiMenuStatus::MenuOpen;
+                if self.menu_status == UiMenuStatus::InGame {
+                    self.menu_status = UiMenuStatus::MenuOpen;
                 } else {
-                    self.menuStatus = UiMenuStatus::InGame;
+                    self.menu_status = UiMenuStatus::InGame;
                 }
             }
 
@@ -555,21 +601,24 @@ impl UiState {
         }
     }
 
-    fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) {
+    fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) -> BuildResult {
         println!("Mouse pressed: pos: {mouse_pos:?}");
         match self.build_mode {
             BuildMode::Clear => {
-                map.grid.get_tile_mut(&mouse_pos).clear();
+                map.grid
+                    .get_tile_mut(&mouse_pos)
+                    .ok_or(BuildError::InvalidTile)?
+                    .clear();
             }
             BuildMode::Yield => {
-                if let Tile::Road(road) = map.grid.get_tile_mut(&mouse_pos) {
+                if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
                     road.should_yield = !road.should_yield;
                 }
             }
             BuildMode::Bridge => {
                 if let Some(start_pos) = self.bridge_start_pos {
-                    map.grid.build_bridge(start_pos, mouse_pos);
                     self.bridge_start_pos = None;
+                    map.grid.build_bridge(start_pos, mouse_pos)?;
                 } else {
                     self.bridge_start_pos = Some(mouse_pos);
                 }
@@ -584,39 +633,39 @@ impl UiState {
             // }
             _ => {}
         }
+
+        Ok(())
     }
 
-    fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
+    fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) -> BuildResult {
         if is_mouse_button_down(MouseButton::Left) {
             match self.build_mode {
                 BuildMode::AddRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
                         let dir = last_mouse_pos.direction_to(pos);
-                        map.grid
-                            .get_tile_mut(&last_mouse_pos)
-                            .edit_road(|road| road.connect(dir));
+                        map.grid.build_road(&last_mouse_pos, dir)?
                     }
                 }
                 BuildMode::RemoveRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
                         let dir = last_mouse_pos.direction_to(pos);
-                        map.grid
-                            .get_tile_mut(&last_mouse_pos)
-                            .edit_road(|road| road.disconnect(dir));
+                        map.grid.remove_road(&last_mouse_pos, dir)?
                     }
                 }
                 BuildMode::TwoLaneRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
                         let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_two_way_road(last_mouse_pos, dir);
+                        map.grid.build_two_way_road(last_mouse_pos, dir)?;
                     }
                 }
                 BuildMode::Clear => {
-                    map.grid.get_tile_mut(&pos).clear();
+                    map.grid.clear(&pos)?;
                 }
                 _ => {}
             }
         }
         println!("Mouse motion, x: {}, y: {}", pos.x, pos.y);
+
+        Ok(())
     }
 }
