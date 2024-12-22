@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{grid::Direction, tileset::Tileset};
 
-use super::{Reserved};
+use super::Reserved;
 
 const ROAD_INTERSECTION_SPRITE: u32 = 16 * 3;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;

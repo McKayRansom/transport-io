@@ -217,7 +217,7 @@ impl Grid {
             dijkstra(
                 start,
                 |p| self.house_successors(p),
-                |p| self.get_tile(p).map_or(false, Tile::is_road),
+                |p| self.get_tile(p).is_some_and(Tile::is_road),
             )
         }
     }

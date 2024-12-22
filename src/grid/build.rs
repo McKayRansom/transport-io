@@ -96,7 +96,7 @@ impl Grid {
     }
 
     pub fn build_house(&mut self, pos: &Position) -> BuildResult {
-        self.get_tile_mut(&pos)
+        self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
             .build(Tile::House(House::new()))
     }

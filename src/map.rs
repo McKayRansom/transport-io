@@ -73,7 +73,7 @@ impl Map {
 
     fn fixup(&mut self) -> Result<(), ReservationError> {
         // Any way to not allow this to be called twice?
-        for (_id, vehicle) in &mut self.vehicles {
+        for  vehicle in &mut self.vehicles.values_mut() {
             vehicle.fixup(&mut self.grid)?
         }
 
@@ -92,7 +92,7 @@ impl Map {
         }
     }
 
-    pub fn generate_road(&mut self, x: i16, y: i16, dir: Direction) -> BuildResult {
+    pub fn _generate_road(&mut self, x: i16, y: i16, dir: Direction) -> BuildResult {
         let pos = self.grid.pos(x, y);
 
         self.grid.build_road(&pos, dir)
@@ -111,10 +111,10 @@ impl Map {
     pub fn _generate_block(&mut self, x: i16, y: i16) -> BuildResult {
         // top
         for i in 0.._CITY_BLOCK_SIZE {
-            self.generate_road(x + i, y, Direction::RIGHT)?;
-            self.generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::DOWN)?;
-            self.generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::LEFT)?;
-            self.generate_road(x, y + i, Direction::UP)?;
+            self._generate_road(x + i, y, Direction::RIGHT)?;
+            self._generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::DOWN)?;
+            self._generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::LEFT)?;
+            self._generate_road(x, y + i, Direction::UP)?;
         }
 
         // houses (all for now)
@@ -134,7 +134,7 @@ impl Map {
                 Direction::LEFT,
             )?;
             self.grid.build_two_way_road(
-                self.grid.pos(GRID_CENTER.0 + 0, GRID_CENTER.1 + i),
+                self.grid.pos(GRID_CENTER.0, GRID_CENTER.1 + i),
                 Direction::DOWN,
             )?;
         }
@@ -313,7 +313,7 @@ mod map_tests {
     fn test_map_serialize() {
         let mut map = Map::new();
 
-        map.generate_road(0, 0, Direction::RIGHT).unwrap();
+        map._generate_road(0, 0, Direction::RIGHT).unwrap();
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 

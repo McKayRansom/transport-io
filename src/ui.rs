@@ -277,7 +277,6 @@ impl UiState {
             build_err.time += 1;
             if build_err.time > BUILD_ERROR_TIME {
                 self.build_err = None;
-                return;
             }
         }
     }

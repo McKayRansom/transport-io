@@ -88,6 +88,7 @@ impl Tile {
         }
     }
 
+    #[allow(clippy::single_match)]
     pub fn draw(&self, pos: Position, tileset: &Tileset) {
         let rect = Rect::from(pos);
 
@@ -137,13 +138,7 @@ impl Tile {
     pub fn should_be_yielded_to(&self, should_yield: YieldType, dir_from: Direction) -> bool {
         if let Tile::Road(road) = self {
             if road.reserved.is_reserved() && road.is_connected(dir_from.inverse()) {
-                if should_yield == YieldType::Always {
-                    true
-                } else if road.connection_count() > 1 {
-                    true
-                } else {
-                    false
-                }
+                should_yield == YieldType::Always || road.connection_count() > 1
             } else {
                 false
             }
@@ -168,11 +163,7 @@ impl Tile {
     }
 
     pub(crate) fn is_road(&self) -> bool {
-        if let Tile::Road(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Tile::Road(_))
     }
     
     // pub fn add(&mut self, other: &Tile) {
