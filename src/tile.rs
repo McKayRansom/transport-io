@@ -6,9 +6,6 @@ use macroquad::{
 mod road;
 pub use road::*;
 
-mod connections;
-pub use connections::*;
-
 mod reservation;
 pub use reservation::*;
 use serde::{Deserialize, Serialize};
