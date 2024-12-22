@@ -147,7 +147,7 @@ impl Map {
         if let Some(mut house_pos) = self.houses.get(i).cloned() {
             let dir = Direction::random();
             loop { 
-                let pos = Position::new_from_move(&house_pos, dir);
+                let pos = house_pos + dir;
                 house_pos = pos;
                 match self.generate_house(pos.x, pos.y) {
                     Ok(_) => break,

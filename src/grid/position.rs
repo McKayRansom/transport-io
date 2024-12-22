@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign};
+
 use macroquad::math::Rect;
 use serde::*;
 
@@ -15,7 +17,6 @@ pub struct Position {
 }
 
 impl Position {
-
     pub const fn new(x: i16, y: i16) -> Self {
         let z = Z_GROUND;
         Position { x, y, z }
@@ -58,15 +59,6 @@ impl Position {
         }
     }
 
-    // TODO: Rename add?
-    pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
-        Position {
-            x: pos.x + dir.x as i16,
-            y: pos.y + dir.y as i16,
-            z: pos.z + dir.z as i16,
-        }
-    }
-
     pub fn iter_line_to(&self, destination: Position) -> (PositionIterator, Direction) {
         let direction = self.direction_to(destination);
         let count: usize = if direction.y != 0 {
@@ -76,11 +68,34 @@ impl Position {
         } else {
             0
         };
-        (PositionIterator {
-            position: *self,
+        (
+            PositionIterator {
+                position: *self,
+                direction,
+                count: count + 1, // include the destination position
+            },
             direction,
-            count: count + 1, // include the destination position
-        }, direction)
+        )
+    }
+}
+
+impl Add<Direction> for Position {
+    type Output = Self;
+
+    fn add(self, dir: Direction) -> Self {
+        Position {
+            x: self.x + dir.x as i16,
+            y: self.y + dir.y as i16,
+            z: self.z + dir.z as i16,
+        }
+    }
+}
+
+impl AddAssign<Direction> for Position {
+    fn add_assign(&mut self, dir: Direction) {
+        self.x += dir.x as i16;
+        self.y += dir.y as i16;
+        self.z += dir.z as i16;
     }
 }
 
@@ -99,9 +114,9 @@ impl Iterator for PositionIterator {
         } else {
             self.count -= 1;
             let old_pos = self.position;
-            self.position = Position::new_from_move(&self.position, self.direction);
+            self.position += self.direction;
             Some(old_pos)
-        } 
+        }
     }
 }
 
@@ -115,7 +130,6 @@ impl From<Position> for Rect {
         )
     }
 }
-
 
 #[cfg(test)]
 mod position_tests {
@@ -141,52 +155,22 @@ mod position_tests {
 
     #[test]
     fn test_from_position() {
-        assert_eq!(
-            pos(0, 0).direction_to(pos(3, 0)),
-            Direction::RIGHT
-        );
-        assert_eq!(
-            pos(0, 3).direction_to(pos(0, 0)),
-            Direction::UP
-        );
-        assert_eq!(
-            pos(3, 0).direction_to(pos(0, 0)),
-            Direction::LEFT
-        );
-        assert_eq!(
-            pos(0, 0).direction_to(pos(0, 3)),
-            Direction::DOWN
-        );
+        assert_eq!(pos(0, 0).direction_to(pos(3, 0)), Direction::RIGHT);
+        assert_eq!(pos(0, 3).direction_to(pos(0, 0)), Direction::UP);
+        assert_eq!(pos(3, 0).direction_to(pos(0, 0)), Direction::LEFT);
+        assert_eq!(pos(0, 0).direction_to(pos(0, 3)), Direction::DOWN);
     }
 
     #[test]
     fn test_from_position_diagonal() {
-        assert_eq!(
-            pos(0, 0).direction_to(pos(3, 1)),
-            Direction::RIGHT
-        );
-        assert_eq!(
-            pos(1, 3).direction_to(pos(0, 0)),
-            Direction::UP
-        );
-        assert_eq!(
-            pos(3, 1).direction_to(pos(0, 0)),
-            Direction::LEFT
-        );
-        assert_eq!(
-            pos(0, 0).direction_to(pos(1, 3)),
-            Direction::DOWN
-        );
+        assert_eq!(pos(0, 0).direction_to(pos(3, 1)), Direction::RIGHT);
+        assert_eq!(pos(1, 3).direction_to(pos(0, 0)), Direction::UP);
+        assert_eq!(pos(3, 1).direction_to(pos(0, 0)), Direction::LEFT);
+        assert_eq!(pos(0, 0).direction_to(pos(1, 3)), Direction::DOWN);
 
         // for even let's just pick Left/Right??
-        assert_eq!(
-            pos(3, 3).direction_to(pos(0, 0)),
-            Direction::LEFT
-        );
-        assert_eq!(
-            pos(0, 0).direction_to(pos(3, 3)),
-            Direction::RIGHT
-        );
+        assert_eq!(pos(3, 3).direction_to(pos(0, 0)), Direction::LEFT);
+        assert_eq!(pos(0, 0).direction_to(pos(3, 3)), Direction::RIGHT);
     }
 
     #[test]
@@ -197,9 +181,6 @@ mod position_tests {
         assert_eq!(direction, Direction::RIGHT);
 
         let line: Vec<Position> = iter.collect();
-        assert_eq!(
-            line,
-            vec![pos(0, 0), pos(1, 0), pos(2, 0), pos(3, 0)]
-        );
+        assert_eq!(line, vec![pos(0, 0), pos(1, 0), pos(2, 0), pos(3, 0)]);
     }
 }

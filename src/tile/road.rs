@@ -68,10 +68,10 @@ impl Road {
                 road.connect(Direction::UP);
             }
             'u' => {
-                road.connect(Direction::RIGHT.add(&Direction::LAYER_UP));
+                road.connect(Direction::RIGHT + Direction::LAYER_UP);
             }
             'd' => {
-                road.connect(Direction::RIGHT.add(&Direction::LAYER_DOWN));
+                road.connect(Direction::RIGHT + Direction::LAYER_DOWN);
             }
             _ => {
                 return None;
@@ -79,10 +79,6 @@ impl Road {
         }
         Some(road)
     }
-
-    // pub fn should_yield(&self) -> bool {
-    //     return self.connections.count() < 2;
-    // }
 
     pub fn is_connected(&self, dir: Direction) -> bool {
         self.connections.has(dir)
@@ -103,10 +99,6 @@ impl Road {
     pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
         self.connections.iter()
     }
-
-    // pub fn iter_connections_inverse(&self) -> ConnectionIterator {
-    //     self.connections.iter_inverse()
-    // }
 
     pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
         let connection_count = self.connections.count();

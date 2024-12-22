@@ -50,11 +50,11 @@ impl Grid {
         let (iter, dir) = start_pos.iter_line_to(end_pos);
         for pos in iter {
             let (build_pos, connect_dir) = if pos == start_pos {
-                (pos, dir.add(&Direction::LAYER_UP))
+                (pos, dir + Direction::LAYER_UP)
             } else if pos == end_pos {
-                (Position::new_from_move(&pos, Direction::LAYER_UP), dir.add(&Direction::LAYER_DOWN))
+                (pos + Direction::LAYER_UP, dir + Direction::LAYER_DOWN)
             } else {
-                (Position::new_from_move(&pos, Direction::LAYER_UP), dir)
+                (pos + Direction::LAYER_UP, dir)
             };
 
             self.get_tile_mut(&build_pos)

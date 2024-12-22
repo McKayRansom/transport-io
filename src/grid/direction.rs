@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, ops::Add};
 
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,6 @@ impl Direction {
         Direction { x, y, z }
     }
 
-    // TODO: RENAME to N, E, S, W, and UP DOWN
     pub const RIGHT: Direction = Direction::new(1, 0, 0);
     pub const LEFT: Direction = Direction::new(-1, 0, 0);
     pub const UP: Direction = Direction::new(0, -1, 0);
@@ -29,17 +28,8 @@ impl Direction {
 
     pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::LEFT, Direction::UP, Direction::DOWN];
 
-    // TODO: Rename inverse_flat
     pub fn inverse(&self) -> Self {
         Direction::new(-self.x, -self.y, self.z)
-    }
-
-    pub fn add(&self, other: &Direction) -> Direction {
-        Direction::new(
-            self.x + other.x,
-            self.y + other.y,
-            self.z + other.z,
-        )
     }
 
     pub fn random() -> Self {
@@ -50,19 +40,9 @@ impl Direction {
         self.y == 0
     }
 
-    // TODO: Rename rotate_flat
     pub fn rotate_left(self) -> Self {
         Direction::new(self.y, -self.x, self.z)
     }
-
-    // pub fn _rotate(self) -> Self {
-    //     match self {
-    //         Direction::UP => Direction::RIGHT,
-    //         Direction::RIGHT => Direction::DOWN,
-    //         Direction::DOWN => Direction::LEFT,
-    //         Direction::LEFT => Direction::UP,
-    //     }
-    // }
 
     pub fn to_radians(self) -> f32 {
         match self {
@@ -73,16 +53,18 @@ impl Direction {
             _ => PI / 4.,
         }
     }
+}
 
-    // pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
-    //     match key {
-    //         KeyCode::Up => Some(Direction::UP),
-    //         KeyCode::Down => Some(Direction::DOWN),
-    //         KeyCode::Left => Some(Direction::LEFT),
-    //         KeyCode::Right => Some(Direction::RIGHT),
-    //         _ => None,
-    //     }
-    // }
+impl Add for Direction {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
 }
 
 #[cfg(test)]
