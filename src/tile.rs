@@ -83,11 +83,11 @@ impl Tile {
         }
     }
 
-    pub fn iter_connections(&self) -> ConnectionIterator {
+    pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
         match self {
             Tile::Road(road) => road.iter_connections(),
-            Tile::House(_) => ALL_DIRECTIONS.iter(),
-            Tile::Empty => NO_DIRECTIONS.iter(),
+            Tile::House(_) => Direction::ALL.iter(),
+            Tile::Empty => [].iter(),
         }
     }
 

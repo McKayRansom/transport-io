@@ -5,7 +5,7 @@ use super::{Direction, GRID_CELL_SIZE};
 
 // pub const Z_TUNNEL = 0
 pub const Z_GROUND: i16 = 0;
-pub const Z_BRIDGE: i16 = 1;
+// pub const Z_BRIDGE: i16 = 1;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Position {
@@ -15,15 +15,10 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(x: i16, y: i16) -> Self {
+
+    pub const fn new(x: i16, y: i16) -> Self {
         let z = Z_GROUND;
         Position { x, y, z }
-    }
-
-    pub fn clone_on_layer(&self, z: i16) -> Self {
-        Position {
-            x: self.x, y: self.y, z
-        }
     }
 
     pub fn _new_z(x: i16, y: i16, z: i16) -> Self {
@@ -53,30 +48,33 @@ impl Position {
         let x_diff = (self.x - new_pos.x).abs();
         let y_diff = (self.y - new_pos.y).abs();
         if new_pos.x > self.x && x_diff >= y_diff {
-            Direction::Right
+            Direction::RIGHT
         } else if new_pos.y > self.y && y_diff > x_diff {
-            Direction::Down
+            Direction::DOWN
         } else if new_pos.y < self.y && y_diff > x_diff {
-            Direction::Up
+            Direction::UP
         } else {
-            Direction::Left
+            Direction::LEFT
         }
     }
 
+    // TODO: Rename add?
     pub fn new_from_move(pos: &Position, dir: Direction) -> Self {
-        match dir {
-            Direction::Up => Position::new(pos.x, pos.y - 1),
-            Direction::Down => Position::new(pos.x, pos.y + 1),
-            Direction::Left => Position::new(pos.x - 1, pos.y),
-            Direction::Right => Position::new(pos.x + 1, pos.y),
+        Position {
+            x: pos.x + dir.x as i16,
+            y: pos.y + dir.y as i16,
+            z: pos.z + dir.z as i16,
         }
     }
 
     pub fn iter_line_to(&self, destination: Position) -> (PositionIterator, Direction) {
         let direction = self.direction_to(destination);
-        let count: usize = match direction {
-            Direction::Down | Direction::Up => (destination.y - self.y).unsigned_abs() as usize,
-            Direction::Left | Direction::Right => (destination.x - self.x).unsigned_abs() as usize,
+        let count: usize = if direction.y != 0 {
+            (destination.y - self.y).unsigned_abs() as usize
+        } else if direction.x != 0 {
+            (destination.x - self.x).unsigned_abs() as usize
+        } else {
+            0
         };
         (PositionIterator {
             position: *self,
@@ -118,6 +116,7 @@ impl From<Position> for Rect {
     }
 }
 
+
 #[cfg(test)]
 mod position_tests {
 
@@ -130,6 +129,8 @@ mod position_tests {
     #[test]
     fn test_init() {
         assert_eq!(pos(0, 0), Position { x: 0, y: 0, z: 0 });
+
+        // assert!(directions::EAST.x == 1);
     }
 
     #[test]
@@ -142,19 +143,19 @@ mod position_tests {
     fn test_from_position() {
         assert_eq!(
             pos(0, 0).direction_to(pos(3, 0)),
-            Direction::Right
+            Direction::RIGHT
         );
         assert_eq!(
             pos(0, 3).direction_to(pos(0, 0)),
-            Direction::Up
+            Direction::UP
         );
         assert_eq!(
             pos(3, 0).direction_to(pos(0, 0)),
-            Direction::Left
+            Direction::LEFT
         );
         assert_eq!(
             pos(0, 0).direction_to(pos(0, 3)),
-            Direction::Down
+            Direction::DOWN
         );
     }
 
@@ -162,29 +163,29 @@ mod position_tests {
     fn test_from_position_diagonal() {
         assert_eq!(
             pos(0, 0).direction_to(pos(3, 1)),
-            Direction::Right
+            Direction::RIGHT
         );
         assert_eq!(
             pos(1, 3).direction_to(pos(0, 0)),
-            Direction::Up
+            Direction::UP
         );
         assert_eq!(
             pos(3, 1).direction_to(pos(0, 0)),
-            Direction::Left
+            Direction::LEFT
         );
         assert_eq!(
             pos(0, 0).direction_to(pos(1, 3)),
-            Direction::Down
+            Direction::DOWN
         );
 
         // for even let's just pick Left/Right??
         assert_eq!(
             pos(3, 3).direction_to(pos(0, 0)),
-            Direction::Left
+            Direction::LEFT
         );
         assert_eq!(
             pos(0, 0).direction_to(pos(3, 3)),
-            Direction::Right
+            Direction::RIGHT
         );
     }
 
@@ -193,7 +194,7 @@ mod position_tests {
         let start_pos: Position = pos(0, 0);
         let end_pos: Position = pos(3, 0);
         let (iter, direction) = start_pos.iter_line_to(end_pos);
-        assert_eq!(direction, Direction::Right);
+        assert_eq!(direction, Direction::RIGHT);
 
         let line: Vec<Position> = iter.collect();
         assert_eq!(

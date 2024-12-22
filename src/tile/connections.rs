@@ -1,44 +1,15 @@
-use std::{
-    fmt,
-    iter::{Enumerate, FilterMap},
-};
+use std::
+    fmt
+;
 
 use serde::{Deserialize, Serialize};
 
 use crate::grid::Direction;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum ConnectionType {
-    #[default]
-    None = 0,
-    Road = 1,
-    Up = 2,
-    Down = 3,
-}
-
-// #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-// pub struct Conn {
-//     t: ConnectionType,
-//     dir: Direction,
-// }
-
-pub type ConnectionIterator<'b> = FilterMap<
-    Enumerate<std::slice::Iter<'b, ConnectionType>>,
-    for<'a> fn((usize, &'a ConnectionType)) -> std::option::Option<Direction>,
->;
-
-#[derive(Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Connections {
-    connections: [ConnectionType; 4],
+    connections: Vec<Direction>,
 }
-
-pub const ALL_DIRECTIONS: Connections = Connections {
-    connections: [ConnectionType::Road; 4],
-};
-
-pub const NO_DIRECTIONS: Connections = Connections {
-    connections: [ConnectionType::None; 4],
-};
 
 impl Connections {
     pub fn new() -> Connections {
@@ -47,79 +18,54 @@ impl Connections {
         }
     }
 
-    pub fn add(&mut self, conn: ConnectionType, dir: Direction) {
-        self.connections[dir as usize] = conn;
+    pub fn add(&mut self, dir: Direction) {
+        if !self.connections.contains(&dir) {
+            self.connections.push(dir);
+        }
     }
 
     pub fn remove(&mut self, dir: Direction) {
-        self.connections[dir as usize] = ConnectionType::None;
+        if let Some(index) = self.connections.iter_mut().position(|x| x == &dir) {
+            self.connections.swap_remove(index);
+        }
+        // self.connections[dir as usize] = ConnectionType::None;
     }
 
     pub fn count(&self) -> u32 {
-        self.connections.iter().map(|conn| (*conn as u32).min(1)).sum()
+        self.connections.len() as u32
     }
 
-    pub fn filter_has_connection(my_arg: (usize, &ConnectionType)) -> Option<Direction> {
-        if *my_arg.1 != ConnectionType::None {
-            my_arg.0.try_into().ok()
-        } else {
-            None
-        }
-    }
-
-    pub fn filter_has_no_connection(my_arg: (usize, &ConnectionType)) -> Option<Direction> {
-        if *my_arg.1 == ConnectionType::None {
-            my_arg.0.try_into().ok()
-        } else {
-            None
-        }
-    }
-
-    pub fn iter(&self) -> ConnectionIterator {
-        self.connections
-            .iter()
-            .enumerate()
-            .filter_map(Connections::filter_has_connection)
-    }
-
-    pub fn iter_inverse(&self) -> ConnectionIterator {
-        self.connections
-            .iter()
-            .enumerate()
-            .filter_map(Connections::filter_has_no_connection)
+    pub fn iter(&self) -> std::slice::Iter<'_, Direction>  {
+        self.connections.iter()
     }
 
     pub fn has(&self, dir: Direction) -> bool {
-        self.connections[dir as usize] != ConnectionType::None
-    }
-
-    pub fn has_layer(&self, dir: Direction, layer: ConnectionType) -> bool {
-        self.connections[dir as usize] == layer
+        self.connections.contains(&dir)
     }
 }
 
 impl fmt::Debug for Connections {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.has(Direction::Up) && self.has(Direction::Left) {
+        if self.has(Direction::UP) && self.has(Direction::LEFT) {
             write!(f, "r")
-        } else if self.has(Direction::Down) && self.has(Direction::Left) {
+        } else if self.has(Direction::DOWN) && self.has(Direction::LEFT) {
             write!(f, "l")
-        } else if self.has(Direction::Down) && self.has(Direction::Right) {
+        } else if self.has(Direction::DOWN) && self.has(Direction::RIGHT) {
             write!(f, "L")
-        } else if self.has(Direction::Up) && self.has(Direction::Right) {
+        } else if self.has(Direction::UP) && self.has(Direction::RIGHT) {
             write!(f, "R")
-        } else if self.has(Direction::Left) {
+        } else if self.has(Direction::LEFT) {
             write!(f, "<")
-        } else if self.has(Direction::Right) {
+        } else if self.has(Direction::RIGHT) {
             write!(f, ">")
-        } else if self.has(Direction::Up) {
+        } else if self.has(Direction::UP) {
             write!(f, "^")
-        } else if self.has(Direction::Down) {
+        } else if self.has(Direction::DOWN) {
             write!(f, ".")
-        } else if self.has_layer(Direction::Right, ConnectionType::Up) {
-            write!(f, "u")
-        } else if self.has_layer(Direction::Right, ConnectionType::Down) {
-            write!(f, "d")
+        // } else if self.has_layer(Direction::RIGHT, ConnectionType::Up) {
+        //     write!(f, "u")
+        // } else if self.has_layer(Direction::RIGHT, ConnectionType::Down) {
+        //     write!(f, "d")
         } else {
             write!(f, "?")
         }
@@ -143,36 +89,36 @@ mod connections_tests {
     #[test]
     fn test_iter() {
         let mut connection = Connections::new();
-        connection.add(ConnectionType::Road, Direction::Right);
-        connection.add(ConnectionType::Up, Direction::Left);
+        connection.add(Direction::RIGHT);
+        connection.add(Direction::LEFT);
         assert_eq!(
-            connection.iter().collect::<Vec<Direction>>(),
-            vec![Direction::Left, Direction::Right]
+            connection.iter().collect::<Vec<&Direction>>(),
+            vec![&Direction::RIGHT, &Direction::LEFT]
         );
 
-        assert_eq!(
-            connection.iter_inverse().collect::<Vec<Direction>>(),
-            vec![Direction::Up, Direction::Down]
-        );
+        // assert_eq!(
+        //     connection.iter_inverse().collect::<Vec<Direction>>(),
+        //     vec![Direction::UP, Direction::DOWN]
+        // );
     }
 
     #[test]
     fn test_layer() {
-        let mut connection = Connections::new();
-        connection.add(ConnectionType::Up, Direction::Right);
-        connection.add(ConnectionType::Road, Direction::Left);
-        assert!(
-            connection.iter().collect::<Vec<Direction>>()
-                == vec![Direction::Left, Direction::Right]
-        );
+        // let mut connection = Connections::new();
+        // connection.add(Direction::RIGHT);
+        // connection.add(Direction::LEFT);
+        // assert!(
+        //     connection.iter().collect::<Vec<Direction>>()
+        //         == vec![Direction::LEFT, Direction::RIGHT]
+        // );
         // assert!(
         //     connection
         //         .iter_layer(ConnectionType::Up)
         //         .collect::<Vec<Direction>>()
-        //         == vec![Direction::Right]
+        //         == vec![Direction::RIGHT]
         // );
 
-        assert_eq!(connection.count(), 2);
+        // assert_eq!(connection.count(), 2);
         // assert!(connection.safe_to_block() == true);
     }
 }

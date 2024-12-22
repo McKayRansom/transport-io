@@ -1,99 +1,109 @@
 use std::f32::consts::PI;
 
-use macroquad::{input::KeyCode, prelude::rand};
+use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
-pub enum Direction {
-    Up = 0,
-    Down = 1,
-    Left = 2,
-    Right = 3,
-}
-
-
-impl From<Direction> for usize {
-    fn from(dir: Direction) -> Self {
-        dir as usize
-    }
-}
-use std::convert::TryFrom;
-
-impl TryFrom<usize> for Direction {
-    type Error = ();
-
-    fn try_from(v: usize) -> Result<Self, Self::Error> {
-        match v {
-            x if x == Direction::Up as usize => Ok(Direction::Up),
-            x if x == Direction::Down as usize => Ok(Direction::Down),
-            x if x == Direction::Left as usize => Ok(Direction::Left),
-            x if x == Direction::Right as usize => Ok(Direction::Right),
-            _ => Err(()),
-        }
-    }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Direction {
+    pub x: i8,
+    pub y: i8,
+    pub z: i8,
 }
 
 impl Direction {
-    pub fn inverse(self) -> Self {
-        match self {
-            Direction::Up => Direction::Down,
-            Direction::Down => Direction::Up,
-            Direction::Left => Direction::Right,
-            Direction::Right => Direction::Left,
-        }
+    // use super::{Direction};
+
+    // NOT PUB
+    const fn new(x: i8, y: i8, z: i8) -> Self {
+        Direction { x, y, z }
+    }
+
+    // TODO: RENAME to N, E, S, W, and UP DOWN
+    pub const RIGHT: Direction = Direction::new(1, 0, 0);
+    pub const LEFT: Direction = Direction::new(-1, 0, 0);
+    pub const UP: Direction = Direction::new(0, -1, 0);
+    pub const DOWN: Direction = Direction::new(0, 1, 0);
+
+    pub const LAYER_UP: Direction = Direction::new(0, 0, 1);
+    pub const LAYER_DOWN: Direction = Direction::new(0, 0, -1);
+
+    pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::LEFT, Direction::UP, Direction::DOWN];
+
+    // TODO: Rename inverse_flat
+    pub fn inverse(&self) -> Self {
+        Direction::new(-self.x, -self.y, self.z)
+    }
+
+    pub fn add(&self, other: &Direction) -> Direction {
+        Direction::new(
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z,
+        )
     }
 
     pub fn random() -> Self {
-        (rand::gen_range(0, 4) as usize).try_into().unwrap()
+        Direction::ALL[rand::gen_range(0, Direction::ALL.len()) as usize]
     }
 
     pub fn is_horizontal(self) -> bool {
-        match self {
-            Direction::Up => false,
-            Direction::Down => false,
-            Direction::Left => true,
-            Direction::Right => true,
-        }
+        self.y == 0
     }
 
+    // TODO: Rename rotate_flat
     pub fn rotate_left(self) -> Self {
-        match self {
-            Direction::Up => Direction::Left,
-            Direction::Right => Direction::Up,
-            Direction::Down => Direction::Right,
-            Direction::Left => Direction::Down,
-        }
+        Direction::new(self.y, -self.x, self.z)
     }
 
-    pub fn _rotate(self) -> Self {
-        match self {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
-        }
-    }
+    // pub fn _rotate(self) -> Self {
+    //     match self {
+    //         Direction::UP => Direction::RIGHT,
+    //         Direction::RIGHT => Direction::DOWN,
+    //         Direction::DOWN => Direction::LEFT,
+    //         Direction::LEFT => Direction::UP,
+    //     }
+    // }
 
     pub fn to_radians(self) -> f32 {
         match self {
-            Direction::Up => 0.,
-            Direction::Right => PI / 2.0,
-            Direction::Down => PI,
-            Direction::Left => PI * 1.5,
+            Direction::UP => 0.,
+            Direction::RIGHT => PI / 2.0,
+            Direction::DOWN => PI,
+            Direction::LEFT => PI * 1.5,
+            _ => PI / 4.,
         }
     }
 
-    pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
-        match key {
-            KeyCode::Up => Some(Direction::Up),
-            KeyCode::Down => Some(Direction::Down),
-            KeyCode::Left => Some(Direction::Left),
-            KeyCode::Right => Some(Direction::Right),
-            _ => None,
-        }
-    }
+    // pub fn _from_keycode(key: KeyCode) -> Option<Direction> {
+    //     match key {
+    //         KeyCode::Up => Some(Direction::UP),
+    //         KeyCode::Down => Some(Direction::DOWN),
+    //         KeyCode::Left => Some(Direction::LEFT),
+    //         KeyCode::Right => Some(Direction::RIGHT),
+    //         _ => None,
+    //     }
+    // }
 }
 
+#[cfg(test)]
+mod direction_tests {
+    // use std::mem;
 
+    use super::*;
+
+    #[test]
+    fn test_inverse() {
+        assert_eq!(Direction::RIGHT.inverse(), Direction::LEFT);
+        assert_eq!(Direction::LEFT.inverse(), Direction::RIGHT);
+        assert_eq!(Direction::UP.inverse(), Direction::DOWN);
+        assert_eq!(Direction::DOWN.inverse(), Direction::UP);
+    }
+
+    #[test]
+    fn test_rotate() {
+        assert_eq!(Direction::RIGHT.rotate_left(), Direction::UP);
+        assert_eq!(Direction::DOWN.rotate_left(), Direction::RIGHT);
+        assert_eq!(Direction::LEFT.rotate_left(), Direction::DOWN);
+        assert_eq!(Direction::UP.rotate_left(), Direction::LEFT);
+    }
+}

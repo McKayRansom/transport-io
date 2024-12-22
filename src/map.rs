@@ -111,10 +111,10 @@ impl Map {
     pub fn _generate_block(&mut self, x: i16, y: i16) -> BuildResult {
         // top
         for i in 0.._CITY_BLOCK_SIZE {
-            self.generate_road(x + i, y, Direction::Right)?;
-            self.generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::Down)?;
-            self.generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::Left)?;
-            self.generate_road(x, y + i, Direction::Up)?;
+            self.generate_road(x + i, y, Direction::RIGHT)?;
+            self.generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::DOWN)?;
+            self.generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::LEFT)?;
+            self.generate_road(x, y + i, Direction::UP)?;
         }
 
         // houses (all for now)
@@ -131,11 +131,11 @@ impl Map {
         for i in -5..5 {
             self.grid.build_two_way_road(
                 self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1),
-                Direction::Left,
+                Direction::LEFT,
             )?;
             self.grid.build_two_way_road(
                 self.grid.pos(GRID_CENTER.0 + 0, GRID_CENTER.1 + i),
-                Direction::Down,
+                Direction::DOWN,
             )?;
         }
 
@@ -313,7 +313,7 @@ mod map_tests {
     fn test_map_serialize() {
         let mut map = Map::new();
 
-        map.generate_road(0, 0, Direction::Right).unwrap();
+        map.generate_road(0, 0, Direction::RIGHT).unwrap();
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 

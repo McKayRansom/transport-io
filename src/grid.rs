@@ -183,7 +183,7 @@ impl Grid {
         let tile = tile.unwrap();
         tile.iter_connections()
             .filter_map(|dir| {
-                let new_pos = Position::new_from_move(pos, dir);
+                let new_pos = Position::new_from_move(pos, *dir);
                 self.get_tile(&new_pos).map(|tile| {
                     (
                         if tile.is_road() {
@@ -205,7 +205,7 @@ impl Grid {
         }
         let tile = tile.unwrap();
         tile.iter_connections()
-            .map(|dir| (Position::new_from_move(pos, dir), 1))
+            .map(|dir| (Position::new_from_move(pos, *dir), 1))
             .collect()
     }
 
@@ -222,7 +222,12 @@ impl Grid {
         }
     }
 
-    pub fn should_be_yielded_to(&self, should_yield: YieldType, pos: &Position, dir_from: Direction) -> bool {
+    pub fn should_be_yielded_to(
+        &self,
+        should_yield: YieldType,
+        pos: &Position,
+        dir_from: Direction,
+    ) -> bool {
         self.get_tile(pos)
             .is_some_and(|tile| tile.should_be_yielded_to(should_yield, dir_from))
     }
@@ -239,9 +244,9 @@ impl Grid {
 
         if let Some(Tile::Road(road)) = self.get_tile(position) {
             // For each direction that feeds into this tile in question
-            for dir in road.iter_connections_inverse() {
-                let yield_to_pos = Position::new_from_move(position, dir);
-                if self.should_be_yielded_to(should_yield, &yield_to_pos, dir) {
+            for dir in Direction::ALL.iter().filter(|&dir| !road.is_connected(*dir)) {
+                let yield_to_pos = Position::new_from_move(position, *dir);
+                if self.should_be_yielded_to(should_yield, &yield_to_pos, *dir) {
                     return Some(yield_to_pos);
                 }
             }

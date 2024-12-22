@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{grid::Direction, tileset::Tileset};
 
-use super::{ConnectionIterator, ConnectionType, Connections, Reserved};
+use super::{Connections, Reserved};
 
 const ROAD_INTERSECTION_SPRITE: u32 = 16 * 3;
 const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
@@ -32,46 +32,46 @@ impl Road {
         let mut road = Road::new();
         match c {
             '>' => {
-                road.connect(Direction::Right);
+                road.connect(Direction::RIGHT);
             }
             '<' => {
-                road.connect(Direction::Left);
+                road.connect(Direction::LEFT);
             }
             '^' => {
-                road.connect(Direction::Up);
+                road.connect(Direction::UP);
             }
             '.' => {
-                road.connect(Direction::Down);
+                road.connect(Direction::DOWN);
             }
             'y' => {
-                road.connect(Direction::Right);
+                road.connect(Direction::RIGHT);
                 road.should_yield = true;
             }
             // Roundabouts - top left
             'l' => {
-                road.connect(Direction::Left);
-                road.connect(Direction::Down);
+                road.connect(Direction::LEFT);
+                road.connect(Direction::DOWN);
             }
             // Roundabouts - top right
             'r' => {
-                road.connect(Direction::Left);
-                road.connect(Direction::Up);
+                road.connect(Direction::LEFT);
+                road.connect(Direction::UP);
             }
             // Roundabouts - bottom Left
             'L' => {
-                road.connect(Direction::Right);
-                road.connect(Direction::Down);
+                road.connect(Direction::RIGHT);
+                road.connect(Direction::DOWN);
             }
             // Roundabouts - bottom Right
             'R' => {
-                road.connect(Direction::Right);
-                road.connect(Direction::Up);
+                road.connect(Direction::RIGHT);
+                road.connect(Direction::UP);
             }
             'u' => {
-                road.connect_layer(Direction::Right, ConnectionType::Up);
+                road.connect(Direction::RIGHT.add(&Direction::LAYER_UP));
             }
             'd' => {
-                road.connect_layer(Direction::Right, ConnectionType::Down);
+                road.connect(Direction::RIGHT.add(&Direction::LAYER_DOWN));
             }
             _ => {
                 return None;
@@ -89,11 +89,7 @@ impl Road {
     }
 
     pub fn connect(&mut self, dir: Direction) {
-        self.connections.add(ConnectionType::Road, dir);
-    }
-
-    pub fn connect_layer(&mut self, dir: Direction, layer: ConnectionType) {
-        self.connections.add(layer, dir);
+        self.connections.add(dir);
     }
 
     pub fn disconnect(&mut self, dir: Direction) {
@@ -104,13 +100,13 @@ impl Road {
         self.connections.count()
     }
 
-    pub fn iter_connections(&self) -> ConnectionIterator {
+    pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
         self.connections.iter()
     }
 
-    pub fn iter_connections_inverse(&self) -> ConnectionIterator {
-        self.connections.iter_inverse()
-    }
+    // pub fn iter_connections_inverse(&self) -> ConnectionIterator {
+    //     self.connections.iter_inverse()
+    // }
 
     pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
         let connection_count = self.connections.count();

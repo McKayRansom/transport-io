@@ -1,6 +1,6 @@
-use crate::tile::{ConnectionType, House, Road, Tile};
+use crate::tile::{House, Road, Tile};
 
-use super::{Direction, Grid, Position, Z_BRIDGE};
+use super::{Direction, Grid, Position};
 
 #[derive(Debug)]
 pub enum BuildError {
@@ -49,17 +49,17 @@ impl Grid {
     pub fn build_bridge(&mut self, start_pos: Position, end_pos: Position) -> BuildResult {
         let (iter, dir) = start_pos.iter_line_to(end_pos);
         for pos in iter {
-            let (build_pos, build_layer) = if pos == start_pos {
-                (pos, ConnectionType::Up)
+            let (build_pos, connect_dir) = if pos == start_pos {
+                (pos, dir.add(&Direction::LAYER_UP))
             } else if pos == end_pos {
-                (pos.clone_on_layer(Z_BRIDGE), ConnectionType::Down)
+                (Position::new_from_move(&pos, Direction::LAYER_UP), dir.add(&Direction::LAYER_DOWN))
             } else {
-                (pos.clone_on_layer(Z_BRIDGE), ConnectionType::Road)
+                (Position::new_from_move(&pos, Direction::LAYER_UP), dir)
             };
 
             self.get_tile_mut(&build_pos)
                 .ok_or(BuildError::InvalidTile)?
-                .edit_road(|road| road.connect_layer(dir, build_layer))?;
+                .edit_road(|road| road.connect(connect_dir))?;
         }
 
         Ok(())
@@ -114,7 +114,7 @@ impl Grid {
             for (x, tile) in row.iter().enumerate() {
                 self.build_road(
                     &self.pos(x as i16 + pos.x, y as i16 + pos.y),
-                    tile.ground.iter_connections().next().unwrap(),
+                    *tile.ground.iter_connections().next().unwrap(),
                 )?
             }
         }
@@ -135,22 +135,22 @@ mod grid_build_tests {
 
         let pos = grid.pos(0, 0);
 
-        grid.build_road(&pos, Direction::Right)?;
+        grid.build_road(&pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
         grid.clear(&pos)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
 
-        grid.build_road(&pos, Direction::Right)?;
+        grid.build_road(&pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
-        grid.build_road(&pos, Direction::Up)?;
+        grid.build_road(&pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('R'));
 
-        grid.remove_road(&pos, Direction::Up)?;
+        grid.remove_road(&pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
-        grid.remove_road(&pos, Direction::Right)?;
+        grid.remove_road(&pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
 
         Ok(())
@@ -171,16 +171,16 @@ mod grid_build_tests {
     #[test]
     fn test_build_two_way_road() -> BuildResult {
         let mut grid = Grid::new_from_string("____\n____");
-        grid.build_two_way_road(grid.pos(0, 0), Direction::Left)?;
+        grid.build_two_way_road(grid.pos(0, 0), Direction::LEFT)?;
         assert_eq!(grid, Grid::new_from_string("<<__\n>>__"));
 
         let mut grid = Grid::new_from_string("____\n____");
-        grid.build_two_way_road(grid.pos(0, 0), Direction::Down)?;
+        grid.build_two_way_road(grid.pos(0, 0), Direction::DOWN)?;
         assert_eq!(grid, Grid::new_from_string(".^__\n.^__"));
 
         let mut grid = Grid::new_from_string("____\n____");
-        grid.build_two_way_road(grid.pos(0, 0), Direction::Right)?;
-        grid.build_two_way_road(grid.pos(0, 0), Direction::Up)?;
+        grid.build_two_way_road(grid.pos(0, 0), Direction::RIGHT)?;
+        grid.build_two_way_road(grid.pos(0, 0), Direction::UP)?;
         assert_eq!(grid, Grid::new_from_string("lr__\nLR__"));
 
         Ok(())

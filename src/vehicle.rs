@@ -69,7 +69,7 @@ impl Vehicle {
             elapsed_ticks: 0,
             pos,
             lag_pos_pixels: 0,
-            dir: Direction::Right,
+            dir: Direction::RIGHT,
             blocking_tile: None,
             destination,
             reserved: vec![reservation],
@@ -251,10 +251,11 @@ impl Vehicle {
     pub fn draw(&self, tileset: &Tileset) {
         let mut rect = Rect::from(self.pos);
         match self.dir {
-            Direction::Right => rect.x -= self.lag_pos_pixels as f32,
-            Direction::Left => rect.x += self.lag_pos_pixels as f32,
-            Direction::Down => rect.y -= self.lag_pos_pixels as f32,
-            Direction::Up => rect.y += self.lag_pos_pixels as f32,
+            Direction::RIGHT => rect.x -= self.lag_pos_pixels as f32,
+            Direction::LEFT => rect.x += self.lag_pos_pixels as f32,
+            Direction::DOWN => rect.y -= self.lag_pos_pixels as f32,
+            Direction::UP => rect.y += self.lag_pos_pixels as f32,
+            _ => {},
         }
 
         let vehicle_red = Color::from_hex(0xf9524c);
