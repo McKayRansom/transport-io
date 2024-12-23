@@ -1,3 +1,5 @@
+use std::fmt;
+
 use macroquad::{
     color::{Color, WHITE},
     math::Rect,
@@ -12,10 +14,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     grid::{Direction, Id, Position, ReservationError},
-    tileset::Tileset,
+    tileset::{Sprite, Tileset},
 };
 
-const HOUSE_SPRITE: u32 = 16;
+const HOUSE_SPRITE: Sprite = Sprite::new_size(1, 0, (1, 1));
 
 const DEFAULT_COST: u32 = 1;
 const OCCUPIED_COST: u32 = 2;
@@ -27,9 +29,7 @@ pub enum YieldType {
     Never,
 }
 
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct House {
     pub vehicle_on_the_way: Option<Id>,
 }
@@ -51,12 +51,33 @@ impl House {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Ramp {
+    dir: Direction,
+}
+
+impl Ramp {
+    pub fn new(dir: Direction) -> Self {
+        Self { dir }
+    }
+}
+
+impl fmt::Debug for Ramp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.dir {
+            Direction::LAYER_UP  => write!(f, "u"),
+            Direction::LAYER_DOWN => write!(f, "d"),
+            _ => write!(f, "r?"),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
     Empty,
     House(House),
     Road(Road),
+    Ramp(Ramp),
 }
 
 impl Tile {
@@ -84,7 +105,7 @@ impl Tile {
         match self {
             Tile::Road(road) => road.iter_connections(),
             Tile::House(_) => Direction::ALL.iter(),
-            Tile::Empty => [].iter(),
+            _ => [].iter(),
         }
     }
 
@@ -95,15 +116,17 @@ impl Tile {
         match self {
             Tile::Road(road) => road.draw(&rect, tileset),
             // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
-            _ => {},
+            _ => {}
         }
     }
 
-    pub fn draw_bridge(&self, pos: Position, tileset: &Tileset) {
-        let mut rect = Rect::from(pos);
-        rect.y -= 10.;
+    pub fn draw_bridge(&self, pos: Position, tileset: &Tileset, tile_below: &Tile) {
         if let Tile::Road(road) = self {
-            road.draw(&rect, tileset);
+            if let Tile::Ramp(_) = tile_below {
+                road.draw_bridge(&pos, tileset, true);
+            } else {
+                road.draw_bridge(&pos, tileset, false);
+            }
         }
     }
 
@@ -115,16 +138,12 @@ impl Tile {
                 .ok_or(ReservationError::TileReserved),
 
             Tile::House(_) => Ok(Reservation::new_for_house(pos)),
-            Tile::Empty => Err(ReservationError::TileInvalid),
+            _ => Err(ReservationError::TileInvalid),
         }
     }
 
     pub fn should_yield(&self) -> YieldType {
         match self {
-            // alway yield from a house
-            Tile::House(_) => YieldType::Always,
-            // if we are somehow in a weird state, I guess yield?
-            Tile::Empty => YieldType::Always,
             Tile::Road(road) => {
                 if road.connection_count() > 1 {
                     YieldType::Never
@@ -132,6 +151,10 @@ impl Tile {
                     YieldType::IfAtIntersection
                 }
             }
+
+            // alway yield from a house
+            // if we are somehow in a weird state, I guess yield?
+            _ => YieldType::Always,
         }
     }
 
@@ -158,14 +181,29 @@ impl Tile {
             }
             Tile::House(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
-            Tile::Empty => DEFAULT_COST * 3,
+            _ => DEFAULT_COST * 3,
         }
     }
 
     pub(crate) fn is_road(&self) -> bool {
         matches!(self, Tile::Road(_))
     }
-    
+
+    pub fn road_successor(&self, pos: &Position) -> (Position, u32) {
+        (
+            match self {
+                Tile::Ramp(ramp) => *pos + ramp.dir,
+                _ => *pos,
+            },
+            // if self.is_road() {
+            //     new_pos
+            // } else {
+            //     *pos + dir.rotate_left()
+            // },
+            self.cost(),
+        )
+    }
+
     // pub fn add(&mut self, other: &Tile) {
     //     match self {
     //         Tile::Road(road) => {road.add(other) },
@@ -180,4 +218,16 @@ impl Tile {
     //         _ => true,
     //     }
     // }
+}
+
+impl fmt::Debug for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Tile::Empty => write!(f, "e"),
+            Tile::Road(road) => road.fmt(f),
+            Tile::House(_) => write!(f, "h"),
+            Tile::Ramp(ramp) => ramp.fmt(f),
+            // => write!(f, "b")?,
+        }
+    }
 }

@@ -423,6 +423,9 @@ impl UiState {
             Tile::Empty => {
                 ui.label(None, "Empty");
             }
+            Tile::Ramp(_) => {
+                ui.label(None, "Ramp");
+            }
             Tile::House(house) => {
                 ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
                 if let Some(vehicle_id) = house.vehicle_on_the_way {

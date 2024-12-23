@@ -128,7 +128,7 @@ impl Map {
     }
 
     fn generate_center_roads(&mut self) -> BuildResult {
-        for i in -5..5 {
+        for i in -10..10 {
             self.grid.build_two_way_road(
                 self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1),
                 Direction::LEFT,
@@ -268,11 +268,19 @@ impl Map {
     pub fn draw(&self, tileset: &Tileset) {
         self.grid.draw_tiles(tileset);
 
-        for s in self.vehicles.iter() {
-            s.1.draw(tileset);
+        for s in self.vehicles.iter() { 
+            if s.1.pos.z == 0 {
+                s.1.draw(tileset);
+            }
         }
 
         self.grid.draw_houses(tileset);
+
+        for s in self.vehicles.iter() { 
+            if s.1.pos.z == 1 {
+                s.1.draw(tileset);
+            }
+        }
     }
 }
 

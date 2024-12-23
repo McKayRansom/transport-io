@@ -69,6 +69,7 @@ async fn main() {
     // Next we create a new instance of our GameState struct, which implements EventHandler
     let mut state = GameState::new().await;
     let speed = 1. / 60.;
+    let map_speed = 1. / 16.;
 
     set_window_size(800, 800);
 
@@ -80,7 +81,7 @@ async fn main() {
     // let tiled_map_json = load_string("resources/map.json").await.unwrap();
     // let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
 
-    let mut tileset = Tileset::new(tileset_texture, 16);
+    let mut tileset = Tileset::new(tileset_texture);
 
     
     state.ui.init().await;
@@ -89,20 +90,20 @@ async fn main() {
     // And finally we actually run our game, passing in our context and state.
     // event::run(ctx, events_loop, state)
 
-    let mut last_update = get_time();
+    let mut last_ui_update = get_time();
+    let mut last_map_update = get_time();
 
     loop {
 
 
-        if get_time() - last_update > speed {
-
+        if get_time() - last_ui_update > speed {
             state.ui.update(&mut state.map);
+            last_ui_update = get_time();
+       }
 
-            last_update = get_time();
-            if !state.ui.paused {
-
-                state.map.update();
-            }
+        if !state.ui.paused && get_time() - last_map_update > map_speed {
+            state.map.update();
+            last_map_update = get_time();
         }
 
         tileset.zoom = state.ui.zoom;

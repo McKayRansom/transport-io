@@ -1,9 +1,9 @@
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Sub};
 
 use macroquad::math::Rect;
 use serde::*;
 
-use super::{Direction, GRID_CELL_SIZE};
+use super::{Direction, GRID_CELL_SIZE, GRID_Z_OFFSET};
 
 // pub const Z_TUNNEL = 0
 pub const Z_GROUND: i16 = 0;
@@ -79,6 +79,25 @@ impl Position {
     }
 }
 
+impl From<(i16, i16)> for Position {
+    fn from(pos: (i16, i16)) -> Self {
+        Position::new(
+            pos.0 as i16, 
+            pos.1 as i16,
+        )
+    }
+}
+
+impl From<(i16, i16, i16)> for Position {
+    fn from(pos: (i16, i16, i16)) -> Self {
+        Position::_new_z(
+            pos.0 as i16, 
+            pos.1 as i16,
+            pos.2 as i16,
+        )
+    }
+}
+
 impl Add<Direction> for Position {
     type Output = Self;
 
@@ -87,6 +106,18 @@ impl Add<Direction> for Position {
             x: self.x + dir.x as i16,
             y: self.y + dir.y as i16,
             z: self.z + dir.z as i16,
+        }
+    }
+}
+
+impl Sub<Position> for Position {
+    type Output = Direction;
+
+    fn sub(self, other: Position) -> Direction {
+        Direction {
+            x: (self.x - other.x) as i8,
+            y: (self.y - other.y) as i8,
+            z: (self.z - other.z) as i8,
         }
     }
 }
@@ -124,7 +155,7 @@ impl From<Position> for Rect {
     fn from(pos: Position) -> Self {
         Rect::new(
             pos.x as f32 * GRID_CELL_SIZE.0,
-            pos.y as f32 * GRID_CELL_SIZE.1,
+            pos.y as f32 * GRID_CELL_SIZE.1 - (pos.z as f32 * GRID_Z_OFFSET),
             GRID_CELL_SIZE.0,
             GRID_CELL_SIZE.1,
         )

@@ -1,4 +1,4 @@
-use crate::tile::{House, Road, Tile};
+use crate::tile::{House, Ramp, Road, Tile};
 
 use super::{Direction, Grid, Position};
 
@@ -47,22 +47,29 @@ impl Tile {
 
 impl Grid {
     pub fn build_bridge(&mut self, start_pos: Position, end_pos: Position) -> BuildResult {
-        let (iter, dir) = start_pos.iter_line_to(end_pos);
+        let start_pos_up = start_pos + Direction::LAYER_UP;
+        let end_pos_up = end_pos + Direction::LAYER_UP;
+        let (iter, dir) = start_pos_up.iter_line_to(end_pos_up);
         for pos in iter {
-            let (build_pos, connect_dir) = if pos == start_pos {
-                (pos, dir + Direction::LAYER_UP)
-            } else if pos == end_pos {
-                (pos + Direction::LAYER_UP, dir + Direction::LAYER_DOWN)
+            if pos == start_pos_up {
+                self.build_road(&pos, dir)?;
+                self.build_ramp(&start_pos, Direction::LAYER_UP)?;
+            } else if pos != end_pos_up {
+                self.build_road(&pos, dir)?;
             } else {
-                (pos + Direction::LAYER_UP, dir)
+                self.build_road(&pos, dir + Direction::LAYER_DOWN)?;
+                self.build_ramp(&end_pos, Direction::NONE)?;
             };
-
-            self.get_tile_mut(&build_pos)
-                .ok_or(BuildError::InvalidTile)?
-                .edit_road(|road| road.connect(connect_dir))?;
         }
 
         Ok(())
+    }
+
+    fn build_ramp(&mut self, pos: &Position, dir: Direction) -> BuildResult {
+        // let pos = &pos.round_to(2);
+        self.get_tile_mut(pos)
+            .ok_or(BuildError::InvalidTile)?
+            .build(Tile::Ramp(Ramp::new(dir)))
     }
 
     pub fn build_road(&mut self, pos: &Position, dir: Direction) -> BuildResult {
@@ -96,6 +103,7 @@ impl Grid {
     }
 
     pub fn build_house(&mut self, pos: &Position) -> BuildResult {
+        // let pos = &pos.round_to(2);
         self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
             .build(Tile::House(House::new()))
@@ -160,10 +168,27 @@ mod grid_build_tests {
     fn test_build_bridge() -> BuildResult {
         let mut grid = Grid::new_from_string("____");
 
-        grid.build_bridge(grid.pos(0, 0), grid.pos(3, 0))?;
+        grid.build_bridge((0, 0).into(), grid.pos(3, 0))?;
 
-        // TODO: Fix this??
-        // assert_eq!(grid, Grid::new_from_string("ueee"));
+        assert_eq!(
+            grid.get_tile(&(0, 0).into()).unwrap(),
+            &Tile::Ramp(Ramp::new(Direction::LAYER_UP))
+        );
+
+        assert_eq!(
+            grid.get_tile(&(1, 0, 1).into()).unwrap(),
+            &Tile::Road(Road::new_from_char('>').unwrap())
+        );
+
+        assert_eq!(
+            grid.get_tile(&(2, 0, 1).into()).unwrap(),
+            &Tile::Road(Road::new_from_char('>').unwrap())
+        );
+
+        assert_eq!(
+            grid.get_tile(&(3, 0, 1).into()).unwrap(),
+            &Tile::Road(Road::new_from_char('d').unwrap())
+        );
 
         Ok(())
     }

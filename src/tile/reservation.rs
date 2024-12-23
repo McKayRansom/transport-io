@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::grid::{Id, Position};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct Reserved {
-    #[serde(skip_serializing, skip_deserializing)]
     weak_id: Weak<Id>,
 }
 

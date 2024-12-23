@@ -14,13 +14,17 @@ use crate::grid::ReservationError;
 use crate::grid::GRID_CELL_SIZE;
 use crate::tile::Reservation;
 use crate::tile::Tile;
+use crate::tileset::Sprite;
 use crate::tileset::Tileset;
 
 use crate::grid::Id;
 
-const SPEED_PIXELS_PER_TICK: i16 = 4;
-const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK;
+const SPEED_PIXELS_PER_TICK: i8 = 1;
+const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
+
+const CAR_SPRITE: Sprite = Sprite::new(0, 1);
+const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 
 #[derive(Serialize, Deserialize)]
 pub struct Vehicle {
@@ -29,8 +33,8 @@ pub struct Vehicle {
     path_index: usize,
     path_time_ticks: u32,
     elapsed_ticks: u32,
-    pos: Position,
-    lag_pos_pixels: i16,
+    pub pos: Position,
+    lag_pos_pixels: Direction,
     dir: Direction,
     blocking_tile: Option<Position>,
     pub destination: Position,
@@ -68,7 +72,7 @@ impl Vehicle {
             path_index: 0,
             elapsed_ticks: 0,
             pos,
-            lag_pos_pixels: 0,
+            lag_pos_pixels: Direction::NONE,
             dir: Direction::RIGHT,
             blocking_tile: None,
             destination,
@@ -137,7 +141,21 @@ impl Vehicle {
     }
 
     fn update_speed(&mut self) {
-        self.lag_pos_pixels -= SPEED_PIXELS_PER_TICK;
+        if self.lag_pos_pixels.x > 0 {
+            self.lag_pos_pixels.x -= SPEED_PIXELS_PER_TICK;
+        } else if self.lag_pos_pixels.x < 0 {
+            self.lag_pos_pixels.x += SPEED_PIXELS_PER_TICK;
+        }
+        if self.lag_pos_pixels.y > 0 {
+            self.lag_pos_pixels.y -= SPEED_PIXELS_PER_TICK;
+        } else if self.lag_pos_pixels.y < 0 {
+            self.lag_pos_pixels.y += SPEED_PIXELS_PER_TICK;
+        }
+        if self.lag_pos_pixels.z > 0 {
+            self.lag_pos_pixels.z -= SPEED_PIXELS_PER_TICK;
+        } else if self.lag_pos_pixels.z < 0 {
+            self.lag_pos_pixels.z += SPEED_PIXELS_PER_TICK;
+        }
     }
 
     fn find_path(&mut self, grid: &mut Grid) -> bool {
@@ -196,8 +214,10 @@ impl Vehicle {
         self.reserved.clear();
 
         if let Some(next_pos) = self.get_next_pos(path_grid) {
-            self.lag_pos_pixels = (GRID_CELL_SIZE.0 as i16) - SPEED_PIXELS_PER_TICK;
-            self.dir = self.pos.direction_to(next_pos);
+            self.dir = next_pos - self.pos;
+            // self.dir.z = -self.dir.z;
+            self.lag_pos_pixels = self.dir * -GRID_CELL_SIZE.0 as i8;
+            self.update_speed();
             self.pos = next_pos;
         }
 
@@ -240,7 +260,7 @@ impl Vehicle {
         self.elapsed_ticks += 1;
         if self.trip_late() < HOPELESSLY_LATE_PERCENT {
             Status::HopelesslyLate
-        } else if self.lag_pos_pixels > 0 {
+        } else if self.lag_pos_pixels != Direction::NONE {
             self.update_speed();
             Status::EnRoute
         } else {
@@ -250,13 +270,8 @@ impl Vehicle {
 
     pub fn draw(&self, tileset: &Tileset) {
         let mut rect = Rect::from(self.pos);
-        match self.dir {
-            Direction::RIGHT => rect.x -= self.lag_pos_pixels as f32,
-            Direction::LEFT => rect.x += self.lag_pos_pixels as f32,
-            Direction::DOWN => rect.y -= self.lag_pos_pixels as f32,
-            Direction::UP => rect.y += self.lag_pos_pixels as f32,
-            _ => {},
-        }
+        rect.x += self.lag_pos_pixels.x as f32;
+        rect.y += self.lag_pos_pixels.y as f32 - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
 
         let vehicle_red = Color::from_hex(0xf9524c);
         let vehicle_blue = Color::from_hex(0xa0dae8);
@@ -271,15 +286,13 @@ impl Vehicle {
             color = vehicle_yellow;
         }
 
-        let sprite = 1;
-
         // draw shadow
         let mut shadow_rect = rect;
         shadow_rect.x += 2.;
         shadow_rect.y += 2.;
-        tileset.draw_tile(2, WHITE, &shadow_rect, self.dir.to_radians());
+        tileset.draw_tile(CAR_SHADOW_SPRITE, WHITE, &shadow_rect, self.dir.to_radians());
 
-        tileset.draw_tile(sprite, color, &rect, self.dir.to_radians());
+        tileset.draw_tile(CAR_SPRITE, color, &rect, self.dir.to_radians());
     }
 
     pub(crate) fn draw_detail(&self, tileset: &Tileset) {
@@ -373,7 +386,7 @@ mod vehicle_tests {
 
         // assert_eq!(vehicle.update(&mut grid), Status::EnRoute);
 
-        for i in 0..24 {
+        for i in 0..(trip_length * SPEED_TICKS_PER_TILE as u32) {
             assert_eq!(
                 vehicle.update(&mut grid),
                 Status::EnRoute,
@@ -387,7 +400,7 @@ mod vehicle_tests {
             assert_eq!(vehicle.elapsed_ticks, i + 1);
             assert_eq!(
                 vehicle.trip_completed_percent(),
-                ((i + 8) / SPEED_TICKS_PER_TILE as u32) as f32 / trip_length as f32,
+                ((i + SPEED_TICKS_PER_TILE as u32) / SPEED_TICKS_PER_TILE as u32) as f32 / trip_length as f32,
                 "Failed on tick {i}"
             );
             assert_eq!(
@@ -431,9 +444,13 @@ mod vehicle_tests {
         let end_pos = grid.pos(3, 0);
         let mut vehicle = Vehicle::new(start_pos, 0, end_pos, &mut grid).unwrap();
 
+        vehicle.lag_pos_pixels.x = SPEED_PIXELS_PER_TICK;
+        vehicle.lag_pos_pixels.y = SPEED_PIXELS_PER_TICK;
+        vehicle.lag_pos_pixels.z = SPEED_PIXELS_PER_TICK;
+
         vehicle.update_speed();
 
-        assert_eq!(vehicle.lag_pos_pixels, -SPEED_PIXELS_PER_TICK);
+        assert_eq!(vehicle.lag_pos_pixels, Direction::NONE);
     }
 
     #[test]

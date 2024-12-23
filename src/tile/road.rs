@@ -1,20 +1,31 @@
-
-use macroquad::{color::WHITE, math::Rect};
+use macroquad::{
+    color::{Color, WHITE},
+    math::Rect,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{grid::Direction, tileset::Tileset};
+use crate::{
+    grid::{Direction, Position, GRID_CELL_SIZE},
+    tileset::{Sprite, Tileset},
+};
 
 use super::Reserved;
 
-const ROAD_INTERSECTION_SPRITE: u32 = 16 * 3;
-const ROAD_ARROW_SPRITE: u32 = (16 * 3) + 1;
-const ROAD_STRAIGHT_SPRITE: u32 = (16 * 3) + 2;
+const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
+const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
+const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
+const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
+const ROAD_RAMP_SPRITE_2: Sprite = Sprite::new_size(3, 6, (1, 1));
+const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(3, 7, (1, 1));
+const ROAD_BRIDGE_SPRITE: Sprite = Sprite::new(3, 5);
 
+const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 
-#[derive(Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
+
+    #[serde(skip_serializing, skip_deserializing)]
     pub reserved: Reserved,
     connections: Vec<Direction>,
 }
@@ -113,12 +124,16 @@ impl Road {
 
         for dir in self.connections.iter() {
             if connection_count == 1 {
-                let sprite = if self.should_yield {
-                    ROAD_STRAIGHT_SPRITE + 2
+                if self.should_yield {
+                    tileset.draw_tile(ROAD_YIELD_SPRITE, WHITE, rect, dir.to_radians());
+                } else if dir.z != 0 {
+                    let mut rect_2 = *rect;
+                    rect_2.y -= GRID_CELL_SIZE.1 as f32;
+                    tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect_2, dir.to_radians());
+                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
                 } else {
-                    ROAD_STRAIGHT_SPRITE
+                    tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, rect, dir.to_radians());
                 };
-                tileset.draw_tile(sprite, WHITE, rect, dir.to_radians());
             } else {
                 tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
             }
@@ -127,6 +142,28 @@ impl Road {
         // if self.reserved {
         //     tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
         // }
+    }
+
+    pub fn draw_bridge(&self, pos: &Position, tileset: &Tileset, ramp_below: bool) {
+        // shadow
+        let shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
+        tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
+
+        let rect = Rect::from(*pos);
+        for dir in self.connections.iter() {
+            if ramp_below {
+                let rotation: f32 = if dir.z < 0 {
+                    dir.inverse().to_radians()
+                } else {
+                    dir.to_radians()
+                };
+                tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect, rotation);
+                let rect = Rect::from(*pos + Direction::LAYER_DOWN);
+                tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, rotation);
+            } else {
+                tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+            }
+        }
     }
 }
 
@@ -151,16 +188,15 @@ impl std::fmt::Debug for Road {
             write!(f, "^")
         } else if self.is_connected(Direction::DOWN) {
             write!(f, ".")
-        // } else if self.has_layer(Direction::RIGHT, ConnectionType::Up) {
-        //     write!(f, "u")
-        // } else if self.has_layer(Direction::RIGHT, ConnectionType::Down) {
-        //     write!(f, "d")
+        } else if self.is_connected(Direction::RIGHT) && self.is_connected(Direction::LAYER_UP) {
+            write!(f, "u")
+        } else if self.is_connected(Direction::RIGHT) && self.is_connected(Direction::LAYER_DOWN) {
+            write!(f, "d")
         } else {
             write!(f, "?")
         }
     }
 }
-
 
 #[cfg(test)]
 mod road_tests {
@@ -201,5 +237,4 @@ mod road_tests {
             vec![&Direction::RIGHT, &Direction::LEFT]
         );
     }
-
 }

@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, ops::Add};
+use std::{f32::consts::PI, ops::{Add, Mul}};
 
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,8 @@ impl Direction {
         Direction { x, y, z }
     }
 
+    pub const NONE: Direction = Direction::new(0, 0, 0);
+
     pub const RIGHT: Direction = Direction::new(1, 0, 0);
     pub const LEFT: Direction = Direction::new(-1, 0, 0);
     pub const UP: Direction = Direction::new(0, -1, 0);
@@ -25,6 +27,7 @@ impl Direction {
 
     pub const LAYER_UP: Direction = Direction::new(0, 0, 1);
     pub const LAYER_DOWN: Direction = Direction::new(0, 0, -1);
+    pub const LAYER_DOWN_2: Direction = Direction::new(0, 0, -2);
 
     pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::LEFT, Direction::UP, Direction::DOWN];
 
@@ -45,13 +48,22 @@ impl Direction {
     }
 
     pub fn to_radians(self) -> f32 {
-        match self {
-            Direction::UP => 0.,
-            Direction::RIGHT => PI / 2.0,
-            Direction::DOWN => PI,
-            Direction::LEFT => PI * 1.5,
-            _ => PI / 4.,
+        let mut dir: f32 = 0.;
+        if self.x > 0 {
+            dir += PI / 2.;
+        } else if self.x  < 0 {
+            dir += PI * 1.5;
+        } else if self.y > 0 {
+            dir += PI;
         }
+
+        // if self.z > 0 {
+        //     dir -= PI / 8.;
+        // } else if self.z < 0 {
+        //     dir += PI / 8.;
+        // }
+
+        dir
     }
 }
 
@@ -63,6 +75,18 @@ impl Add for Direction {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
+        }
+    }
+}
+
+impl Mul<i8> for Direction {
+    type Output = Self;
+
+    fn mul(self, other: i8) -> Self {
+        Self {
+            x: self.x * other,
+            y: self.y * other,
+            z: self.z * other,
         }
     }
 }
@@ -87,5 +111,13 @@ mod direction_tests {
         assert_eq!(Direction::DOWN.rotate_left(), Direction::RIGHT);
         assert_eq!(Direction::LEFT.rotate_left(), Direction::DOWN);
         assert_eq!(Direction::UP.rotate_left(), Direction::LEFT);
+    }
+
+    #[test]
+    fn test_to_radians() {
+        assert_eq!(Direction::UP.to_radians(), 0.);
+        assert_eq!(Direction::RIGHT.to_radians(), PI / 2.0);
+        assert_eq!(Direction::DOWN.to_radians(), PI);
+        assert_eq!(Direction::LEFT.to_radians(), PI * 1.5);
     }
 }
