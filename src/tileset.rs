@@ -77,6 +77,27 @@ impl Tileset {
         );
     }
 
+    pub fn draw_tile_flip(&self, sprite: Sprite, color: Color, dest: &Rect, flip: bool) {
+        let dest_size = vec2(
+            dest.w * sprite.size.0 as f32 * self.zoom,
+            dest.h * sprite.size.1 as f32 * self.zoom,
+        );
+        let spr_rect = self.sprite_rect(sprite);
+
+        draw_texture_ex(
+            &self.texture,
+            (dest.x - self.camera.0) * self.zoom,
+            (dest.y - self.camera.1) * self.zoom,
+            color,
+            DrawTextureParams {
+                dest_size: Some(dest_size),
+                source: Some(spr_rect),
+                flip_x: flip,
+                ..Default::default()
+            },
+        );
+    }
+
     pub fn draw_rect(&self, rect: &Rect, color: Color) {
         draw_rectangle(
             (rect.x - self.camera.0) * self.zoom,

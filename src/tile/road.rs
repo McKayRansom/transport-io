@@ -5,7 +5,7 @@ use macroquad::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Direction, Position, GRID_CELL_SIZE},
+    grid::{Direction, Position, GRID_CELL_SIZE, GRID_Z_OFFSET},
     tileset::{Sprite, Tileset},
 };
 
@@ -146,20 +146,26 @@ impl Road {
 
     pub fn draw_bridge(&self, pos: &Position, tileset: &Tileset, ramp_below: bool) {
         // shadow
-        let shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
+        let mut shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
+        shadow_rect.x += GRID_Z_OFFSET;
         tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
 
         let rect = Rect::from(*pos);
         for dir in self.connections.iter() {
             if ramp_below {
-                let rotation: f32 = if dir.z < 0 {
-                    dir.inverse().to_radians()
-                } else {
-                    dir.to_radians()
-                };
-                tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect, rotation);
-                let rect = Rect::from(*pos + Direction::LAYER_DOWN);
-                tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, rotation);
+                if dir.x != 0 {
+                    let flip: bool = dir.z < 0;
+                    tileset.draw_tile_flip(ROAD_RAMP_SPRITE_2, WHITE, &rect, flip);
+                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
+                    tileset.draw_tile_flip(ROAD_RAMP_SPRITE, WHITE, &rect, flip);
+                } else if dir.y == 1 {
+                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
+                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+                } else if dir.y == -1 {
+                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
+                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+                }
             } else {
                 tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
             }

@@ -19,7 +19,7 @@ use crate::tileset::Tileset;
 
 use crate::grid::Id;
 
-const SPEED_PIXELS_PER_TICK: i8 = 1;
+const SPEED_PIXELS_PER_TICK: i8 = 1; // TODO: Change this to 2 and fix bugs with existing maps
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
 
