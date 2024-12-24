@@ -271,7 +271,7 @@ impl Vehicle {
     pub fn draw(&self, tileset: &Tileset) {
         let mut rect = Rect::from(self.pos);
         rect.x += self.lag_pos_pixels.x as f32;
-        rect.y += self.lag_pos_pixels.y as f32 - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
+        rect.y += self.lag_pos_pixels.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
 
         let vehicle_red = Color::from_hex(0xf9524c);
         let vehicle_blue = Color::from_hex(0xa0dae8);

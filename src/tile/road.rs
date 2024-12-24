@@ -127,10 +127,10 @@ impl Road {
                 if self.should_yield {
                     tileset.draw_tile(ROAD_YIELD_SPRITE, WHITE, rect, dir.to_radians());
                 } else if dir.z != 0 {
-                    let mut rect_2 = *rect;
-                    rect_2.y -= GRID_CELL_SIZE.1 as f32;
-                    tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect_2, dir.to_radians());
-                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
+                    // let mut rect_2 = *rect;
+                    // rect_2.y -= GRID_CELL_SIZE.1 as f32;
+                    // tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect_2, dir.to_radians());
+                    // tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
                 } else {
                     tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, rect, dir.to_radians());
                 };
@@ -153,18 +153,11 @@ impl Road {
         let rect = Rect::from(*pos);
         for dir in self.connections.iter() {
             if ramp_below {
-                if dir.x != 0 {
-                    let flip: bool = dir.z < 0;
-                    tileset.draw_tile_flip(ROAD_RAMP_SPRITE_2, WHITE, &rect, flip);
-                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
-                    tileset.draw_tile_flip(ROAD_RAMP_SPRITE, WHITE, &rect, flip);
-                } else if dir.y == 1 {
-                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
-                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
-                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
-                } else if dir.y == -1 {
-                    let rect = Rect::from(*pos + Direction::LAYER_DOWN);
-                    tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+                if dir.z != 0 {
+                    let dir = dir.inverse();
+                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
+                } else {
+                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
                 }
             } else {
                 tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());

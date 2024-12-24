@@ -38,6 +38,7 @@ impl GameState {
     }
 
     fn draw(&mut self, tileset: &Tileset) {
+        // let color: Color = Color::new(0.6, 0.6, 0.6, 1.0);
         clear_background(BLACK);
 
         self.map.draw(tileset);

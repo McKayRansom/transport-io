@@ -155,7 +155,7 @@ impl From<Position> for Rect {
     fn from(pos: Position) -> Self {
         Rect::new(
             pos.x as f32 * GRID_CELL_SIZE.0,
-            pos.y as f32 * GRID_CELL_SIZE.1 - (pos.z as f32 * GRID_Z_OFFSET),
+            pos.y as f32 * GRID_CELL_SIZE.1/* - (pos.z as f32 * GRID_Z_OFFSET) */,
             GRID_CELL_SIZE.0,
             GRID_CELL_SIZE.1,
         )
