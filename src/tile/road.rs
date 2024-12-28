@@ -5,7 +5,7 @@ use macroquad::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Direction, Position, GRID_CELL_SIZE, GRID_Z_OFFSET},
+    grid::{Direction, Position, GRID_Z_OFFSET},
     tileset::{Sprite, Tileset},
 };
 
@@ -15,7 +15,6 @@ const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
 const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
 const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
 const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
-const ROAD_RAMP_SPRITE_2: Sprite = Sprite::new_size(3, 6, (1, 1));
 const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(3, 7, (1, 1));
 const ROAD_BRIDGE_SPRITE: Sprite = Sprite::new(3, 5);
 

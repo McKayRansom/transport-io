@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Sub};
 use macroquad::math::Rect;
 use serde::*;
 
-use super::{Direction, GRID_CELL_SIZE, GRID_Z_OFFSET};
+use super::{Direction, GRID_CELL_SIZE};
 
 // pub const Z_TUNNEL = 0
 pub const Z_GROUND: i16 = 0;
@@ -82,8 +82,8 @@ impl Position {
 impl From<(i16, i16)> for Position {
     fn from(pos: (i16, i16)) -> Self {
         Position::new(
-            pos.0 as i16, 
-            pos.1 as i16,
+            pos.0,
+            pos.1,
         )
     }
 }
@@ -91,9 +91,9 @@ impl From<(i16, i16)> for Position {
 impl From<(i16, i16, i16)> for Position {
     fn from(pos: (i16, i16, i16)) -> Self {
         Position::_new_z(
-            pos.0 as i16, 
-            pos.1 as i16,
-            pos.2 as i16,
+            pos.0,
+            pos.1,
+            pos.2,
         )
     }
 }
