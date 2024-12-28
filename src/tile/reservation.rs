@@ -55,7 +55,7 @@ pub struct Reservation {
 }
 
 impl Reservation {
-    pub fn new_for_house(pos: Position) -> Self {
+    pub fn new_for_building(pos: Position) -> Self {
         Reservation {
             _strong_id: Rc::new(0),
             pos,

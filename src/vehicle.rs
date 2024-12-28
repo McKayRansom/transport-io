@@ -527,7 +527,7 @@ mod vehicle_tests {
     }
 
     #[test]
-    fn test_yield_house() {
+    fn test_yield_building() {
         // Houses should yield, but only to relevant traffic
         let mut grid = Grid::new_from_string(
             "\

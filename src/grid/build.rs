@@ -1,4 +1,4 @@
-use crate::tile::{House, Ramp, Road, Tile};
+use crate::tile::{Building, Ramp, Road, Tile};
 
 use super::{Direction, Grid, Position};
 
@@ -6,7 +6,6 @@ use super::{Direction, Grid, Position};
 pub enum BuildError {
     InvalidTile,
     OccupiedTile,
-    // TODO: HouseBlocking, etc...
 }
 
 pub type BuildResult = Result<(), BuildError>;
@@ -102,11 +101,11 @@ impl Grid {
         Ok(())
     }
 
-    pub fn build_house(&mut self, pos: &Position) -> BuildResult {
+    pub fn build_building(&mut self, pos: &Position) -> BuildResult {
         // let pos = &pos.round_to(2);
         self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
-            .build(Tile::House(House::new()))
+            .build(Tile::Building(Building::new()))
     }
 
     pub fn build_two_way_road(&mut self, pos: Position, dir: Direction) -> BuildResult {

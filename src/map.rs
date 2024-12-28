@@ -28,7 +28,7 @@ pub struct Map {
     pub vehicles: HashMap<grid::Id, Vehicle>,
     pub rating: f32,
     pub grow_ticks: u32,
-    pub houses: Vec<Position>,
+    pub buildings: Vec<Position>,
 }
 
 impl Map {
@@ -40,7 +40,7 @@ impl Map {
             vehicles: HashMap::new(),
             rating: 1.0,
             grow_ticks: 0,
-            houses: Vec::new(),
+            buildings: Vec::new(),
         }
     }
 
@@ -88,7 +88,7 @@ impl Map {
             vehicles: HashMap::new(),
             rating: 1.0,
             grow_ticks: 0,
-            houses: Vec::new(),
+            buildings: Vec::new(),
         }
     }
 
@@ -98,12 +98,12 @@ impl Map {
         self.grid.build_road(&pos, dir)
     }
 
-    pub fn generate_house(&mut self, x: i16, y: i16) -> BuildResult {
+    pub fn generate_building(&mut self, x: i16, y: i16) -> BuildResult {
         let pos = self.grid.pos(x, y);
 
-        self.grid.build_house(&pos)?;
+        self.grid.build_building(&pos)?;
 
-        self.houses.push(pos);
+        self.buildings.push(pos);
 
         Ok(())
     }
@@ -117,10 +117,10 @@ impl Map {
             self._generate_road(x, y + i, Direction::UP)?;
         }
 
-        // houses (all for now)
+        // buildings (all for now)
         for i in 0.._CITY_BLOCK_SIZE {
             for j in 0.._CITY_BLOCK_SIZE {
-                self.generate_house(x + i, y + j)?;
+                self.generate_building(x + i, y + j)?;
             }
         }
 
@@ -142,14 +142,14 @@ impl Map {
         Ok(())
     }
 
-    fn grow_house(&mut self) {
-        let i = rand::gen_range(0, self.houses.len());
-        if let Some(mut house_pos) = self.houses.get(i).cloned() {
+    fn grow_building(&mut self) {
+        let i = rand::gen_range(0, self.buildings.len());
+        if let Some(mut building_pos) = self.buildings.get(i).cloned() {
             let dir = Direction::random();
             loop { 
-                let pos = house_pos + dir;
-                house_pos = pos;
-                match self.generate_house(pos.x, pos.y) {
+                let pos = building_pos + dir;
+                building_pos = pos;
+                match self.generate_building(pos.x, pos.y) {
                     Ok(_) => break,
                     Err(BuildError::OccupiedTile) => continue,
                     Err(BuildError::InvalidTile) => break,
@@ -158,14 +158,14 @@ impl Map {
         }
     }
 
-    fn generate_first_houses(&mut self) -> BuildResult {
-        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1)?;
-        self.generate_house(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2)?;
-        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1)?;
-        self.generate_house(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2)?;
+    fn generate_first_buildings(&mut self) -> BuildResult {
+        self.generate_building(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1)?;
+        self.generate_building(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2)?;
+        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1)?;
+        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2)?;
 
         for _ in 0..50 {
-            self.grow_house();
+            self.grow_building();
         }
 
         Ok(())
@@ -173,7 +173,7 @@ impl Map {
 
     pub fn generate(&mut self) -> BuildResult {
         self.generate_center_roads()?;
-        self.generate_first_houses()?;
+        self.generate_first_buildings()?;
         // the oofs
         // for i in 0..CITY_BLOCK_COUNT {
         // for j in 0..CITY_BLOCK_COUNT {
@@ -196,11 +196,11 @@ impl Map {
     }
 
     fn generate_cars(&mut self) {
-        let start_index = rand::gen_range(0, self.houses.len());
-        let end_index = rand::gen_range(0, self.houses.len());
+        let start_index = rand::gen_range(0, self.buildings.len());
+        let end_index = rand::gen_range(0, self.buildings.len());
 
-        let start_pos = self.houses.get(start_index).cloned();
-        let end_pos = self.houses.get(end_index).cloned();
+        let start_pos = self.buildings.get(start_index).cloned();
+        let end_pos = self.buildings.get(end_index).cloned();
         if start_pos.is_none() || end_pos.is_none() {
             return;
         }
@@ -209,22 +209,22 @@ impl Map {
         let end_pos = end_pos.unwrap();
 
         // TODO Move this to function and use ?
-        if let Some(Tile::House(_)) = self.grid.get_tile(&start_pos) {
-            if let Some(Tile::House(start_house)) = self.grid.get_tile(&end_pos) {
-                if start_house.vehicle_on_the_way.is_some() {
+        if let Some(Tile::Building(_)) = self.grid.get_tile(&start_pos) {
+            if let Some(Tile::Building(start_building)) = self.grid.get_tile(&end_pos) {
+                if start_building.vehicle_on_the_way.is_some() {
                     return;
                 }
 
                 let vehicle = self.add_vehicle(start_pos, end_pos);
 
-                if let Some(Tile::House(start_house_again)) = self.grid.get_tile_mut(&end_pos) {
-                    start_house_again.vehicle_on_the_way = vehicle;
+                if let Some(Tile::Building(start_building_again)) = self.grid.get_tile_mut(&end_pos) {
+                    start_building_again.vehicle_on_the_way = vehicle;
                 }
             } else {
-                self.houses.swap_remove(end_index);
+                self.buildings.swap_remove(end_index);
             }
         } else {
-            self.houses.swap_remove(start_index);
+            self.buildings.swap_remove(start_index);
         }
     }
 
@@ -246,8 +246,8 @@ impl Map {
         }
         for id in to_remove {
             let vehicle = self.vehicles.get_mut(&id.0).unwrap();
-            if let Some(Tile::House(house)) = self.grid.get_tile_mut(&vehicle.destination) {
-                house.vehicle_on_the_way = None;
+            if let Some(Tile::Building(building)) = self.grid.get_tile_mut(&vehicle.destination) {
+                building.vehicle_on_the_way = None;
             }
             self.vehicles.remove(&id.0);
 
@@ -259,7 +259,7 @@ impl Map {
         if self.rating > 0.9 {
             self.grow_ticks += 1;
             if self.grow_ticks > 60 {
-                self.grow_house();
+                self.grow_building();
                 self.grow_ticks = 0;
             }
         }
@@ -274,7 +274,7 @@ impl Map {
             }
         }
 
-        self.grid.draw_houses(tileset);
+        self.grid.draw_buildings(tileset);
 
         for s in self.vehicles.iter() { 
             if s.1.pos.z == 1 {
@@ -303,10 +303,10 @@ mod map_tests {
     fn test_map_generate() {
         let mut map = Map::new_from_string("__");
 
-        map.generate_house(0, 0).unwrap();
-        map.generate_house(1, 0).unwrap();
+        map.generate_building(0, 0).unwrap();
+        map.generate_building(1, 0).unwrap();
 
-        assert_eq!(map.houses.len(), 2);
+        assert_eq!(map.buildings.len(), 2);
 
         assert_eq!(map.vehicles.len(), 0);
         assert_eq!(map.vehicle_id, 1);

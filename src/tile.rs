@@ -30,13 +30,13 @@ pub enum YieldType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct House {
+pub struct Building {
     pub vehicle_on_the_way: Option<Id>,
 }
 
-impl House {
+impl Building {
     pub fn new() -> Self {
-        House {
+        Building {
             vehicle_on_the_way: None,
         }
     }
@@ -75,7 +75,7 @@ impl fmt::Debug for Ramp {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
     Empty,
-    House(House),
+    Building(Building),
     Road(Road),
     Ramp(Ramp),
 }
@@ -87,7 +87,7 @@ impl Tile {
 
     pub fn new_from_char(ch: char) -> Self {
         match ch {
-            'h' => Tile::House(House {
+            'h' => Tile::Building(Building {
                 vehicle_on_the_way: None,
             }),
             '_' => Tile::Empty,
@@ -104,7 +104,7 @@ impl Tile {
     pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
         match self {
             Tile::Road(road) => road.iter_connections(),
-            Tile::House(_) => Direction::ALL.iter(),
+            Tile::Building(_) => Direction::ALL.iter(),
             _ => [].iter(),
         }
     }
@@ -137,7 +137,7 @@ impl Tile {
                 .try_reserve(id, pos)
                 .ok_or(ReservationError::TileReserved),
 
-            Tile::House(_) => Ok(Reservation::new_for_house(pos)),
+            Tile::Building(_) => Ok(Reservation::new_for_building(pos)),
             _ => Err(ReservationError::TileInvalid),
         }
     }
@@ -152,7 +152,7 @@ impl Tile {
                 }
             }
 
-            // alway yield from a house
+            // alway yield from a building
             // if we are somehow in a weird state, I guess yield?
             _ => YieldType::Always,
         }
@@ -179,7 +179,7 @@ impl Tile {
                     DEFAULT_COST
                 }
             }
-            Tile::House(_) => DEFAULT_COST * 2,
+            Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
             _ => DEFAULT_COST * 3,
         }
@@ -203,21 +203,6 @@ impl Tile {
             self.cost(),
         )
     }
-
-    // pub fn add(&mut self, other: &Tile) {
-    //     match self {
-    //         Tile::Road(road) => {road.add(other) },
-    //         Tile::Empty => { *self = *other },
-    //     }
-    // }
-
-    // pub fn should_yield(&self) -> bool {
-    //     match self {
-    //         Tile::Road(road) => road.should_yield(),
-    //         Tile::House(_) => true,
-    //         _ => true,
-    //     }
-    // }
 }
 
 impl fmt::Debug for Tile {
@@ -225,7 +210,7 @@ impl fmt::Debug for Tile {
         match self {
             Tile::Empty => write!(f, "e"),
             Tile::Road(road) => road.fmt(f),
-            Tile::House(_) => write!(f, "h"),
+            Tile::Building(_) => write!(f, "h"),
             Tile::Ramp(ramp) => ramp.fmt(f),
             // => write!(f, "b")?,
         }

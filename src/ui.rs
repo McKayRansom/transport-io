@@ -426,9 +426,9 @@ impl UiState {
             Tile::Ramp(_) => {
                 ui.label(None, "Ramp");
             }
-            Tile::House(house) => {
-                ui.label(None, &format!("House {:?}", house.vehicle_on_the_way));
-                if let Some(vehicle_id) = house.vehicle_on_the_way {
+            Tile::Building(buliding) => {
+                ui.label(None, &format!("Building {:?}", buliding.vehicle_on_the_way));
+                if let Some(vehicle_id) = buliding.vehicle_on_the_way {
                     if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
                         // vehicle.draw_detail(tileset);
                         self.draw_vehicle_details(ui, tileset, vehicle);

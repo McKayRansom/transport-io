@@ -196,7 +196,7 @@ impl Grid {
             .collect()
     }
 
-    pub fn house_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
+    pub fn building_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         let tile = self.get_tile(pos);
         if tile.is_none() {
             return Vec::new();
@@ -214,7 +214,7 @@ impl Grid {
         } else {
             dijkstra(
                 start,
-                |p| self.house_successors(p),
+                |p| self.building_successors(p),
                 |p| self.get_tile(p).is_some_and(Tile::is_road),
             )
         }
@@ -261,12 +261,12 @@ impl Grid {
         }
     }
 
-    pub fn draw_houses(&self, tileset: &Tileset) {
+    pub fn draw_buildings(&self, tileset: &Tileset) {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 tile.bridge.draw_bridge((x as i16, y as i16, 1).into(), tileset, &tile.ground);
-                if let Tile::House(house) = &tile.ground {
-                    house.draw(&Rect::from(self.pos(x as i16, y as i16)), tileset);
+                if let Tile::Building(building) = &tile.ground {
+                    building.draw(&Rect::from(self.pos(x as i16, y as i16)), tileset);
                 }
             }
         }
@@ -314,7 +314,7 @@ mod grid_tests {
     }
 
     #[test]
-    fn test_path_house() {
+    fn test_path_building() {
         let grid = Grid::new_from_string("hh>>hh");
 
         assert_eq!(
@@ -324,7 +324,7 @@ mod grid_tests {
     }
 
     #[test]
-    fn test_path_house_fail() {
+    fn test_path_building_fail() {
         let grid = Grid::new_from_string("_h>>h_");
 
         assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
