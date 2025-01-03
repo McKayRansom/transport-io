@@ -24,10 +24,10 @@ pub struct City {
 impl City {
     pub fn new(id: Id, pos: Position, name: String) -> Self {
         City {
-            pos: pos,
-            name: name,
+            pos,
+            name,
             grow_ticks: rand::gen_range(0, CITY_GROW_TICKS),
-            id: id,
+            id,
             houses: Vec::new(),
         }
     }

@@ -3,7 +3,7 @@ use crate::{
     map::{Map, GRID_CENTER},
     menu::{self, MenuSelect},
     tile::Tile,
-    tileset::Tileset,
+    tileset::{Sprite, Tileset},
     vehicle::Vehicle,
 };
 use grades::Grades;
@@ -23,8 +23,10 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use macroquad_profiler::ProfilerParams;
+use toolbar::{Toolbar, ToolbarItem};
 
 mod grades;
+mod toolbar;
 
 const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
 const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
@@ -38,16 +40,15 @@ const MAX_ZOOM: f32 = 4.;
 
 #[derive(Clone, Copy, PartialEq)]
 enum BuildMode {
-    None,
     // Vehicle,
     // Station,
-    AddRoad,
-    RemoveRoad,
+    // AddRoad,
+    // RemoveRoad,
     TwoLaneRoad,
     Bridge,
     Clear,
-    Yield,
-    Debug,
+    // Yield,
+    // Debug,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -55,12 +56,6 @@ pub enum UiMenuStatus {
     MainMenu,
     InGame,
     MenuOpen,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct ToolbarItem {
-    build_mode: BuildMode,
-    label: &'static str,
 }
 
 const BUILD_ERROR_TIME: u32 = 60 * 3;
@@ -80,8 +75,7 @@ pub struct UiState {
     mouse_pressed: bool,
     last_mouse_pos: Option<Position>,
     bridge_start_pos: Option<Position>,
-    build_mode: BuildMode,
-    toolbar_items: Vec<ToolbarItem>,
+    build_toolbar: Toolbar<BuildMode>,
     grades: Grades,
     menu_status: UiMenuStatus,
     build_err: Option<BuildErrorMsg>,
@@ -100,37 +94,16 @@ impl UiState {
             mouse_pressed: false,
             last_mouse_pos: None,
             bridge_start_pos: None,
-            build_mode: BuildMode::None,
-            toolbar_items: vec![
-                ToolbarItem {
-                    build_mode: BuildMode::AddRoad,
-                    label: "Road+",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::RemoveRoad,
-                    label: "Road-",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::TwoLaneRoad,
-                    label: "TwoLane",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::Bridge,
-                    label: "Bridge",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::Clear,
-                    label: "Delete",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::Yield,
-                    label: "Yield",
-                },
-                ToolbarItem {
-                    build_mode: BuildMode::Debug,
-                    label: "Debug",
-                },
-            ],
+            build_toolbar: Toolbar::new(vec![
+                ToolbarItem::new(
+                    BuildMode::TwoLaneRoad,
+                    "Build a two lane road",
+                    '1',
+                    Sprite::new(8, 0),
+                ),
+                ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '2', Sprite::new(8, 1)),
+                ToolbarItem::new(BuildMode::Clear, "Delete", '3', Sprite::new(8, 2)),
+            ]),
             grades: Grades::new().await,
             menu_status: UiMenuStatus::MainMenu,
             build_err: None,
@@ -302,6 +275,7 @@ impl UiState {
     }
 
     pub fn update(&mut self, map: &mut Map) {
+
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
             // TODO: Deal with repeat
@@ -334,6 +308,10 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
+        if self.build_toolbar.is_mouse_over(new_mouse_pos) {
+            return;
+        }
+
         let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom);
         {
             if is_mouse_button_down(MouseButton::Left) {
@@ -360,44 +338,6 @@ impl UiState {
         }
 
         self.update_build_err();
-    }
-
-    fn draw_toolbar(&self) -> BuildMode {
-        let toolbar_item_count: f32 = 5.;
-        let toolbar_item_width: f32 = 64.;
-        let toolbar_item_pad: f32 = 10.;
-        let toolbar_height: f32 = 32.;
-
-        let toolbar_width = (toolbar_item_width + toolbar_item_pad) * toolbar_item_count;
-
-        let mut build_mode = self.build_mode;
-
-        widgets::Window::new(
-            hash!(),
-            vec2(
-                screen_width() / 2.0 - (toolbar_width / 2.),
-                screen_height() - toolbar_height,
-            ),
-            vec2(toolbar_width, toolbar_height),
-        )
-        .titlebar(false)
-        .movable(false)
-        .ui(&mut root_ui(), |ui| {
-            let mut position = vec2(0., 0.);
-            for toolbar_item in &self.toolbar_items {
-                let tag = if self.build_mode == toolbar_item.build_mode {
-                    "*"
-                } else {
-                    ""
-                };
-                if ui.button(position, format!("{}{}{}", tag, toolbar_item.label, tag)) {
-                    build_mode = BuildMode::AddRoad;
-                }
-                position.x += toolbar_item_width + toolbar_item_pad;
-            }
-        });
-
-        build_mode
     }
 
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
@@ -436,7 +376,7 @@ impl UiState {
                         }
                     }
                 }
-           }
+            }
             Tile::Road(road) => {
                 ui.label(None, &format!("Road {:?}", road));
                 if let Some(vehicle_id) = road.reserved.get_reserved_id() {
@@ -489,11 +429,11 @@ impl UiState {
         });
     }
 
-    fn draw_selected(&self, map: &Map, tileset: &Tileset) {
+    fn draw_selected(&self, _map: &Map, tileset: &Tileset) {
         // draw selected
         if let Some(last_mouse_pos) = self.last_mouse_pos {
-            match self.build_mode {
-                BuildMode::Bridge => {
+            match self.build_toolbar.get_selected() {
+                Some(BuildMode::Bridge) => {
                     if let Some(start_pos) = self.bridge_start_pos {
                         for pos in start_pos.iter_line_to(last_mouse_pos).0 {
                             tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
@@ -502,20 +442,18 @@ impl UiState {
                         tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
                     }
                 }
-                BuildMode::Debug => {
-                    if let Some((path, _cost)) = map.grid.find_road(&last_mouse_pos) {
-                        for pos in path {
-                            tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
-                        }
-                    }
+                // Some(BuildMode::Debug) => {
+                //     if let Some((path, _cost)) = map.grid.find_road(&last_mouse_pos) {
+                //         for pos in path {
+                //             tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
+                //         }
+                //     }
+                // }
+                Some(BuildMode::Clear) => {
+                    tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_DELETE);
                 }
                 _ => {
-                    let color = if self.build_mode == BuildMode::Clear {
-                        SELECTED_DELETE
-                    } else {
-                        SELECTED_BUILD
-                    };
-                    tileset.draw_rect(&Rect::from(last_mouse_pos), color);
+                    tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
                 }
             }
         }
@@ -525,9 +463,6 @@ impl UiState {
         // Score
         match self.menu_status {
             UiMenuStatus::InGame => {
-
-                self.build_mode = self.draw_toolbar();
-
                 self.draw_details(map, tileset);
 
                 self.draw_paused();
@@ -540,6 +475,9 @@ impl UiState {
                 macroquad_profiler::profiler(ProfilerParams {
                     fps_counter_pos: vec2(0., 50.),
                 });
+
+                self.build_toolbar.draw(tileset);
+
                 MenuSelect::None
             }
             UiMenuStatus::MainMenu => {
@@ -577,18 +515,6 @@ impl UiState {
     }
 
     fn key_down_event(&mut self, ch: char) {
-        if ('1'..'9').contains(&ch) {
-            let toolbar_count: usize = ch as usize - '1' as usize;
-            if toolbar_count < self.toolbar_items.len() {
-                let new_build_mode = self.toolbar_items[toolbar_count].build_mode;
-                if self.build_mode != new_build_mode {
-                    self.build_mode = new_build_mode;
-                } else {
-                    self.build_mode = BuildMode::None;
-                }
-            }
-            return;
-        }
         match ch {
             'q' => self.request_quit = true,
             ' ' => self.paused = !self.paused,
@@ -604,21 +530,27 @@ impl UiState {
                 }
             }
 
-            _ => {} // }
+            _ => {
+                self.build_toolbar.key_down(ch);
+            } // }
         }
     }
 
     fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) -> BuildResult {
         println!("Mouse pressed: pos: {mouse_pos:?}");
-        match self.build_mode {
+        let build_mode = self.build_toolbar.get_selected();
+        if build_mode.is_none() {
+            return Ok(());
+        }
+        match build_mode.unwrap() {
             BuildMode::Clear => {
                 map.clear_tile(&mouse_pos)?;
             }
-            BuildMode::Yield => {
-                if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
-                    road.should_yield = !road.should_yield;
-                }
-            }
+            // BuildMode::Yield => {
+            //     if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
+            //         road.should_yield = !road.should_yield;
+            //     }
+            // }
             BuildMode::Bridge => {
                 if let Some(start_pos) = self.bridge_start_pos {
                     self.bridge_start_pos = None;
@@ -642,20 +574,20 @@ impl UiState {
     }
 
     fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) -> BuildResult {
-        if is_mouse_button_down(MouseButton::Left) {
-            match self.build_mode {
-                BuildMode::AddRoad => {
-                    if let Some(last_mouse_pos) = self.last_mouse_pos {
-                        let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_road(&last_mouse_pos, dir)?
-                    }
-                }
-                BuildMode::RemoveRoad => {
-                    if let Some(last_mouse_pos) = self.last_mouse_pos {
-                        let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.remove_road(&last_mouse_pos, dir)?
-                    }
-                }
+        if is_mouse_button_down(MouseButton::Left) && self.build_toolbar.get_selected().is_some() {
+            match self.build_toolbar.get_selected().unwrap() {
+                // BuildMode::AddRoad => {
+                //     if let Some(last_mouse_pos) = self.last_mouse_pos {
+                //         let dir = last_mouse_pos.direction_to(pos);
+                //         map.grid.build_road(&last_mouse_pos, dir)?
+                //     }
+                // }
+                // BuildMode::RemoveRoad => {
+                //     if let Some(last_mouse_pos) = self.last_mouse_pos {
+                //         let dir = last_mouse_pos.direction_to(pos);
+                //         map.grid.remove_road(&last_mouse_pos, dir)?
+                //     }
+                // }
                 BuildMode::TwoLaneRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
                         let dir = last_mouse_pos.direction_to(pos);

@@ -80,7 +80,7 @@ impl Grid {
             .edit_road(|road| road.connect(dir))
     }
 
-    pub fn remove_road(&mut self, pos: &Position, dir: Direction) -> BuildResult {
+    pub fn _remove_road(&mut self, pos: &Position, dir: Direction) -> BuildResult {
         let tile = self.get_tile_mut(pos).ok_or(BuildError::InvalidTile)?;
         let mut remove_road = false;
         tile.edit_road(|road| {
@@ -197,10 +197,10 @@ mod grid_build_tests {
         grid.build_road(&pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('R'));
 
-        grid.remove_road(&pos, Direction::UP)?;
+        grid._remove_road(&pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
-        grid.remove_road(&pos, Direction::RIGHT)?;
+        grid._remove_road(&pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
 
         Ok(())
