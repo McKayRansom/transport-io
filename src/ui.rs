@@ -426,15 +426,17 @@ impl UiState {
             Tile::Ramp(_) => {
                 ui.label(None, "Ramp");
             }
-            Tile::Building(buliding) => {
-                ui.label(None, &format!("Building {:?}", buliding.vehicle_on_the_way));
-                if let Some(vehicle_id) = buliding.vehicle_on_the_way {
-                    if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
-                        // vehicle.draw_detail(tileset);
-                        self.draw_vehicle_details(ui, tileset, vehicle);
+            Tile::Building(buliding_id) => {
+                if let Some(building) = map.buildings.get(buliding_id) {
+                    ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
+                    if let Some(vehicle_id) = building.vehicle_on_the_way {
+                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                            // vehicle.draw_detail(tileset);
+                            self.draw_vehicle_details(ui, tileset, vehicle);
+                        }
                     }
                 }
-            }
+           }
             Tile::Road(road) => {
                 ui.label(None, &format!("Road {:?}", road));
                 if let Some(vehicle_id) = road.reserved.get_reserved_id() {
@@ -523,13 +525,6 @@ impl UiState {
         // Score
         match self.menu_status {
             UiMenuStatus::InGame => {
-                widgets::Window::new(hash!(), vec2(0.0, 0.0), vec2(100., 100.))
-                    .label("Score")
-                    .movable(false)
-                    .ui(&mut root_ui(), |ui| {
-                        ui.label(None, &format!("Rating: {}", map.rating));
-                        self.grades.draw(ui, map.rating);
-                    });
 
                 self.build_mode = self.draw_toolbar();
 
@@ -617,10 +612,7 @@ impl UiState {
         println!("Mouse pressed: pos: {mouse_pos:?}");
         match self.build_mode {
             BuildMode::Clear => {
-                map.grid
-                    .get_tile_mut(&mouse_pos)
-                    .ok_or(BuildError::InvalidTile)?
-                    .clear();
+                map.clear_tile(&mouse_pos)?;
             }
             BuildMode::Yield => {
                 if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
@@ -671,7 +663,7 @@ impl UiState {
                     }
                 }
                 BuildMode::Clear => {
-                    map.grid.clear(&pos)?;
+                    map.clear_tile(&pos)?;
                 }
                 _ => {}
             }

@@ -7,7 +7,6 @@ pub use direction::*;
 mod build;
 pub use build::*;
 
-use macroquad::math::Rect;
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
@@ -261,13 +260,10 @@ impl Grid {
         }
     }
 
-    pub fn draw_buildings(&self, tileset: &Tileset) {
+    pub fn draw_bridges(&self, tileset: &Tileset) {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 tile.bridge.draw_bridge((x as i16, y as i16, 1).into(), tileset, &tile.ground);
-                if let Tile::Building(building) = &tile.ground {
-                    building.draw(&Rect::from(self.pos(x as i16, y as i16)), tileset);
-                }
             }
         }
     }

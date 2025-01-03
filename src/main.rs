@@ -5,6 +5,8 @@ mod vehicle;
 mod tile;
 mod ui;
 mod menu;
+mod building;
+mod city;
 use std::path::Path;
 
 use menu::MenuSelect;

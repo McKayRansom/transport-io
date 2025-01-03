@@ -1,9 +1,6 @@
 use std::fmt;
 
-use macroquad::{
-    color::{Color, WHITE},
-    math::Rect,
-};
+use macroquad::math::Rect;
 
 mod road;
 pub use road::*;
@@ -14,10 +11,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     grid::{Direction, Id, Position, ReservationError},
-    tileset::{Sprite, Tileset},
+    tileset::Tileset,
 };
-
-const HOUSE_SPRITE: Sprite = Sprite::new_size(1, 0, (1, 1));
 
 const DEFAULT_COST: u32 = 1;
 const OCCUPIED_COST: u32 = 2;
@@ -29,27 +24,6 @@ pub enum YieldType {
     Never,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct Building {
-    pub vehicle_on_the_way: Option<Id>,
-}
-
-impl Building {
-    pub fn new() -> Self {
-        Building {
-            vehicle_on_the_way: None,
-        }
-    }
-
-    pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
-        let color = if self.vehicle_on_the_way.is_some() {
-            Color::new(0.5, 0.5, 0.5, 1.0)
-        } else {
-            WHITE
-        };
-        tileset.draw_tile(HOUSE_SPRITE, color, rect, 0.0);
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ramp {
@@ -75,7 +49,7 @@ impl fmt::Debug for Ramp {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
     Empty,
-    Building(Building),
+    Building(Id),
     Road(Road),
     Ramp(Ramp),
 }
@@ -87,9 +61,7 @@ impl Tile {
 
     pub fn new_from_char(ch: char) -> Self {
         match ch {
-            'h' => Tile::Building(Building {
-                vehicle_on_the_way: None,
-            }),
+            'h' => Tile::Building(0),
             '_' => Tile::Empty,
             _ => {
                 if let Some(road) = Road::new_from_char(ch) {

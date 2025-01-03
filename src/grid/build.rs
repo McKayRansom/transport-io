@@ -1,6 +1,8 @@
-use crate::tile::{Building, Ramp, Road, Tile};
+use std::ops::Index;
 
-use super::{Direction, Grid, Position};
+use crate::{map::Map, tile::{Ramp, Road, Tile}};
+
+use super::{Direction, Grid, Id, Position};
 
 #[derive(Debug)]
 pub enum BuildError {
@@ -94,6 +96,7 @@ impl Grid {
     }
 
     pub fn clear(&mut self, pos: &Position) -> BuildResult {
+
         self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
             .clear();
@@ -101,11 +104,11 @@ impl Grid {
         Ok(())
     }
 
-    pub fn build_building(&mut self, pos: &Position) -> BuildResult {
+    pub fn build_building(&mut self, pos: &Position, id: Id) -> BuildResult {
         // let pos = &pos.round_to(2);
         self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
-            .build(Tile::Building(Building::new()))
+            .build(Tile::Building(id))
     }
 
     pub fn build_two_way_road(&mut self, pos: Position, dir: Direction) -> BuildResult {
@@ -127,6 +130,22 @@ impl Grid {
         }
 
         Ok(())
+    }
+}
+
+impl Map {
+    pub fn clear_tile(&mut self, pos: &Position) -> BuildResult {
+        if let Some(Tile::Building(building_id)) = self.grid.get_tile(pos) {
+            if let Some(building) = self.buildings.remove(building_id) {
+                if let Some(city) = self.cities.get_mut(&building.city_id) {
+                    if let Some(pos) = city.houses.iter().position(|x| x == building_id) {
+                        city.houses.swap_remove(pos);
+                    }
+                }
+            }
+        }
+        
+        self.grid.clear(pos)
     }
 }
 
