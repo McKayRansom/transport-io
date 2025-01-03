@@ -23,7 +23,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use macroquad_profiler::ProfilerParams;
-use toolbar::{Toolbar, ToolbarItem};
+use toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 
 mod grades;
 mod toolbar;
@@ -51,6 +51,11 @@ enum BuildMode {
     // Debug,
 }
 
+enum ViewMode {
+    Build,
+    Route,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum UiMenuStatus {
     MainMenu,
@@ -76,6 +81,7 @@ pub struct UiState {
     last_mouse_pos: Option<Position>,
     bridge_start_pos: Option<Position>,
     build_toolbar: Toolbar<BuildMode>,
+    view_toolbar: Toolbar<ViewMode>,
     grades: Grades,
     menu_status: UiMenuStatus,
     build_err: Option<BuildErrorMsg>,
@@ -94,16 +100,26 @@ impl UiState {
             mouse_pressed: false,
             last_mouse_pos: None,
             bridge_start_pos: None,
-            build_toolbar: Toolbar::new(vec![
-                ToolbarItem::new(
-                    BuildMode::TwoLaneRoad,
-                    "Build a two lane road",
-                    '1',
-                    Sprite::new(8, 0),
-                ),
-                ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '2', Sprite::new(8, 1)),
-                ToolbarItem::new(BuildMode::Clear, "Delete", '3', Sprite::new(8, 2)),
-            ]),
+            build_toolbar: Toolbar::new(
+                ToolbarType::Horizontal,
+                vec![
+                    ToolbarItem::new(
+                        BuildMode::TwoLaneRoad,
+                        "Build a two lane road",
+                        '1',
+                        Sprite::new(8, 0),
+                    ),
+                    ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '2', Sprite::new(8, 1)),
+                    ToolbarItem::new(BuildMode::Clear, "Delete", '3', Sprite::new(8, 2)),
+                ],
+            ),
+            view_toolbar: Toolbar::new(
+                ToolbarType::Veritcal,
+                vec![
+                    ToolbarItem::new(ViewMode::Build, "Build stuff", 'b', Sprite::new(9, 0)),
+                    ToolbarItem::new(ViewMode::Route, "Route stuff", 'r', Sprite::new(9, 1)),
+                ],
+            ),
             grades: Grades::new().await,
             menu_status: UiMenuStatus::MainMenu,
             build_err: None,
@@ -275,7 +291,6 @@ impl UiState {
     }
 
     pub fn update(&mut self, map: &mut Map) {
-
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
             // TODO: Deal with repeat
@@ -476,7 +491,13 @@ impl UiState {
                     fps_counter_pos: vec2(0., 50.),
                 });
 
-                self.build_toolbar.draw(tileset);
+                self.build_toolbar.draw(
+                    tileset,
+                    screen_width() / 2.0 ,
+                    screen_height() - TOOLBAR_SPACE,
+                );
+                self.view_toolbar
+                    .draw(tileset, 0., screen_height() / 2.0);
 
                 MenuSelect::None
             }

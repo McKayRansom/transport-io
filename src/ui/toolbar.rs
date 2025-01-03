@@ -1,5 +1,10 @@
 use macroquad::{
-    color::{Color, WHITE}, input::{is_mouse_button_down, mouse_position}, math::{vec2, Rect}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}, window::{screen_height, screen_width}
+    color::{Color, WHITE},
+    input::{is_mouse_button_down, mouse_position},
+    math::{vec2, Rect},
+    shapes::draw_rectangle,
+    texture::{draw_texture_ex, DrawTextureParams},
+    window::{screen_height, screen_width},
 };
 
 use crate::tileset::{Sprite, Tileset};
@@ -23,15 +28,30 @@ impl<V> ToolbarItem<V> {
     }
 }
 
+const TOOLBAR_ITEM_WIDTH: f32 = 64.;
+const TOOLBAR_ITEM_HEIGHT: f32 = 64.;
+const TOOLBAR_ITEM_PAD: f32 = 10.;
+
+pub const TOOLBAR_SPACE: f32 = TOOLBAR_ITEM_HEIGHT + TOOLBAR_ITEM_PAD;
+// pub const TOOLBAR_WIDTH: f32 = (TOOLBAR_ITEM_WIDTH + TOOLBAR_ITEM_PAD) * TOOLBAR_ITEM_COUNT;
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum ToolbarType {
+    Horizontal,
+    Veritcal,
+}
+
 pub struct Toolbar<V> {
+    kind: ToolbarType,
     selected: Option<usize>,
     items: Vec<ToolbarItem<V>>,
     rect: Rect,
 }
 
 impl<V> Toolbar<V> {
-    pub fn new(items: Vec<ToolbarItem<V>>) -> Self {
+    pub fn new(kind: ToolbarType, items: Vec<ToolbarItem<V>>) -> Self {
         Self {
+            kind,
             rect: Rect::new(0., 0., 0., 0.),
             selected: None,
             items,
@@ -43,37 +63,36 @@ impl<V> Toolbar<V> {
         Some(&self.items[selected].value)
     }
 
-    pub fn draw(&mut self, tileset: &Tileset) {
-        let toolbar_item_count: f32 = 5.;
-        let toolbar_item_width: f32 = 64.;
-        let toolbar_item_height: f32 = 64.;
-        let toolbar_item_pad: f32 = 10.;
-
-        let toolbar_height: f32 = toolbar_item_height + toolbar_item_pad;
-        let toolbar_width = (toolbar_item_width + toolbar_item_pad) * toolbar_item_count;
-
+    pub fn draw(&mut self, tileset: &Tileset, x: f32, y: f32) {
         // let mut build_mode = self.build_mode;
-        self.rect.x = screen_width() / 2.0 - (toolbar_width / 2.);
-        self.rect.y = screen_height() - toolbar_height;
 
-        self.rect.w = toolbar_width;
-        self.rect.h = toolbar_height;
+        if self.kind == ToolbarType::Veritcal {
+            self.rect.w = TOOLBAR_SPACE;
+            self.rect.h = self.items.len() as f32 * TOOLBAR_SPACE;
+            self.rect.x = x;
+            self.rect.y = y - self.rect.h / 2.;
+        } else {
+            self.rect.w = self.items.len() as f32 * TOOLBAR_SPACE;
+            self.rect.h = TOOLBAR_SPACE;
+            self.rect.x = x - self.rect.w / 2.;
+            self.rect.y = y;
+        }
 
         let window_color = Color::from_hex(0x585858);
 
         draw_rectangle(
             self.rect.x,
             self.rect.y,
-            toolbar_width,
-            toolbar_height,
+            self.rect.w,
+            self.rect.h,
             window_color,
         );
 
         let mut item_rect = Rect::new(
-            self.rect.x + toolbar_item_pad / 2.,
-            self.rect.y + toolbar_item_pad / 2.,
-            toolbar_item_width,
-            toolbar_item_height,
+            self.rect.x + TOOLBAR_ITEM_PAD / 2.,
+            self.rect.y + TOOLBAR_ITEM_PAD / 2.,
+            TOOLBAR_ITEM_WIDTH,
+            TOOLBAR_ITEM_HEIGHT,
         );
         for (i, toolbar_item) in self.items.iter().enumerate() {
             let spr_rect = tileset.sprite_rect(toolbar_item.sprite);
@@ -114,7 +133,11 @@ impl<V> Toolbar<V> {
                 }
             }
 
-            item_rect.x += toolbar_item_width + toolbar_item_pad;
+            if self.kind == ToolbarType::Horizontal {
+                item_rect.x += TOOLBAR_ITEM_WIDTH + TOOLBAR_ITEM_PAD;
+            } else {
+                item_rect.y += TOOLBAR_ITEM_WIDTH + TOOLBAR_ITEM_PAD;
+            }
         }
     }
 
