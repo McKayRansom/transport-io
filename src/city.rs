@@ -1,12 +1,12 @@
-use macroquad::{color::WHITE, math::Rect, prelude::rand, text::draw_text};
+use macroquad::{color::WHITE, prelude::rand};
 use serde::{Deserialize, Serialize};
 
-use crate::grid::{Id, Position};
-
-
+use crate::{
+    grid::{Id, Position},
+    tileset::Tileset,
+};
 
 const CITY_GROW_TICKS: u32 = 16 * 10;
-
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct City {
@@ -30,9 +30,8 @@ impl City {
         }
     }
 
-    pub fn draw(&self) {
-        let rect: Rect = self.pos.into();
-        draw_text(&self.name.as_str(), rect.x, rect.y, 32., WHITE);
+    pub fn draw(&self, tileset: &Tileset) {
+        tileset.draw_text(self.name.as_str(), 32., WHITE, &self.pos.into());
     }
 
     pub fn update(&mut self) -> bool {

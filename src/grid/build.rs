@@ -1,6 +1,7 @@
-use std::ops::Index;
-
-use crate::{map::Map, tile::{Ramp, Road, Tile}};
+use crate::{
+    map::Map,
+    tile::{Ramp, Road, Tile},
+};
 
 use super::{Direction, Grid, Id, Position};
 
@@ -95,8 +96,24 @@ impl Grid {
         Ok(())
     }
 
-    pub fn clear(&mut self, pos: &Position) -> BuildResult {
+    pub fn is_pos_clear(&self, pos: &Position) -> BuildResult {
+        if self.get_tile(pos).ok_or(BuildError::InvalidTile)? == &Tile::Empty {
+            Ok(())
+        } else {
+            Err(BuildError::OccupiedTile)
+        }
+    }
 
+    pub fn is_area_clear(&self, pos: &Position, size: (i8, i8)) -> BuildResult {
+        for x in 0..size.0 {
+            for y in 0..size.1 {
+                self.is_pos_clear(&(*pos + (x, y).into()))?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn clear(&mut self, pos: &Position) -> BuildResult {
         self.get_tile_mut(pos)
             .ok_or(BuildError::InvalidTile)?
             .clear();
@@ -104,15 +121,22 @@ impl Grid {
         Ok(())
     }
 
-    pub fn build_building(&mut self, pos: &Position, id: Id) -> BuildResult {
+    pub fn build_building(&mut self, pos: &Position, size: (i8, i8), id: Id) -> BuildResult {
         // let pos = &pos.round_to(2);
-        self.get_tile_mut(pos)
-            .ok_or(BuildError::InvalidTile)?
-            .build(Tile::Building(id))
+        for x in 0..size.0 {
+            for y in 0..size.1 {
+                self.get_tile_mut(&(*pos + Direction::from((x, y))))
+                    .ok_or(BuildError::InvalidTile)?
+                    .build(Tile::Building(id))?;
+            }
+        }
+        Ok(())
     }
 
     pub fn build_two_way_road(&mut self, pos: Position, dir: Direction) -> BuildResult {
         let pos = pos.round_to(2);
+
+        // self.is_area_clear(&pos, (2, 2))?;
 
         let blueprint = if dir.is_horizontal() {
             Grid::new_from_string("<<\n>>")
@@ -144,7 +168,7 @@ impl Map {
                 }
             }
         }
-        
+
         self.grid.clear(pos)
     }
 }

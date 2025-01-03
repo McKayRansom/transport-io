@@ -21,7 +21,7 @@ const _CITY_BLOCK_SIZE: i16 = 8;
 const _CITY_BLOCK_COUNT: i16 = 1;
 
 pub const GRID_SIZE: (i16, i16) = (64, 64);
-pub const GRID_CENTER: (i16, i16) = (33, 33);
+pub const GRID_CENTER: (i16, i16) = (32, 32);
 
 type VehicleHashMap = HashMap<grid::Id, Vehicle>;
 type BuildingHashMap = HashMap<grid::Id, Building>;
@@ -119,9 +119,9 @@ impl Map {
     pub fn generate_building(&mut self, x: i16, y: i16, city_id: Id) -> BuildResult {
         let pos = self.grid.pos(x, y);
 
-        let building = Building::new(pos, self.building_id, city_id);
+        let building = Building::new(pos, self.building_id, city_id, &mut self.grid)?;
 
-        self.grid.build_building(&pos, self.building_id)?;
+        // self.grid.build_building(&pos, self.building_id)?;
 
         self.buildings.insert(self.building_id, building);
         if let Some(city) = self.cities.get_mut(&city_id) {
@@ -185,11 +185,11 @@ impl Map {
     }
 
     fn generate_first_buildings(&mut self) -> BuildResult {
-        let city_id = self.new_city(GRID_CENTER.into(), "C".to_string());
+        let city_id = self.new_city(GRID_CENTER.into(), "Cityville".to_string());
 
-        self.generate_building(GRID_CENTER.0 + 1, GRID_CENTER.1 + 1, city_id)?;
-        self.generate_building(GRID_CENTER.0 + 1, GRID_CENTER.1 - 2, city_id)?;
-        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 + 1, city_id)?;
+        self.generate_building(GRID_CENTER.0 + 2, GRID_CENTER.1 + 2, city_id)?;
+        self.generate_building(GRID_CENTER.0 + 2, GRID_CENTER.1 - 2, city_id)?;
+        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 + 2, city_id)?;
         self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2, city_id)?;
 
         for _ in 0..50 {
@@ -295,6 +295,10 @@ impl Map {
         for b in self.buildings.values() {
             b.draw(tileset);
         }
+
+        for c in self.cities.values() {
+            c.draw(tileset);
+        }
     }
 }
 
@@ -315,14 +319,13 @@ mod map_tests {
 
     #[test]
     fn test_map_generate() {
-        let mut map = Map::new_from_string("__");
+        let mut map = Map::new_from_string("__\n__");
 
         let city = map.new_city((0, 0).into(), "test_city".to_string());
 
         map.generate_building(0, 0, city).unwrap();
-        map.generate_building(1, 0, city).unwrap();
 
-        assert_eq!(map.buildings.len(), 2);
+        assert_eq!(map.buildings.len(), 1);
 
         assert_eq!(map.vehicles.len(), 0);
         assert_eq!(map.vehicle_id, 1);
@@ -331,8 +334,8 @@ mod map_tests {
             map.update_buildings();
         }
 
-        assert_eq!(map.vehicles.len(), 2);
-        assert_eq!(map.vehicle_id, 3);
+        assert_eq!(map.vehicles.len(), 1);
+        assert_eq!(map.vehicle_id, 2);
     }
 
     #[test]

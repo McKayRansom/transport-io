@@ -40,8 +40,8 @@ impl GameState {
     }
 
     fn draw(&mut self, tileset: &Tileset) {
-        // let color: Color = Color::new(0.6, 0.6, 0.6, 1.0);
-        clear_background(BLACK);
+        let color: Color = Color::from_hex(0x2b313f);
+        clear_background(color);
 
         self.map.draw(tileset);
 

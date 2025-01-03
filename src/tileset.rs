@@ -2,6 +2,7 @@ use macroquad::{
     color::Color,
     math::{vec2, Rect},
     shapes::draw_rectangle,
+    text::{draw_text_ex, measure_text, TextParams},
     texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
 
@@ -84,6 +85,23 @@ impl Tileset {
             rect.w * self.zoom,
             rect.h * self.zoom,
             color,
+        );
+    }
+
+    /// Draws text centered
+    pub fn draw_text(&self, text: &str, text_size: f32, color: Color, rect: &Rect) {
+        let font_size = (text_size as f32 * self.zoom) as u16;
+        let text_measured = measure_text(text, None, font_size, 1.0);
+        draw_text_ex(
+            text,
+            (rect.x - self.camera.0) * self.zoom - text_measured.width / 2.,
+            (rect.y - self.camera.1) * self.zoom - text_measured.height / 2.,
+            TextParams {
+                font_size: font_size,
+                font_scale: 1.0,
+                color,
+                ..Default::default()
+            },
         );
     }
 }

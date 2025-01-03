@@ -67,6 +67,26 @@ impl Direction {
     }
 }
 
+impl From<(i8, i8)> for Direction {
+    fn from(pos: (i8, i8)) -> Self {
+        Direction::new(
+            pos.0,
+            pos.1,
+            0,
+        )
+    }
+}
+
+impl From<(i8, i8, i8)> for Direction {
+    fn from(pos: (i8, i8, i8)) -> Self {
+        Direction::new(
+            pos.0,
+            pos.1,
+            pos.2,
+        )
+    }
+}
+
 impl Add for Direction {
     type Output = Self;
 
