@@ -16,8 +16,7 @@ use crate::tile::Reservation;
 use crate::tile::Tile;
 use crate::tileset::Sprite;
 use crate::tileset::Tileset;
-
-use crate::grid::Id;
+use crate::hash_map_id::Id;
 
 const SPEED_PIXELS_PER_TICK: i8 = 2; 
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;

@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::tile::{Reservation, Tile, YieldType};
 use crate::tileset::Tileset;
+use crate::hash_map_id::Id;
 
-pub type Id = u64;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;

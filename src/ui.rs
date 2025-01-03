@@ -427,10 +427,10 @@ impl UiState {
                 ui.label(None, "Ramp");
             }
             Tile::Building(buliding_id) => {
-                if let Some(building) = map.buildings.get(buliding_id) {
+                if let Some(building) = map.buildings.hash_map.get(buliding_id) {
                     ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
                     if let Some(vehicle_id) = building.vehicle_on_the_way {
-                        if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                        if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                             // vehicle.draw_detail(tileset);
                             self.draw_vehicle_details(ui, tileset, vehicle);
                         }
@@ -440,7 +440,7 @@ impl UiState {
             Tile::Road(road) => {
                 ui.label(None, &format!("Road {:?}", road));
                 if let Some(vehicle_id) = road.reserved.get_reserved_id() {
-                    if let Some(vehicle) = map.vehicles.get(&vehicle_id) {
+                    if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                         self.draw_vehicle_details(ui, tileset, vehicle);
                     }
                 }

@@ -1,9 +1,9 @@
 use crate::{
     map::Map,
-    tile::{Ramp, Road, Tile},
+    tile::{Ramp, Road, Tile}, hash_map_id::Id,
 };
 
-use super::{Direction, Grid, Id, Position};
+use super::{Direction, Grid, Position};
 
 #[derive(Debug)]
 pub enum BuildError {
@@ -160,8 +160,8 @@ impl Grid {
 impl Map {
     pub fn clear_tile(&mut self, pos: &Position) -> BuildResult {
         if let Some(Tile::Building(building_id)) = self.grid.get_tile(pos) {
-            if let Some(building) = self.buildings.remove(building_id) {
-                if let Some(city) = self.cities.get_mut(&building.city_id) {
+            if let Some(building) = self.buildings.hash_map.remove(building_id) {
+                if let Some(city) = self.cities.hash_map.get_mut(&building.city_id) {
                     if let Some(pos) = city.houses.iter().position(|x| x == building_id) {
                         city.houses.swap_remove(pos);
                     }

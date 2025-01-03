@@ -2,7 +2,7 @@ use std::rc::{Rc, Weak};
 
 use serde::{Deserialize, Serialize};
 
-use crate::grid::{Id, Position};
+use crate::{grid::Position, hash_map_id::Id};
 
 #[derive(Clone, Debug, Default)]
 pub struct Reserved {

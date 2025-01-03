@@ -5,8 +5,8 @@ use macroquad::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{BuildError, Grid, Id, Position},
-    tileset::{Sprite, Tileset},
+    grid::{BuildError, Grid, Position},
+    tileset::{Sprite, Tileset}, hash_map_id::Id,
 };
 
 const BUILDING_SIZE: (i8, i8) = (2, 2);

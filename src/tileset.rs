@@ -95,7 +95,7 @@ impl Tileset {
         draw_text_ex(
             text,
             (rect.x - self.camera.0) * self.zoom - text_measured.width / 2.,
-            (rect.y - self.camera.1) * self.zoom - text_measured.height / 2.,
+            (rect.y - self.camera.1) * self.zoom + text_measured.height / 2.,
             TextParams {
                 font_size: font_size,
                 font_scale: 1.0,

@@ -10,8 +10,8 @@ pub use reservation::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Direction, Id, Position, ReservationError},
-    tileset::Tileset,
+    grid::{Direction, Position, ReservationError},
+    tileset::Tileset, hash_map_id::Id,
 };
 
 const DEFAULT_COST: u32 = 1;

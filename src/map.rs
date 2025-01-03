@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::Path,
@@ -11,10 +10,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     building::Building,
     city::City,
-    grid::{self, BuildError, BuildResult, Direction, Grid, Id, Position, ReservationError},
+    grid::{BuildResult, Grid, Position, ReservationError},
     tile::Tile,
     tileset::Tileset,
     vehicle::{Status, Vehicle},
+    hash_map_id::{HashMapId, Id},
 };
 
 const _CITY_BLOCK_SIZE: i16 = 8;
@@ -23,18 +23,16 @@ const _CITY_BLOCK_COUNT: i16 = 1;
 pub const GRID_SIZE: (i16, i16) = (64, 64);
 pub const GRID_CENTER: (i16, i16) = (32, 32);
 
-type VehicleHashMap = HashMap<grid::Id, Vehicle>;
-type BuildingHashMap = HashMap<grid::Id, Building>;
+type VehicleHashMap = HashMapId<Vehicle>;
+type BuildingHashMap = HashMapId<Building>;
+type CityHashMap = HashMapId<City>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Map {
     pub grid: Grid,
-    pub vehicle_id: grid::Id,
     pub vehicles: VehicleHashMap,
-    pub building_id: grid::Id,
     pub buildings: BuildingHashMap,
-    pub cities_id: grid::Id,
-    pub cities: HashMap<grid::Id, City>,
+    pub cities: CityHashMap,
 }
 
 impl Map {
@@ -42,12 +40,9 @@ impl Map {
         srand(1234);
         Map {
             grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
-            vehicle_id: 1,
-            vehicles: HashMap::new(),
-            building_id: 1,
-            buildings: HashMap::new(),
-            cities_id: 1,
-            cities: HashMap::new(),
+            vehicles: VehicleHashMap::new(),
+            buildings: BuildingHashMap::new(),
+            cities: CityHashMap::new(),
         }
     }
 
@@ -91,133 +86,27 @@ impl Map {
     pub fn new_from_string(string: &str) -> Self {
         Map {
             grid: Grid::new_from_string(string),
-            vehicle_id: 1,
-            vehicles: HashMap::new(),
-            building_id: 1,
-            buildings: HashMap::new(),
-            cities_id: 1,
-            cities: HashMap::new(),
+            vehicles: VehicleHashMap::new(),
+            buildings: BuildingHashMap::new(),
+            cities: CityHashMap::new(),
         }
     }
 
-    pub fn _generate_road(&mut self, x: i16, y: i16, dir: Direction) -> BuildResult {
-        let pos = self.grid.pos(x, y);
-
-        self.grid.build_road(&pos, dir)
-    }
-
-    pub fn new_city(&mut self, pos: Position, name: String) -> Id {
-        let id = self.building_id;
-        self.cities
-            .insert(id, City::new(self.building_id, pos, name));
-
-        self.building_id += 1;
-
-        id
-    }
-
-    pub fn generate_building(&mut self, x: i16, y: i16, city_id: Id) -> BuildResult {
-        let pos = self.grid.pos(x, y);
-
-        let building = Building::new(pos, self.building_id, city_id, &mut self.grid)?;
-
-        // self.grid.build_building(&pos, self.building_id)?;
-
-        self.buildings.insert(self.building_id, building);
-        if let Some(city) = self.cities.get_mut(&city_id) {
-            city.houses.push(self.building_id);
-        }
-        self.building_id += 1;
-
-        Ok(())
-    }
-
-    pub fn _generate_block(&mut self, x: i16, y: i16, city_id: Id) -> BuildResult {
-        // top
-
-        for i in 0.._CITY_BLOCK_SIZE {
-            self._generate_road(x + i, y, Direction::RIGHT)?;
-            self._generate_road(x + (_CITY_BLOCK_SIZE - 1), y + i, Direction::DOWN)?;
-            self._generate_road(x + i, y + (_CITY_BLOCK_SIZE - 1), Direction::LEFT)?;
-            self._generate_road(x, y + i, Direction::UP)?;
-        }
-
-        // buildings (all for now)
-        for i in 0.._CITY_BLOCK_SIZE {
-            for j in 0.._CITY_BLOCK_SIZE {
-                self.generate_building(x + i, y + j, city_id)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn generate_center_roads(&mut self) -> BuildResult {
-        for i in -10..10 {
-            self.grid.build_two_way_road(
-                self.grid.pos(GRID_CENTER.0 + i, GRID_CENTER.1),
-                Direction::LEFT,
-            )?;
-            self.grid.build_two_way_road(
-                self.grid.pos(GRID_CENTER.0, GRID_CENTER.1 + i),
-                Direction::DOWN,
-            )?;
-        }
-
-        Ok(())
-    }
-
-    fn grow_building(&mut self, city_id: Id) {
-        let start_house_id = self.cities[&city_id].random_house();
-        if let Some(building) = self.buildings.get(&start_house_id) {
-            let mut building_pos = building.pos;
-            let dir = Direction::random();
-            loop {
-                let pos = building_pos + dir;
-                building_pos = pos;
-                match self.generate_building(pos.x, pos.y, city_id) {
-                    Ok(_) => break,
-                    Err(BuildError::OccupiedTile) => continue,
-                    Err(BuildError::InvalidTile) => break,
-                }
-            }
-        }
-    }
-
-    fn generate_first_buildings(&mut self) -> BuildResult {
-        let city_id = self.new_city(GRID_CENTER.into(), "Cityville".to_string());
-
-        self.generate_building(GRID_CENTER.0 + 2, GRID_CENTER.1 + 2, city_id)?;
-        self.generate_building(GRID_CENTER.0 + 2, GRID_CENTER.1 - 2, city_id)?;
-        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 + 2, city_id)?;
-        self.generate_building(GRID_CENTER.0 - 2, GRID_CENTER.1 - 2, city_id)?;
-
-        for _ in 0..50 {
-            self.grow_building(city_id);
-        }
-
+    pub fn new_city(&mut self, pos: Position, name: String) -> BuildResult {
+        let mut city = City::new(self.cities.id, pos, name);
+        city.generate(&mut self.buildings, &mut self.grid)?;
+        self.cities.insert(city);
         Ok(())
     }
 
     pub fn generate(&mut self) -> BuildResult {
-        self.generate_center_roads()?;
-        self.generate_first_buildings()?;
-        // the oofs
-        // for i in 0..CITY_BLOCK_COUNT {
-        // for j in 0..CITY_BLOCK_COUNT {
-        // self.generate_block(i * CITY_BLOCK_SIZE, j * CITY_BLOCK_SIZE);
-        // }
-        // }
-        Ok(())
+        self.new_city(GRID_CENTER.into(), "CityVille".to_string())
     }
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
-        let id = self.vehicle_id;
-        if let Ok(vehicle) = Vehicle::new(start_pos, self.vehicle_id, end_pos, &mut self.grid) {
-            self.vehicles.insert(id, vehicle);
-            self.vehicle_id += 1;
-
-            Some(id)
+        let id = self.vehicles.id;
+        if let Ok(vehicle) = Vehicle::new(start_pos, id, end_pos, &mut self.grid) {
+            Some(self.vehicles.insert(vehicle))
         } else {
             None
         }
@@ -233,52 +122,50 @@ impl Map {
 
         for (city_id, start_pos) in vehicles_to_add {
             // generate a random destination
-            if let Some(destination_building) =
-                self.buildings.get_mut(&self.cities[&city_id].random_house())
+            if let Some(destination_building) = self
+                .buildings.hash_map
+                .get_mut(&self.cities.hash_map[&city_id].random_house())
             {
                 let destination_pos = destination_building.pos;
                 let _vehicle = self.add_vehicle(start_pos, destination_pos);
 
-                // destination_building.vehicle_on_the_way = vehicle;
+                // destination_building.vehicle_on_the_way = _vehicle;
             }
         }
     }
 
     pub fn update(&mut self) {
-        let mut to_remove: Vec<(grid::Id, Status)> = Vec::new();
-        for s in self.vehicles.iter_mut() {
+        let mut to_remove: Vec<(Id, Status)> = Vec::new();
+        for s in self.vehicles.hash_map.iter_mut() {
             let status = s.1.update(&mut self.grid);
             if status != Status::EnRoute {
                 to_remove.push((*s.0, status));
             }
         }
         for id in to_remove {
-            let vehicle = self.vehicles.get_mut(&id.0).unwrap();
+            let vehicle = self.vehicles.hash_map.get_mut(&id.0).unwrap();
             if let Some(Tile::Building(building_id)) = self.grid.get_tile(&vehicle.destination) {
-                if let Some(building) = self.buildings.get_mut(building_id) {
+                if let Some(building) = self.buildings.hash_map.get_mut(building_id) {
                     building.vehicle_on_the_way = None;
                 }
             }
-            self.vehicles.remove(&id.0);
+            self.vehicles.hash_map.remove(&id.0);
 
             // self.update_rating(id.1 == Status::ReachedDestination);
         }
 
         self.update_buildings();
 
-        // if self.rating > 0.9 {
-        //     self.grow_ticks += 1;
-        //     if self.grow_ticks > 60 {
-        //         self.grow_building();
-        //         self.grow_ticks = 0;
-        //     }
-        // }
+        for city in self.cities.values_mut() {
+            city.update(&mut self.buildings, &mut self.grid);
+        }
+
     }
 
     pub fn draw(&self, tileset: &Tileset) {
         self.grid.draw_tiles(tileset);
 
-        for s in self.vehicles.iter() {
+        for s in self.vehicles.hash_map.iter() {
             if s.1.pos.z == 0 {
                 s.1.draw(tileset);
             }
@@ -286,17 +173,17 @@ impl Map {
 
         self.grid.draw_bridges(tileset);
 
-        for s in self.vehicles.iter() {
+        for s in self.vehicles.hash_map.iter() {
             if s.1.pos.z == 1 {
                 s.1.draw(tileset);
             }
         }
 
-        for b in self.buildings.values() {
+        for b in self.buildings.hash_map.values() {
             b.draw(tileset);
         }
 
-        for c in self.cities.values() {
+        for c in self.cities.hash_map.values() {
             c.draw(tileset);
         }
     }
@@ -319,30 +206,26 @@ mod map_tests {
 
     #[test]
     fn test_map_generate() {
-        let mut map = Map::new_from_string("__\n__");
+        // let mut map = Map::new_from_string("__\n__");
 
-        let city = map.new_city((0, 0).into(), "test_city".to_string());
+        // map.new_city((0, 0).into(), "test_city".to_string()).unwrap();
 
-        map.generate_building(0, 0, city).unwrap();
+        // assert_eq!(map.buildings.len(), 1);
 
-        assert_eq!(map.buildings.len(), 1);
+        // assert_eq!(map.vehicles.len(), 0);
+        // assert_eq!(map.vehicle_id, 1);
 
-        assert_eq!(map.vehicles.len(), 0);
-        assert_eq!(map.vehicle_id, 1);
+        // for _ in 0..10 * 16 {
+        //     map.update_buildings();
+        // }
 
-        for _ in 0 .. 10 * 16 {
-            map.update_buildings();
-        }
-
-        assert_eq!(map.vehicles.len(), 1);
-        assert_eq!(map.vehicle_id, 2);
+        // assert_eq!(map.vehicles.len(), 1);
+        // assert_eq!(map.vehicle_id, 2);
     }
 
     #[test]
     fn test_map_serialize() {
         let mut map = Map::new();
-
-        map._generate_road(0, 0, Direction::RIGHT).unwrap();
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 

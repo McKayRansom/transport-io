@@ -2,8 +2,10 @@ use macroquad::{color::WHITE, prelude::rand};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Id, Position},
+    building::Building,
+    grid::{BuildError, BuildResult, Direction, Grid, Position},
     tileset::Tileset,
+    hash_map_id::{HashMapId, Id},
 };
 
 const CITY_GROW_TICKS: u32 = 16 * 10;
@@ -24,9 +26,69 @@ impl City {
         City {
             pos: pos,
             name: name,
-            grow_ticks: 0,
+            grow_ticks: rand::gen_range(0, CITY_GROW_TICKS),
             id: id,
             houses: Vec::new(),
+        }
+    }
+
+    pub fn generate(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) -> BuildResult {
+        self.generate_center_roads(grid)?;
+
+        self.generate_building(self.pos + (2, 2).into(), buildings, grid)?;
+        self.generate_building(self.pos + (2, -2).into(), buildings, grid)?;
+        self.generate_building(self.pos + (-2, 2).into(), buildings, grid)?;
+        self.generate_building(self.pos + (-2, -2).into(), buildings, grid)?;
+
+        for _ in 0..10 {
+            self.grow_building(buildings, grid);
+        }
+
+        Ok(())
+    }
+
+    fn generate_center_roads(&mut self, grid: &mut Grid) -> BuildResult {
+        for i in -10..10 {
+            grid.build_two_way_road(
+                self.pos + (i, 0).into(),
+                Direction::LEFT,
+            )?;
+            grid.build_two_way_road(
+                self.pos + (0, i).into(),
+                Direction::DOWN,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub fn generate_building(
+        &mut self,
+        pos: Position,
+        buildings: &mut HashMapId<Building>,
+        grid: &mut Grid,
+    ) -> BuildResult {
+        let building = Building::new(pos, buildings.id, self.id, grid)?;
+
+        self.houses.push(buildings.insert(building));
+
+        Ok(())
+    }
+
+    fn grow_building(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) {
+        let start_house_id = self.random_house();
+        if let Some(building) = buildings.hash_map.get(&start_house_id) {
+            let mut building_pos = building.pos;
+            let dir = Direction::random();
+            loop {
+                let pos = building_pos + dir;
+                building_pos = pos;
+                match self.generate_building(pos, buildings, grid) {
+                    Ok(_) => break,
+                    Err(BuildError::OccupiedTile) => continue,
+                    Err(BuildError::InvalidTile) => break,
+                }
+            }
         }
     }
 
@@ -34,14 +96,11 @@ impl City {
         tileset.draw_text(self.name.as_str(), 32., WHITE, &self.pos.into());
     }
 
-    pub fn update(&mut self) -> bool {
+    pub fn update(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) {
         self.grow_ticks += 1;
-        // TODO: Grow conditions??
         if self.grow_ticks > CITY_GROW_TICKS {
             self.grow_ticks = 0;
-            true
-        } else {
-            false
+            self.grow_building(buildings, grid);
         }
     }
 
