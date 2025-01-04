@@ -1,5 +1,5 @@
 use crate::{
-    grid::{BuildError, BuildResult, Position, GRID_CELL_SIZE},
+    grid::{Position, GRID_CELL_SIZE},
     map::{Map, GRID_CENTER},
     menu::{self, MenuSelect},
     tile::Tile,
@@ -8,28 +8,26 @@ use crate::{
 };
 use grades::Grades;
 use macroquad::{
-    color::{Color, RED},
     input::{
         get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode,
         MouseButton,
     },
-    math::{vec2, Rect, RectOffset},
-    text::draw_text,
+    math::vec2,
     ui::{
         hash, root_ui,
         widgets::{self},
-        Skin, Ui,
+        Ui,
     },
     window::{screen_height, screen_width},
 };
 use macroquad_profiler::ProfilerParams;
-use toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
+use toolbar::{Toolbar, ToolbarItem, ToolbarType};
+use view_build::ViewBuild;
 
 mod grades;
 mod toolbar;
-
-const SELECTED_BUILD: Color = Color::new(0., 1.0, 0., 0.3);
-const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
+mod view_build;
+mod skin;
 
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
@@ -37,19 +35,6 @@ const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 
 const MIN_ZOOM: f32 = 0.4;
 const MAX_ZOOM: f32 = 4.;
-
-#[derive(Clone, Copy, PartialEq)]
-enum BuildMode {
-    // Vehicle,
-    // Station,
-    // AddRoad,
-    // RemoveRoad,
-    TwoLaneRoad,
-    Bridge,
-    Clear,
-    // Yield,
-    // Debug,
-}
 
 enum ViewMode {
     Build,
@@ -63,33 +48,24 @@ pub enum UiMenuStatus {
     MenuOpen,
 }
 
-const BUILD_ERROR_TIME: u32 = 60 * 3;
-
-pub struct BuildErrorMsg {
-    pub screen_pos: (f32, f32),
-    pub err: BuildError,
-    pub time: u32,
-}
-
-// #[derive(Clone, Copy)]
 pub struct UiState {
+    draw_profiler: bool,
     pub request_quit: bool,
     pub paused: bool,
     pub zoom: f32,
     pub camera: (f32, f32),
     mouse_pressed: bool,
     last_mouse_pos: Option<Position>,
-    bridge_start_pos: Option<Position>,
-    build_toolbar: Toolbar<BuildMode>,
     view_toolbar: Toolbar<ViewMode>,
+    view_build: ViewBuild,
     grades: Grades,
     menu_status: UiMenuStatus,
-    build_err: Option<BuildErrorMsg>,
 }
 
 impl UiState {
     pub async fn new() -> Self {
         UiState {
+            draw_profiler: false,
             request_quit: false,
             paused: false,
             zoom: 1.,
@@ -99,20 +75,6 @@ impl UiState {
             ),
             mouse_pressed: false,
             last_mouse_pos: None,
-            bridge_start_pos: None,
-            build_toolbar: Toolbar::new(
-                ToolbarType::Horizontal,
-                vec![
-                    ToolbarItem::new(
-                        BuildMode::TwoLaneRoad,
-                        "Build a two lane road",
-                        '1',
-                        Sprite::new(8, 0),
-                    ),
-                    ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '2', Sprite::new(8, 1)),
-                    ToolbarItem::new(BuildMode::Clear, "Delete", '3', Sprite::new(8, 2)),
-                ],
-            ),
             view_toolbar: Toolbar::new(
                 ToolbarType::Veritcal,
                 vec![
@@ -120,174 +82,14 @@ impl UiState {
                     ToolbarItem::new(ViewMode::Route, "Route stuff", 'r', Sprite::new(9, 1)),
                 ],
             ),
+            view_build: ViewBuild::new(),
             grades: Grades::new().await,
             menu_status: UiMenuStatus::MainMenu,
-            build_err: None,
         }
     }
 
     pub async fn init(&mut self) {
-        let skin2 = {
-            // let font = load_ttf_font("examples/ui_assets/MinimalPixel v2.ttf")
-            //     .await
-            //     .unwrap();
-            // let label_style = root_ui()
-            //     .style_builder()
-            //     .with_font(&font)
-            //     .unwrap()
-            //     .text_color(Color::from_rgba(120, 120, 120, 255))
-            //     .font_size(15)
-            //     .build();
-
-            let window_color = Color::from_hex(0x585858);
-
-            let window_style = root_ui()
-                .style_builder()
-                // .background(
-                //     Image::from_file_with_format(
-                //         include_bytes!("../examples/ui_assets/window_background_2.png"),
-                //         None,
-                //     )
-                //     .unwrap(),
-                // )
-                .color_inactive(window_color)
-                .color_hovered(window_color)
-                .color_selected(window_color)
-                .color_clicked(window_color)
-                .color(window_color)
-                // .background_margin(RectOffset::new(52.0, 52.0, 52.0, 52.0))
-                .margin(RectOffset::new(5.0, 5.0, 5.0, 0.0))
-                .build();
-
-            // let button_style = root_ui()
-            //     .style_builder()
-            // .background(
-            //     Image::from_file_with_format(
-            //         include_bytes!("../examples/ui_assets/button_background_2.png"),
-            //         None,
-            //     )
-            //     .unwrap(),
-            // )
-            // .background_margin(RectOffset::new(8.0, 8.0, 8.0, 8.0))
-            // .background_hovered(
-            //     Image::from_file_with_format(
-            //         include_bytes!("../examples/ui_assets/button_hovered_background_2.png"),
-            //         None,
-            //     )
-            //     .unwrap(),
-            // )
-            // .background_clicked(
-            //     Image::from_file_with_format(
-            //         include_bytes!("../examples/ui_assets/button_clicked_background_2.png"),
-            //         None,
-            //     )
-            //     .unwrap(),
-            // )
-            // .with_font(&font)
-            // .unwrap()
-            // .text_color(Color::from_rgba(180, 180, 100, 255))
-            // .font_size(40)
-            // .build();
-
-            // let checkbox_style = root_ui()
-            //     .style_builder()
-            //     .background(
-            //         Image::from_file_with_format(
-            //             include_bytes!("../examples/ui_assets/checkbox_background.png"),
-            //             None,
-            //         )
-            //         .unwrap(),
-            //     )
-            //     .background_hovered(
-            //         Image::from_file_with_format(
-            //             include_bytes!("../examples/ui_assets/checkbox_hovered_background.png"),
-            //             None,
-            //         )
-            //         .unwrap(),
-            //     )
-            //     .background_clicked(
-            //         Image::from_file_with_format(
-            //             include_bytes!("../examples/ui_assets/checkbox_clicked_background.png"),
-            //             None,
-            //         )
-            //         .unwrap(),
-            //     )
-            //     .build();
-
-            // let editbox_style = root_ui()
-            //     .style_builder()
-            //     .background(
-            //         Image::from_file_with_format(
-            //             include_bytes!("../examples/ui_assets/editbox_background.png"),
-            //             None,
-            //         )
-            //         .unwrap(),
-            //     )
-            //     .background_margin(RectOffset::new(2., 2., 2., 2.))
-            //     .with_font(&font)
-            //     .unwrap()
-            //     .text_color(Color::from_rgba(120, 120, 120, 255))
-            //     .font_size(25)
-            //     .build();
-
-            // let combobox_style = root_ui()
-            //     .style_builder()
-            //     .background(
-            //         Image::from_file_with_format(
-            //             include_bytes!("../examples/ui_assets/combobox_background.png"),
-            //             None,
-            //         )
-            //         .unwrap(),
-            //     )
-            //     .background_margin(RectOffset::new(4., 25., 6., 6.))
-            //     .with_font(&font)
-            //     .unwrap()
-            //     .text_color(Color::from_rgba(120, 120, 120, 255))
-            //     .color(Color::from_rgba(210, 210, 210, 255))
-            //     .font_size(25)
-            //     .build();
-
-            Skin {
-                window_style,
-                // button_style,
-                // label_style,
-                // checkbox_style,
-                // editbox_style,
-                // combobox_style,
-                ..root_ui().default_skin()
-            }
-        };
-
-        root_ui().push_skin(&skin2);
-    }
-
-    pub fn update_build_err(&mut self) {
-        if let Some(build_err) = &mut self.build_err {
-            build_err.time += 1;
-            if build_err.time > BUILD_ERROR_TIME {
-                self.build_err = None;
-            }
-        }
-    }
-
-    pub fn draw_build_err(&self) {
-        if let Some(build_err) = &self.build_err {
-            draw_text(
-                format!("{:?}", build_err.err).as_str(),
-                build_err.screen_pos.0,
-                build_err.screen_pos.1 - build_err.time as f32,
-                24.,
-                RED,
-            );
-        }
-    }
-
-    pub fn on_build_err(&mut self, err: BuildError, pos: (f32, f32)) {
-        self.build_err = Some(BuildErrorMsg {
-            screen_pos: pos,
-            err,
-            time: 0,
-        })
+        skin::init().await;
     }
 
     pub fn update(&mut self, map: &mut Map) {
@@ -323,7 +125,7 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
         }
 
-        if self.build_toolbar.is_mouse_over(new_mouse_pos) {
+        if self.view_build.is_mouse_over(new_mouse_pos) {
             return;
         }
 
@@ -332,9 +134,7 @@ impl UiState {
             if is_mouse_button_down(MouseButton::Left) {
                 // macroquad::ui::
                 if !self.mouse_pressed {
-                    if let Err(err) = self.mouse_button_down_event(pos, map) {
-                        self.on_build_err(err, new_mouse_pos);
-                    }
+                    self.view_build.mouse_button_down_event(pos, map)
                 }
                 self.mouse_pressed = true;
             } else {
@@ -345,14 +145,12 @@ impl UiState {
                 .last_mouse_pos
                 .is_none_or(|last_moust_pos| last_moust_pos != pos)
             {
-                if let Err(err) = self.mouse_motion_event(pos, map) {
-                    self.on_build_err(err, new_mouse_pos);
-                }
+                self.view_build.mouse_motion_event(pos, map);
                 self.last_mouse_pos = Some(pos);
             }
         }
 
-        self.update_build_err();
+        self.view_build.update();
     }
 
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
@@ -444,36 +242,6 @@ impl UiState {
         });
     }
 
-    fn draw_selected(&self, _map: &Map, tileset: &Tileset) {
-        // draw selected
-        if let Some(last_mouse_pos) = self.last_mouse_pos {
-            match self.build_toolbar.get_selected() {
-                Some(BuildMode::Bridge) => {
-                    if let Some(start_pos) = self.bridge_start_pos {
-                        for pos in start_pos.iter_line_to(last_mouse_pos).0 {
-                            tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
-                        }
-                    } else {
-                        tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
-                    }
-                }
-                // Some(BuildMode::Debug) => {
-                //     if let Some((path, _cost)) = map.grid.find_road(&last_mouse_pos) {
-                //         for pos in path {
-                //             tileset.draw_rect(&Rect::from(pos), SELECTED_DELETE);
-                //         }
-                //     }
-                // }
-                Some(BuildMode::Clear) => {
-                    tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_DELETE);
-                }
-                _ => {
-                    tileset.draw_rect(&Rect::from(last_mouse_pos), SELECTED_BUILD);
-                }
-            }
-        }
-    }
-
     pub fn draw(&mut self, map: &Map, tileset: &Tileset) -> MenuSelect {
         // Score
         match self.menu_status {
@@ -482,22 +250,15 @@ impl UiState {
 
                 self.draw_paused();
 
-                self.draw_selected(map, tileset);
-
-                self.draw_build_err();
-
                 // profiler
-                macroquad_profiler::profiler(ProfilerParams {
-                    fps_counter_pos: vec2(0., 50.),
-                });
+                if self.draw_profiler {
+                    macroquad_profiler::profiler(ProfilerParams {
+                        fps_counter_pos: vec2(0., 0.),
+                    });
+                }
+                self.view_build.draw(map, tileset);
 
-                self.build_toolbar.draw(
-                    tileset,
-                    screen_width() / 2.0 ,
-                    screen_height() - TOOLBAR_SPACE,
-                );
-                self.view_toolbar
-                    .draw(tileset, 0., screen_height() / 2.0);
+                self.view_toolbar.draw(tileset, 0., screen_height() / 2.0);
 
                 MenuSelect::None
             }
@@ -539,6 +300,7 @@ impl UiState {
         match ch {
             'q' => self.request_quit = true,
             ' ' => self.paused = !self.paused,
+            'p' => self.draw_profiler = !self.draw_profiler,
 
             '-' => self.zoom *= PLUS_MINUS_SENSITVITY,
             '=' => self.zoom /= PLUS_MINUS_SENSITVITY,
@@ -552,77 +314,8 @@ impl UiState {
             }
 
             _ => {
-                self.build_toolbar.key_down(ch);
+                self.view_build.key_down(ch);
             } // }
         }
-    }
-
-    fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) -> BuildResult {
-        println!("Mouse pressed: pos: {mouse_pos:?}");
-        let build_mode = self.build_toolbar.get_selected();
-        if build_mode.is_none() {
-            return Ok(());
-        }
-        match build_mode.unwrap() {
-            BuildMode::Clear => {
-                map.clear_tile(&mouse_pos)?;
-            }
-            // BuildMode::Yield => {
-            //     if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
-            //         road.should_yield = !road.should_yield;
-            //     }
-            // }
-            BuildMode::Bridge => {
-                if let Some(start_pos) = self.bridge_start_pos {
-                    self.bridge_start_pos = None;
-                    map.grid.build_bridge(start_pos, mouse_pos)?;
-                } else {
-                    self.bridge_start_pos = Some(mouse_pos);
-                }
-            }
-            // BuildMode::Roundabout => {
-            //     let roundabout = map.add_intersection();
-            //     for tile: Tile in map.path_grid.get_tiles(pos, 2) {
-            //         if let Tile::Road(road) = tile {
-            //             road.intersection = roundabout;
-            //         }
-            //     }
-            // }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) -> BuildResult {
-        if is_mouse_button_down(MouseButton::Left) && self.build_toolbar.get_selected().is_some() {
-            match self.build_toolbar.get_selected().unwrap() {
-                // BuildMode::AddRoad => {
-                //     if let Some(last_mouse_pos) = self.last_mouse_pos {
-                //         let dir = last_mouse_pos.direction_to(pos);
-                //         map.grid.build_road(&last_mouse_pos, dir)?
-                //     }
-                // }
-                // BuildMode::RemoveRoad => {
-                //     if let Some(last_mouse_pos) = self.last_mouse_pos {
-                //         let dir = last_mouse_pos.direction_to(pos);
-                //         map.grid.remove_road(&last_mouse_pos, dir)?
-                //     }
-                // }
-                BuildMode::TwoLaneRoad => {
-                    if let Some(last_mouse_pos) = self.last_mouse_pos {
-                        let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_two_way_road(last_mouse_pos, dir)?;
-                    }
-                }
-                BuildMode::Clear => {
-                    map.clear_tile(&pos)?;
-                }
-                _ => {}
-            }
-        }
-        println!("Mouse motion, x: {}, y: {}", pos.x, pos.y);
-
-        Ok(())
     }
 }

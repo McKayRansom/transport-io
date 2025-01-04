@@ -4,7 +4,6 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     texture::{draw_texture_ex, DrawTextureParams},
-    window::{screen_height, screen_width},
 };
 
 use crate::tileset::{Sprite, Tileset};
@@ -64,7 +63,6 @@ impl<V> Toolbar<V> {
     }
 
     pub fn draw(&mut self, tileset: &Tileset, x: f32, y: f32) {
-        // let mut build_mode = self.build_mode;
 
         if self.kind == ToolbarType::Veritcal {
             self.rect.w = TOOLBAR_SPACE;
