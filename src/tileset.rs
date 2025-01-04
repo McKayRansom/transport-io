@@ -3,7 +3,7 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
-    texture::{draw_texture_ex, DrawTextureParams, Texture2D},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
 };
 
 const TILE_SIZE: u32 = 16;
@@ -35,8 +35,13 @@ pub struct Tileset {
     pub camera: (f32, f32),
 }
 
+// TODO: Rename to TextureAtlas
 impl Tileset {
-    pub fn new(texture: Texture2D) -> Self {
+    pub async fn new() -> Self {
+
+        let texture = load_texture("resources/tileset.png").await.unwrap();
+        texture.set_filter(FilterMode::Nearest);
+
         let zoom = 0.0;
         let camera = (0.0, 0.0);
         Tileset {

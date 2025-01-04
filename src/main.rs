@@ -8,115 +8,70 @@ mod ui;
 mod menu;
 mod building;
 mod city;
-use std::path::Path;
+mod scene;
+mod context;
+mod save;
+mod consts;
 
-use menu::MenuSelect;
-use ui::UiState;
-use map::Map;
-use miniquad::window::set_window_size;
-use tileset::Tileset;
+use consts::PKG_NAME;
+use context::Context;
+use scene::{EScene, Scene};
+use scene::gameplay::Gameplay;
+use scene::main_menu::MainMenu;
 
 use macroquad::prelude::*;
-
-
-struct GameState {
-    menu: bool,
-    map: Map,
-    ui: UiState,
+fn window_conf() -> Conf {
+    Conf {
+        fullscreen: false,
+        high_dpi: true,
+        // icon: Some(Icon {
+        //     small: include_bytes!("../icons/16x16.rgba").to_owned(),
+        //     medium: include_bytes!("../icons/32x32.rgba").to_owned(),
+        //     big: include_bytes!("../icons/64x64.rgba").to_owned(),
+        // }),
+        platform: miniquad::conf::Platform {
+            linux_backend: miniquad::conf::LinuxBackend::WaylandWithX11Fallback,
+            ..Default::default()
+        },
+        window_height: 720,
+        window_resizable: true,
+        window_title: String::from(PKG_NAME),
+        window_width: 1280,
+        ..Default::default()
+    }
 }
 
-impl GameState {
-    pub async fn new() -> Self {
-        GameState {
-            menu: true,
-            map: Map::new(),
-            ui: UiState::new().await,
-        }
-    }
-
-    pub fn load_level(&mut self) {
-        if self.map.generate().is_err() {
-            println!("ERROR GENERATING LEVEL??!?!?");
-        }
-    }
-
-    fn draw(&mut self, tileset: &Tileset) {
-        let color: Color = Color::from_hex(0x2b313f);
-        clear_background(color);
-
-        self.map.draw(tileset);
-
-        match self.ui.draw(&self.map, tileset) {
-            MenuSelect::Continue => {
-                if let Ok(map) = Map::load_from_file(Path::new("saves/game.json")) {
-                    self.map = map;
-                    self.menu = false;
-                }
-            }
-
-            MenuSelect::NewGame => {
-                self.menu = false;
-            }
-
-            MenuSelect::Save => {
-                self.map.save_to_file(Path::new("saves/game.json")).unwrap();
-            }
-
-            _ => {}
-        }
-    }
-
-}
-
-#[macroquad::main("Transport IO")]
+#[macroquad::main(window_conf)]
 async fn main() {
-    // Next we create a new instance of our GameState struct, which implements EventHandler
-    let mut state = GameState::new().await;
-    let speed = 1. / 60.;
-    let map_speed = 1. / 16.;
 
-    set_window_size(800, 800);
+    let mut ctx = Context {
+        ..Context::default().await
+    };
 
-    // state.key_manager.add_handler(KeyHandler {key: KeyCode::Q, func: game_quit, help: "Q: Quit the game"});
-
-    let tileset_texture = load_texture("resources/tileset.png").await.unwrap();
-    tileset_texture.set_filter(FilterMode::Nearest);
-
-    // let tiled_map_json = load_string("resources/map.json").await.unwrap();
-    // let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
-
-    let mut tileset = Tileset::new(tileset_texture);
-
-    
-    state.ui.init().await;
-
-    state.load_level();
-    // And finally we actually run our game, passing in our context and state.
-    // event::run(ctx, events_loop, state)
-
-    let mut last_ui_update = get_time();
-    let mut last_map_update = get_time();
+    let mut current_scene: Box<dyn Scene> = Box::new(
+        // MainMenu::new(&mut ctx).await
+        Gameplay::new().await
+    );
 
     loop {
 
+        current_scene.update(&mut ctx);
 
-        if get_time() - last_ui_update > speed {
-            state.ui.update(&mut state.map);
-            last_ui_update = get_time();
-       }
+        let color: Color = Color::from_hex(0x2b313f);
+        clear_background(color);
 
-        if !state.ui.paused && get_time() - last_map_update > map_speed {
-            state.map.update();
-            last_map_update = get_time();
+        current_scene.draw(&mut ctx);
+
+        if ctx.request_quit {
+            break;
         }
 
-        tileset.zoom = state.ui.zoom;
-        tileset.camera = state.ui.camera;
-        state.draw(&tileset);
-
-        // LATER: Take quit request confirmation from example
-        if state.ui.request_quit {
-            break;
+        if let Some(escene) = ctx.switch_scene_to.clone() {
+            current_scene = match escene {
+                EScene::MainMenu => Box::new(MainMenu::new(&mut ctx).await),
+                EScene::Gameplay => Box::new(Gameplay::new().await),
+            };
+            ctx.switch_scene_to = None;
         }
 
         next_frame().await;

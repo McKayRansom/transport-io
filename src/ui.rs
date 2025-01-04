@@ -64,6 +64,8 @@ pub struct UiState {
 
 impl UiState {
     pub async fn new() -> Self {
+        skin::init().await;
+
         UiState {
             draw_profiler: false,
             request_quit: false,
@@ -88,11 +90,8 @@ impl UiState {
         }
     }
 
-    pub async fn init(&mut self) {
-        skin::init().await;
-    }
-
     pub fn update(&mut self, map: &mut Map) {
+
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
             // TODO: Deal with repeat
