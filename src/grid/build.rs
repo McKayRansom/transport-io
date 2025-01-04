@@ -54,12 +54,12 @@ impl Grid {
         let (iter, dir) = start_pos_up.iter_line_to(end_pos_up);
         for pos in iter {
             if pos == start_pos_up {
-                self.build_road(&pos, dir)?;
+                self.build_road(pos, dir)?;
                 self.build_ramp(&start_pos, Direction::LAYER_UP)?;
             } else if pos != end_pos_up {
-                self.build_road(&pos, dir)?;
+                self.build_road(pos, dir)?;
             } else {
-                self.build_road(&pos, dir + Direction::LAYER_DOWN)?;
+                self.build_road(pos, dir + Direction::LAYER_DOWN)?;
                 self.build_ramp(&end_pos, Direction::NONE)?;
             };
         }
@@ -74,8 +74,8 @@ impl Grid {
             .build(Tile::Ramp(Ramp::new(dir)))
     }
 
-    pub fn build_road(&mut self, pos: &Position, dir: Direction) -> BuildResult {
-        self.get_tile_mut(pos)
+    pub fn build_road(&mut self, pos: Position, dir: Direction) -> BuildResult {
+        self.get_tile_mut(&pos)
             .ok_or(BuildError::InvalidTile)?
             .edit_road(|road| road.connect(dir))
     }
@@ -121,6 +121,15 @@ impl Grid {
         Ok(())
     }
 
+    pub fn clear_area(&mut self, pos: &Position) -> BuildResult {
+        for x in 0..2i8 {
+            for y in 0..2i8 {
+                self.clear(&(*pos + Direction::from((x, y))))?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn build_building(&mut self, pos: &Position, size: (i8, i8), id: Id) -> BuildResult {
         // let pos = &pos.round_to(2);
         for x in 0..size.0 {
@@ -147,7 +156,7 @@ impl Grid {
         for (y, row) in blueprint.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 self.build_road(
-                    &self.pos(x as i16 + pos.x, y as i16 + pos.y),
+                    self.pos(x as i16 + pos.x, y as i16 + pos.y),
                     *tile.ground.iter_connections().next().unwrap(),
                 )?
             }
@@ -155,10 +164,20 @@ impl Grid {
 
         Ok(())
     }
+
+    pub fn build_one_way_road(&mut self, pos: Position, dir: Direction) -> BuildResult {
+        // let pos = &pos.round_to(2);
+        for x in 0..2i8 {
+            for y in 0..2i8 {
+                self.build_road(pos + Direction::from((x, y)), dir)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Map {
-    pub fn clear_tile(&mut self, pos: &Position) -> BuildResult {
+    pub fn clear_area(&mut self, pos: &Position) -> BuildResult {
         if let Some(Tile::Building(building_id)) = self.grid.get_tile(pos) {
             if let Some(building) = self.buildings.hash_map.remove(building_id) {
                 if let Some(city) = self.cities.hash_map.get_mut(&building.city_id) {
@@ -169,7 +188,7 @@ impl Map {
             }
         }
 
-        self.grid.clear(pos)
+        self.grid.clear_area(pos)
     }
 }
 
@@ -185,16 +204,16 @@ mod grid_build_tests {
 
         let pos = grid.pos(0, 0);
 
-        grid.build_road(&pos, Direction::RIGHT)?;
+        grid.build_road(pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
         grid.clear(&pos)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
 
-        grid.build_road(&pos, Direction::RIGHT)?;
+        grid.build_road(pos, Direction::RIGHT)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
-        grid.build_road(&pos, Direction::UP)?;
+        grid.build_road(pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('R'));
 
         grid._remove_road(&pos, Direction::UP)?;
@@ -249,6 +268,20 @@ mod grid_build_tests {
         grid.build_two_way_road(grid.pos(0, 0), Direction::RIGHT)?;
         grid.build_two_way_road(grid.pos(0, 0), Direction::UP)?;
         assert_eq!(grid, Grid::new_from_string("lr__\nLR__"));
+
+        Ok(())
+    }
+
+
+    #[test]
+    fn test_build_one_way_road() -> BuildResult {
+        let mut grid = Grid::new_from_string("____\n____");
+        grid.build_one_way_road(grid.pos(0, 0), Direction::LEFT)?;
+        assert_eq!(grid, Grid::new_from_string("<<__\n<<__"));
+
+        let mut grid = Grid::new_from_string("____\n____");
+        grid.build_one_way_road(grid.pos(0, 0), Direction::DOWN)?;
+        assert_eq!(grid, Grid::new_from_string("..__\n..__"));
 
         Ok(())
     }
