@@ -6,6 +6,7 @@ use crate::save::Save;
 use crate::scene::EScene;
 // use crate::settings::Settings;
 use crate::tileset::Tileset;
+use crate::ui::skin;
 // use macroquad::math::Rect;
 // use macroquad::miniquad::FilterMode;
 // use macroquad::texture::render_target;
@@ -28,6 +29,9 @@ pub struct Context {
 
 impl Context {
     pub async fn default() -> Self {
+
+        skin::init().await;
+
         Self {
             // gamepads: Gamepads::new(),
             request_quit: false,

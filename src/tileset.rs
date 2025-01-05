@@ -3,8 +3,10 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
 };
+
+use crate::{grid::GRID_CELL_SIZE, map::GRID_CENTER};
 
 const TILE_SIZE: u32 = 16;
 
@@ -42,12 +44,13 @@ impl Tileset {
         let texture = load_texture("resources/tileset.png").await.unwrap();
         texture.set_filter(FilterMode::Nearest);
 
-        let zoom = 0.0;
-        let camera = (0.0, 0.0);
         Tileset {
             texture,
-            zoom,
-            camera,
+            zoom: 1.,
+            camera: (
+                GRID_CENTER.0 as f32 * GRID_CELL_SIZE.0 - screen_width() / 2.,
+                GRID_CENTER.1 as f32 * GRID_CELL_SIZE.1 - screen_height() / 2.,
+            ),
         }
     }
 

@@ -6,9 +6,7 @@ use macroquad::{
 };
 
 use crate::{
-    grid::{BuildError, BuildResult, Position},
-    map::Map,
-    tileset::{Sprite, Tileset},
+    context::Context, grid::{BuildError, BuildResult, Position}, map::Map, tileset::{Sprite, Tileset}
 };
 
 use super::toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
@@ -232,15 +230,15 @@ impl ViewBuild {
         }
     }
 
-    pub fn draw(&mut self, map: &Map, tileset: &Tileset) {
+    pub fn draw(&mut self, map: &Map, ctx: &Context) {
         if let Some(last_mouse_pos) = self.last_mouse_pos {
-            self.draw_selected(last_mouse_pos, map, tileset);
+            self.draw_selected(last_mouse_pos, map, &ctx.tileset);
         }
 
-        self.draw_build_err(tileset);
+        self.draw_build_err(&ctx.tileset);
 
         self.build_toolbar.draw(
-            tileset,
+            ctx,
             screen_width() / 2.0,
             screen_height() - TOOLBAR_SPACE,
         );

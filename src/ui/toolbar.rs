@@ -6,14 +6,14 @@ use macroquad::{
     texture::{draw_texture_ex, DrawTextureParams},
 };
 
-use crate::tileset::{Sprite, Tileset};
+use crate::{context::Context, tileset::{Sprite, Tileset}};
 
 #[derive(Clone, Copy)]
 pub struct ToolbarItem<V> {
     value: V,
     _tooltip: &'static str,
     shortcut: char,
-    sprite: Sprite,
+    pub sprite: Sprite,
 }
 
 impl<V> ToolbarItem<V> {
@@ -43,7 +43,7 @@ pub enum ToolbarType {
 pub struct Toolbar<V> {
     kind: ToolbarType,
     selected: Option<usize>,
-    items: Vec<ToolbarItem<V>>,
+    pub items: Vec<ToolbarItem<V>>,
     rect: Rect,
 }
 
@@ -62,7 +62,7 @@ impl<V> Toolbar<V> {
         Some(&self.items[selected].value)
     }
 
-    pub fn draw(&mut self, tileset: &Tileset, x: f32, y: f32) {
+    pub fn draw(&mut self, ctx: &Context, x: f32, y: f32) {
 
         if self.kind == ToolbarType::Veritcal {
             self.rect.w = TOOLBAR_SPACE;
@@ -93,10 +93,10 @@ impl<V> Toolbar<V> {
             TOOLBAR_ITEM_HEIGHT,
         );
         for (i, toolbar_item) in self.items.iter().enumerate() {
-            let spr_rect = tileset.sprite_rect(toolbar_item.sprite);
+            let spr_rect = ctx.tileset.sprite_rect(toolbar_item.sprite);
 
             draw_texture_ex(
-                &tileset.texture,
+                &ctx.tileset.texture,
                 item_rect.x,
                 item_rect.y,
                 WHITE,
@@ -127,6 +127,7 @@ impl<V> Toolbar<V> {
                 );
 
                 if is_mouse_button_down(macroquad::input::MouseButton::Left) {
+                    // TODO: Press again should deselect
                     self.selected = Some(i);
                 }
             }

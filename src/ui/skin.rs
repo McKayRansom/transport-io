@@ -1,5 +1,7 @@
 use macroquad::{color::Color, math::RectOffset, ui::{root_ui, Skin}};
 
+pub const MENU_FONT_SIZE: u16 = 48;
+pub const MENU_MARGIN: f32 = 16.;
 
 pub async fn init() {
     let skin2 = {
@@ -30,13 +32,14 @@ pub async fn init() {
             .color_selected(window_color)
             .color_clicked(window_color)
             .color(window_color)
+            // .font_size(120)
             // .text_color(WHITE)
             // .background_margin(RectOffset::new(52.0, 52.0, 52.0, 52.0))
-            .margin(RectOffset::new(5.0, 5.0, 5.0, 0.0))
+            .margin(RectOffset::new(16.0, 16.0, 16.0, 16.0))
             .build();
 
-        // let button_style = root_ui()
-        //     .style_builder()
+        let button_style = root_ui()
+            .style_builder()
         // .background(
         //     Image::from_file_with_format(
         //         include_bytes!("../examples/ui_assets/button_background_2.png"),
@@ -61,9 +64,13 @@ pub async fn init() {
         // )
         // .with_font(&font)
         // .unwrap()
+        .margin(RectOffset::new(16., 16., 2., 2.))
+        .color_clicked(Color::from_rgba(187, 187, 187, 255))
+        .color_hovered(Color::from_rgba(170, 170, 170, 235))
+        .text_color(Color::from_rgba(0, 0, 0, 255))
         // .text_color(Color::from_rgba(180, 180, 100, 255))
-        // .font_size(40)
-        // .build();
+        .font_size(MENU_FONT_SIZE)
+        .build();
 
         // let checkbox_style = root_ui()
         //     .style_builder()
@@ -123,13 +130,18 @@ pub async fn init() {
         //     .font_size(25)
         //     .build();
 
+        let margin = 16.;
+
         Skin {
             window_style,
-            // button_style,
+            button_style,
             // label_style,
             // checkbox_style,
             // editbox_style,
             // combobox_style,
+
+            margin,
+            
             ..root_ui().default_skin()
         }
     };

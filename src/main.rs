@@ -5,7 +5,6 @@ mod tileset;
 mod vehicle;
 mod tile;
 mod ui;
-mod menu;
 mod building;
 mod city;
 mod scene;
@@ -49,8 +48,8 @@ async fn main() {
     };
 
     let mut current_scene: Box<dyn Scene> = Box::new(
-        // MainMenu::new(&mut ctx).await
-        Gameplay::new().await
+        MainMenu::new(&mut ctx).await
+        // Gameplay::new().await
     );
 
     loop {

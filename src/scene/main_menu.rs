@@ -1,20 +1,18 @@
 // use super::credits::Credits;
 // use super::settings::Settings;
-use super::Scene;
+use super::{EScene, Scene};
 // use crate::audio::play_sfx;
 use crate::consts::*;
 use crate::context::Context;
+use crate::ui::menu::{Menu, MenuItem};
+use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
 // use crate::input::{action_pressed, Action};
 // use crate::text::{self, draw_text};
-use macroquad::color::{RED, WHITE};
-use macroquad::text::draw_text;
-
-pub struct MainMenu {
-    menu_options: Vec<MenuOption>,
-    menu_index: usize,
-    // settings_subscene: Settings,
-    // credits_subscene: Credits,
-}
+use macroquad::color::{BLACK, RED, WHITE};
+use macroquad::math::vec2;
+use macroquad::text::{draw_text, measure_text};
+use macroquad::ui::{hash, root_ui, widgets};
+use macroquad::window::{screen_height, screen_width};
 
 enum MenuOption {
     Play,
@@ -24,31 +22,40 @@ enum MenuOption {
     Quit,
 }
 
+pub struct MainMenu {
+    menu: Menu<MenuOption>,
+    // settings_subscene: Settings,
+    // credits_subscene: Credits,
+}
+
 impl MainMenu {
     pub async fn new(_ctx: &mut Context) -> Self {
-        let menu_options = vec![
-            MenuOption::Play,
-            // MenuOption::Settings,
-            // MenuOption::Credits,
-            #[cfg(not(target_family = "wasm"))]
-            MenuOption::Quit,
-        ];
-
         Self {
-            menu_options,
-            menu_index: 0,
+            menu: Menu::new(vec![
+                MenuItem::new(MenuOption::Play, "Play"),
+                #[cfg(not(target_family = "wasm"))]
+                MenuItem::new(MenuOption::Quit, "Quit"),
+            ])
             // settings_subscene: Settings::new(ctx, false),
             // credits_subscene: Credits::new(ctx),
         }
     }
 
-    fn text_for_menu_option(&self, menu_option: &MenuOption) -> &str {
+    fn menu_option_selected(&self, menu_option: &MenuOption, ctx: &mut Context) {
         match menu_option {
-            MenuOption::Play => "Play",
-            // MenuOption::Settings => "Settings",
-            // MenuOption::Credits => "Credits",
+            MenuOption::Play => {
+                ctx.switch_scene_to = Some(EScene::Gameplay);
+            }
+            // MenuOption::Settings => {
+            //     self.settings_subscene.active = true;
+            // }
+            // MenuOption::Credits => {
+            //     self.credits_subscene.active = true;
+            // }
             #[cfg(not(target_family = "wasm"))]
-            MenuOption::Quit => "Quit",
+            MenuOption::Quit => {
+                ctx.request_quit = true;
+            }
         }
     }
 }
@@ -64,52 +71,8 @@ impl Scene for MainMenu {
         //     self.credits_subscene.update(ctx);
         //     return;
         // }
-
-        // let menu_option = self
-        //     .menu_options
-        //     .get(self.menu_index)
-        //     .expect("pause menu index out of bounds");
-
-        // if action_pressed(Action::Confirm, &ctx.gamepads) {
-        //     play_sfx(ctx, &ctx.audio.sfx.menu_select);
-
-        //     match menu_option {
-        //         MenuOption::Play => {
-        //             ctx.switch_scene_to = Some(EScene::Gameplay);
-        //         }
-        //         MenuOption::Settings => {
-        //             self.settings_subscene.active = true;
-        //         }
-        //         MenuOption::Credits => {
-        //             self.credits_subscene.active = true;
-        //         }
-        //         #[cfg(not(target_family = "wasm"))]
-        //         MenuOption::Quit => {
-        //             ctx.request_quit = true;
-        //         }
-        //     }
-        // }
-
-        // if action_pressed(Action::Up, &ctx.gamepads) {
-        //     play_sfx(ctx, &ctx.audio.sfx.menu_move);
-
-        //     if self.menu_index == 0 {
-        //         self.menu_index = self.menu_options.len() - 1;
-        //     } else {
-        //         self.menu_index -= 1;
-        //     }
-        // }
-        // if action_pressed(Action::Down, &ctx.gamepads) {
-        //     play_sfx(ctx, &ctx.audio.sfx.menu_move);
-
-        //     if self.menu_index == self.menu_options.len() - 1 {
-        //         self.menu_index = 0;
-        //     } else {
-        //         self.menu_index += 1;
-        //     }
-        // }
     }
-    fn draw(&mut self, _ctx: &mut Context) {
+    fn draw(&mut self, ctx: &mut Context) {
         // if self.settings_subscene.active {
         //     self.settings_subscene.draw(ctx);
         //     return;
@@ -120,37 +83,30 @@ impl Scene for MainMenu {
         //     return;
         // }
 
+        let menu_height = 300.;
+
+        let x =-300. + screen_width() / 2.;
+        let y = -menu_height + screen_height() / 2.;
+        let font_size = 120.0;
+    
+        let shadow_y = y + 5.;
+        let shadow_x = x + 5.;
+    
         draw_text(
-            // ctx,
-            crate::consts::PKG_NAME,
-            X_INSET,
-            TITLE_Y_INSET,
-            48.,
+            "Transport IO",
+            shadow_x, shadow_y, font_size,
+            BLACK,
+        );
+    
+        draw_text(
+            "Transport IO",
+            x, y, font_size,
             WHITE,
         );
-
-        for (i, menu_option) in self.menu_options.iter().enumerate() {
-            let color = if self.menu_index == i { RED } else { WHITE };
-
-            draw_text(
-                // ctx,
-                self.text_for_menu_option(menu_option),
-                X_INSET,
-                400. + (i as f32 * 40.),
-                // text::Size::Medium,
-                32.,
-                color,
-            );
+    
+        if let Some(selected) = self.menu.draw() {
+            self.menu_option_selected(selected, ctx);
         }
-
-        // draw_text(
-        //     ctx,
-        //     "Change Select = Arrow Keys | Confirm = Z",
-        //     X_INSET,
-        //     VIRTUAL_HEIGHT - 40.,
-        //     text::Size::Small,
-        //     WHITE,
-        // );
 
         draw_text(
             // ctx,

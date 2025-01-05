@@ -1,7 +1,7 @@
 use crate::{
+    context::Context,
     grid::{Position, GRID_CELL_SIZE},
     map::{Map, GRID_CENTER},
-    menu::{self, MenuSelect},
     tile::Tile,
     tileset::{Sprite, Tileset},
     vehicle::Vehicle,
@@ -21,13 +21,15 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use macroquad_profiler::ProfilerParams;
-use toolbar::{Toolbar, ToolbarItem, ToolbarType};
+use menu::{Menu, MenuItem};
+use toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 use view_build::ViewBuild;
 
 mod grades;
+pub mod menu;
+pub mod skin;
 mod toolbar;
 mod view_build;
-mod skin;
 
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
@@ -36,47 +38,52 @@ const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 const MIN_ZOOM: f32 = 0.4;
 const MAX_ZOOM: f32 = 4.;
 
+#[derive(PartialEq, Eq)]
+pub enum TimeSelect {
+    Pause,
+    FastForward,
+}
+
 enum ViewMode {
     Build,
     Route,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum UiMenuStatus {
-    MainMenu,
-    InGame,
-    MenuOpen,
+enum PauseMenuSelect {
+    Continue,
+    Save,
+    Load,
+    #[cfg(not(target_family = "wasm"))]
+    Quit,
 }
 
 pub struct UiState {
     draw_profiler: bool,
-    pub request_quit: bool,
-    pub paused: bool,
-    pub zoom: f32,
-    pub camera: (f32, f32),
     mouse_pressed: bool,
     last_mouse_pos: Option<Position>,
+    pub time_select: Toolbar<TimeSelect>,
     view_toolbar: Toolbar<ViewMode>,
     view_build: ViewBuild,
     grades: Grades,
-    menu_status: UiMenuStatus,
+    pub pause_menu_open: bool,
+    pause_menu: Menu<PauseMenuSelect>,
 }
 
 impl UiState {
     pub async fn new() -> Self {
-        skin::init().await;
-
         UiState {
             draw_profiler: false,
-            request_quit: false,
-            paused: false,
-            zoom: 1.,
-            camera: (
-                GRID_CENTER.0 as f32 * GRID_CELL_SIZE.0 - screen_width() / 2.,
-                GRID_CENTER.1 as f32 * GRID_CELL_SIZE.1 - screen_height() / 2.,
-            ),
+
             mouse_pressed: false,
             last_mouse_pos: None,
+            time_select: Toolbar::new(
+                ToolbarType::Horizontal,
+                vec![
+                    ToolbarItem::new(TimeSelect::Pause, "Pause game", ' ', Sprite::new(10, 0)),
+                    // ToolbarItem::new(TimeSelect::Play, "Play game", ' ', Sprite::new(10, 1)),
+                    ToolbarItem::new(TimeSelect::FastForward, "Fast Forward game", ' ', Sprite::new(10, 2)),
+                ]
+            ),
             view_toolbar: Toolbar::new(
                 ToolbarType::Veritcal,
                 vec![
@@ -86,30 +93,36 @@ impl UiState {
             ),
             view_build: ViewBuild::new(),
             grades: Grades::new().await,
-            menu_status: UiMenuStatus::MainMenu,
+            pause_menu_open: false,
+            pause_menu: Menu::new(vec![
+                MenuItem::new(PauseMenuSelect::Continue, "Close"),
+                MenuItem::new(PauseMenuSelect::Save, "Save"),
+                MenuItem::new(PauseMenuSelect::Load, "Load"),
+                #[cfg(not(target_family = "wasm"))]
+                MenuItem::new(PauseMenuSelect::Quit, "Menu"),
+            ]),
         }
     }
 
-    pub fn update(&mut self, map: &mut Map) {
-
+    pub fn update(&mut self, ctx: &mut Context, map: &mut Map) {
         while let Some(key) = get_char_pressed() {
             println!("Keydown: {key:?}");
             // TODO: Deal with repeat
-            self.key_down_event(key);
+            self.key_down_event(ctx, key);
         }
 
         // check WASD
         if is_key_down(KeyCode::W) {
-            self.camera.1 -= WASD_MOVE_SENSITIVITY / self.zoom;
+            ctx.tileset.camera.1 -= WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
         if is_key_down(KeyCode::A) {
-            self.camera.0 -= WASD_MOVE_SENSITIVITY / self.zoom;
+            ctx.tileset.camera.0 -= WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
         if is_key_down(KeyCode::S) {
-            self.camera.1 += WASD_MOVE_SENSITIVITY / self.zoom;
+            ctx.tileset.camera.1 += WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
         if is_key_down(KeyCode::D) {
-            self.camera.0 += WASD_MOVE_SENSITIVITY / self.zoom;
+            ctx.tileset.camera.0 += WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
 
         let new_mouse_wheel = mouse_wheel();
@@ -120,15 +133,15 @@ impl UiState {
         }
 
         if new_mouse_wheel.1 != 0. {
-            self.change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
-            println!("Zoom + {} = {}", new_mouse_wheel.1, self.zoom);
+            self.change_zoom(ctx, SCROLL_SENSITIVITY * new_mouse_wheel.1);
+            println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
         }
 
         if self.view_build.is_mouse_over(new_mouse_pos) {
             return;
         }
 
-        let pos = Position::from_screen(new_mouse_pos, self.camera, self.zoom);
+        let pos = Position::from_screen(new_mouse_pos, ctx.tileset.camera, ctx.tileset.zoom);
         {
             if is_mouse_button_down(MouseButton::Left) {
                 // macroquad::ui::
@@ -169,7 +182,7 @@ impl UiState {
         pos: Position,
         ui: &mut Ui,
         map: &Map,
-        tileset: &Tileset,
+        ctx: &Context,
     ) -> Option<()> {
         match map.grid.get_tile(&pos)? {
             Tile::Empty => {
@@ -184,7 +197,7 @@ impl UiState {
                     if let Some(vehicle_id) = building.vehicle_on_the_way {
                         if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                             // vehicle.draw_detail(tileset);
-                            self.draw_vehicle_details(ui, tileset, vehicle);
+                            self.draw_vehicle_details(ui, &ctx.tileset, vehicle);
                         }
                     }
                 }
@@ -193,7 +206,7 @@ impl UiState {
                 ui.label(None, &format!("Road {:?}", road));
                 if let Some(vehicle_id) = road.reserved.get_reserved_id() {
                     if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
-                        self.draw_vehicle_details(ui, tileset, vehicle);
+                        self.draw_vehicle_details(ui, &ctx.tileset, vehicle);
                     }
                 }
             }
@@ -202,7 +215,7 @@ impl UiState {
         Some(())
     }
 
-    fn draw_details(&self, map: &Map, tileset: &Tileset) {
+    fn draw_details(&self, map: &Map, ctx: &Context) {
         let details_height = 200.;
         let details_width = 200.;
         widgets::Window::new(
@@ -217,102 +230,77 @@ impl UiState {
         .movable(false)
         .ui(&mut root_ui(), |ui| {
             if let Some(pos) = self.last_mouse_pos {
-                self.draw_tile_details(pos, ui, map, tileset);
+                self.draw_tile_details(pos, ui, map, ctx);
             }
         });
     }
 
-    fn draw_paused(&mut self) {
-        let paused_height = 50.;
-        let paused_width = 75.;
-        widgets::Window::new(
-            hash!(),
-            vec2(screen_width() - paused_width, 0.),
-            vec2(paused_width, paused_height),
-        )
-        .label("Time")
-        .movable(false)
-        .ui(&mut root_ui(), |ui| {
-            let label = if self.paused { "**play**" } else { "pause" };
+    pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
+        self.draw_details(map, ctx);
 
-            if ui.button(None, label) {
-                self.paused = !self.paused;
-            }
-        });
-    }
 
-    pub fn draw(&mut self, map: &Map, tileset: &Tileset) -> MenuSelect {
-        // Score
-        match self.menu_status {
-            UiMenuStatus::InGame => {
-                self.draw_details(map, tileset);
+        // profiler
+        if self.draw_profiler {
+            macroquad_profiler::profiler(ProfilerParams {
+                fps_counter_pos: vec2(0., 0.),
+            });
+        }
 
-                self.draw_paused();
+        self.time_select.items[0].sprite = if self.time_select.get_selected() == Some(&TimeSelect::Pause) {
+            Sprite::new(10, 0)
+        } else {
+            Sprite::new(10, 1)
+        };
+        self.time_select.draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
+        self.view_build.draw(map, ctx);
+        self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
 
-                // profiler
-                if self.draw_profiler {
-                    macroquad_profiler::profiler(ProfilerParams {
-                        fps_counter_pos: vec2(0., 0.),
-                    });
+        if self.pause_menu_open {
+            if let Some(selected) = self.pause_menu.draw() {
+                match selected {
+                    PauseMenuSelect::Continue => {
+                        self.pause_menu_open = false;
+                    }
+                    PauseMenuSelect::Quit => {
+                        ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)
+                    }
+                    _ => {}
                 }
-                self.view_build.draw(map, tileset);
-
-                self.view_toolbar.draw(tileset, 0., screen_height() / 2.0);
-
-                MenuSelect::None
-            }
-            UiMenuStatus::MainMenu => {
-                let status = menu::draw();
-                if status != MenuSelect::None {
-                    self.menu_status = UiMenuStatus::InGame;
-                }
-                status
-            }
-
-            UiMenuStatus::MenuOpen => {
-                let status = menu::draw();
-                if status != MenuSelect::None {
-                    self.menu_status = UiMenuStatus::InGame;
-                }
-                status
             }
         }
     }
 
-    fn change_zoom(&mut self, amount: f32) {
-        let new_zoom = self.zoom + amount;
+    fn change_zoom(&mut self, ctx: &mut Context, amount: f32) {
+        let new_zoom = ctx.tileset.zoom + amount;
 
         if new_zoom <= MIN_ZOOM || new_zoom >= MAX_ZOOM {
             return;
         }
 
-        let old_screen_zoom = 1. / self.zoom;
+        let old_screen_zoom = 1. / ctx.tileset.zoom;
         let new_screen_zoom = 1. / new_zoom;
-        self.camera.0 += screen_width() * (old_screen_zoom - new_screen_zoom) / 2.;
-        self.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
+        ctx.tileset.camera.0 += screen_width() * (old_screen_zoom - new_screen_zoom) / 2.;
+        ctx.tileset.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
 
-        self.zoom += amount;
+        ctx.tileset.zoom += amount;
         // let self.zoom = self.zoom.round();
     }
 
-    fn key_down_event(&mut self, ch: char) {
+    fn key_down_event(&mut self, ctx: &mut Context, ch: char) {
         match ch {
-            'q' => self.request_quit = true,
-            ' ' => self.paused = !self.paused,
+            'q' => ctx.request_quit = true,
+            // ' ' => self.paused = !self.paused,
             'p' => self.draw_profiler = !self.draw_profiler,
 
-            '-' => self.zoom *= PLUS_MINUS_SENSITVITY,
-            '=' => self.zoom /= PLUS_MINUS_SENSITVITY,
+            '-' => ctx.tileset.zoom *= PLUS_MINUS_SENSITVITY,
+            '=' => ctx.tileset.zoom /= PLUS_MINUS_SENSITVITY,
 
             '\u{1b}' => {
-                if self.menu_status == UiMenuStatus::InGame {
-                    self.menu_status = UiMenuStatus::MenuOpen;
-                } else {
-                    self.menu_status = UiMenuStatus::InGame;
-                }
+                self.pause_menu_open = !self.pause_menu_open;
             }
 
             _ => {
+                self.time_select.key_down(ch);
                 self.view_build.key_down(ch);
             } // }
         }
