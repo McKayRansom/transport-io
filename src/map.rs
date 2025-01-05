@@ -4,16 +4,31 @@ use std::{
     path::Path,
 };
 
+use build::BuildResult;
+use building::Building;
+use city::City;
+use grid::{Grid, ReservationError};
 use macroquad::rand::srand;
 use serde::{Deserialize, Serialize};
 
+pub mod build;
+mod building;
+mod city;
+pub mod grid;
+pub mod tile;
+
+pub mod vehicle;
+pub mod levels;
+
+mod position;
+pub use position::Position;
+mod direction;
+pub use direction::Direction;
+use tile::Tile;
+use vehicle::{Status, Vehicle};
+
 use crate::{
-    building::Building,
-    city::City,
-    grid::{BuildResult, Grid, Position, ReservationError},
-    tile::Tile,
     tileset::Tileset,
-    vehicle::{Status, Vehicle},
     hash_map_id::{HashMapId, Id},
 };
 
@@ -46,8 +61,9 @@ impl Map {
         }
     }
 
-    pub fn load_from_file(path: &Path) -> std::io::Result<Map> {
-        let mut file = File::open(path)?;
+    pub fn load_from_file(path: String) -> std::io::Result<Map> {
+
+        let mut file = File::open(Path::new(&path))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
@@ -61,7 +77,8 @@ impl Map {
         Ok(map)
     }
 
-    pub fn save_to_file(&self, path: &Path) -> std::io::Result<()> {
+    pub fn save_to_file(&self, path_str: &String) -> std::io::Result<()> {
+        let path = Path::new(path_str);
         let _ = fs::create_dir_all(path.parent().unwrap());
 
         let mut file = File::create(path)?;
@@ -229,9 +246,9 @@ mod map_tests {
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 
-        let test_path = Path::new("saves/test_map.json");
+        let test_path ="saves/test_map.json".to_string();
 
-        map.save_to_file(test_path).unwrap();
+        map.save_to_file(&test_path).unwrap();
 
         let mut deserialized: Map = Map::load_from_file(test_path).unwrap();
 

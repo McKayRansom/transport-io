@@ -5,13 +5,13 @@ use super::{EScene, Scene};
 use crate::consts::*;
 use crate::context::Context;
 use crate::ui::menu::{Menu, MenuItem};
-use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
+// use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
 // use crate::input::{action_pressed, Action};
 // use crate::text::{self, draw_text};
-use macroquad::color::{BLACK, RED, WHITE};
-use macroquad::math::vec2;
-use macroquad::text::{draw_text, measure_text};
-use macroquad::ui::{hash, root_ui, widgets};
+use macroquad::color::{BLACK, WHITE};
+// use macroquad::math::vec2;
+use macroquad::text::draw_text;
+// use macroquad::ui::{hash, root_ui, widgets};
 use macroquad::window::{screen_height, screen_width};
 
 enum MenuOption {
@@ -32,9 +32,9 @@ impl MainMenu {
     pub async fn new(_ctx: &mut Context) -> Self {
         Self {
             menu: Menu::new(vec![
-                MenuItem::new(MenuOption::Play, "Play"),
+                MenuItem::new(MenuOption::Play, "Play".to_string()),
                 #[cfg(not(target_family = "wasm"))]
-                MenuItem::new(MenuOption::Quit, "Quit"),
+                MenuItem::new(MenuOption::Quit, "Quit".to_string()),
             ])
             // settings_subscene: Settings::new(ctx, false),
             // credits_subscene: Credits::new(ctx),
@@ -44,7 +44,7 @@ impl MainMenu {
     fn menu_option_selected(&self, menu_option: &MenuOption, ctx: &mut Context) {
         match menu_option {
             MenuOption::Play => {
-                ctx.switch_scene_to = Some(EScene::Gameplay);
+                ctx.switch_scene_to = Some(EScene::LevelSelect);
             }
             // MenuOption::Settings => {
             //     self.settings_subscene.active = true;

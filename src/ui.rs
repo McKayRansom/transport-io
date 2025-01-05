@@ -1,10 +1,7 @@
 use crate::{
     context::Context,
-    grid::{Position, GRID_CELL_SIZE},
-    map::{Map, GRID_CENTER},
-    tile::Tile,
+    map::{tile::Tile, vehicle::Vehicle, Map, Position},
     tileset::{Sprite, Tileset},
-    vehicle::Vehicle,
 };
 use grades::Grades;
 use macroquad::{
@@ -95,11 +92,11 @@ impl UiState {
             grades: Grades::new().await,
             pause_menu_open: false,
             pause_menu: Menu::new(vec![
-                MenuItem::new(PauseMenuSelect::Continue, "Close"),
-                MenuItem::new(PauseMenuSelect::Save, "Save"),
-                MenuItem::new(PauseMenuSelect::Load, "Load"),
+                MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
+                MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
+                MenuItem::new(PauseMenuSelect::Load, "Load".to_string()),
                 #[cfg(not(target_family = "wasm"))]
-                MenuItem::new(PauseMenuSelect::Quit, "Menu"),
+                MenuItem::new(PauseMenuSelect::Quit, "Menu".to_string()),
             ]),
         }
     }

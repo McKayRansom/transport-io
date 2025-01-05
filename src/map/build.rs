@@ -1,9 +1,9 @@
 use crate::{
     map::Map,
-    tile::{Ramp, Road, Tile}, hash_map_id::Id,
+    hash_map_id::Id,
 };
 
-use super::{Direction, Grid, Position};
+use super::{tile::{Ramp, Road, Tile}, Direction, Position, grid::Grid};
 
 #[derive(Debug)]
 pub enum BuildError {
@@ -194,7 +194,7 @@ impl Map {
 
 #[cfg(test)]
 mod grid_build_tests {
-    use crate::{grid::Direction, tile::Tile};
+    use super::Direction;
 
     use super::*;
 

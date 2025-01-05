@@ -1,7 +1,7 @@
 // use std::path::Path;
 
 // use super::pause::Pause;
-use super::Scene;
+use super::{GameOptions, Scene};
 // use crate::audio::play_sfx;
 use crate::context::Context;
 // use crate::input::action_pressed;
@@ -20,9 +20,14 @@ pub struct Gameplay {
 }
 
 impl Gameplay {
-    pub async fn new() -> Self {
+    pub async fn new(options: GameOptions) -> Self {
         Gameplay {
-            map: Map::new(),
+            map: match options {
+                GameOptions::New => Map::new(),
+                GameOptions::Level(level) => Map::new_level(level),
+                // TODO: Handle error!
+                GameOptions::Load(path) => Map::load_from_file(path).expect("Failed to load save!"),
+            },
             ui: UiState::new().await,
             last_ui_update: get_time(),
             last_map_update: get_time(),

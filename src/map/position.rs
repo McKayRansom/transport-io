@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Sub};
 use macroquad::math::Rect;
 use serde::*;
 
-use super::{Direction, GRID_CELL_SIZE};
+use super::{Direction, grid::GRID_CELL_SIZE};
 
 // pub const Z_TUNNEL = 0
 pub const Z_GROUND: i16 = 0;

@@ -5,8 +5,7 @@ use macroquad::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Direction, Position, GRID_Z_OFFSET},
-    tileset::{Sprite, Tileset},
+    map::{grid::GRID_Z_OFFSET, Direction, Position}, tileset::{Sprite, Tileset}
 };
 
 use super::Reserved;

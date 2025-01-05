@@ -6,7 +6,7 @@ use macroquad::{
     texture::{draw_texture_ex, DrawTextureParams},
 };
 
-use crate::{context::Context, tileset::{Sprite, Tileset}};
+use crate::{context::Context, tileset::Sprite};
 
 #[derive(Clone, Copy)]
 pub struct ToolbarItem<V> {

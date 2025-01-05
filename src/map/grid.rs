@@ -1,16 +1,10 @@
 use std::fmt;
 
-mod position;
-pub use position::*;
-mod direction;
-pub use direction::*;
-mod build;
-pub use build::*;
-
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
-use crate::tile::{Reservation, Tile, YieldType};
+use super::tile::{Reservation, Tile, YieldType};
+use super::{Direction, Position};
 use crate::tileset::Tileset;
 use crate::hash_map_id::Id;
 
@@ -29,7 +23,7 @@ pub type Path = Option<(Vec<Position>, PathCost)>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GridTile {
-    ground: Tile,
+    pub ground: Tile,
     bridge: Tile,
 }
 
@@ -71,7 +65,7 @@ impl GridTile {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct Grid {
-    tiles: Vec<Vec<GridTile>>,
+    pub tiles: Vec<Vec<GridTile>>,
     pub size: (i16, i16),
 }
 

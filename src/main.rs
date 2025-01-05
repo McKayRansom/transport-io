@@ -1,12 +1,7 @@
 mod hash_map_id;
-mod grid;
 mod map;
 mod tileset;
-mod vehicle;
-mod tile;
 mod ui;
-mod building;
-mod city;
 mod scene;
 mod context;
 mod save;
@@ -14,6 +9,7 @@ mod consts;
 
 use consts::PKG_NAME;
 use context::Context;
+use scene::level_select::LevelSelect;
 use scene::{EScene, Scene};
 use scene::gameplay::Gameplay;
 use scene::main_menu::MainMenu;
@@ -68,7 +64,8 @@ async fn main() {
         if let Some(escene) = ctx.switch_scene_to.clone() {
             current_scene = match escene {
                 EScene::MainMenu => Box::new(MainMenu::new(&mut ctx).await),
-                EScene::Gameplay => Box::new(Gameplay::new().await),
+                EScene::Gameplay(options) => Box::new(Gameplay::new(options).await),
+                EScene::LevelSelect => Box::new(LevelSelect::new(&mut ctx)),
             };
             ctx.switch_scene_to = None;
         }

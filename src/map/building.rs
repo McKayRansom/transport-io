@@ -4,8 +4,9 @@ use macroquad::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::{build::BuildError, grid::Grid, Position};
+
 use crate::{
-    grid::{BuildError, Grid, Position},
     tileset::{Sprite, Tileset}, hash_map_id::Id,
 };
 

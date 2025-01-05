@@ -6,17 +6,18 @@ use macroquad::math::Rect;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::grid::Direction;
-use crate::grid::Grid;
-use crate::grid::Path;
-use crate::grid::Position;
-use crate::grid::ReservationError;
-use crate::grid::GRID_CELL_SIZE;
-use crate::tile::Reservation;
-use crate::tile::Tile;
 use crate::tileset::Sprite;
 use crate::tileset::Tileset;
 use crate::hash_map_id::Id;
+
+use super::grid::Grid;
+use super::grid::Path;
+use super::grid::ReservationError;
+use super::grid::GRID_CELL_SIZE;
+use super::tile::Reservation;
+use super::tile::Tile;
+use super::Direction;
+use super::Position;
 
 const SPEED_PIXELS_PER_TICK: i8 = 2; 
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
@@ -316,8 +317,6 @@ impl Vehicle {
 
 #[cfg(test)]
 mod vehicle_tests {
-
-    use crate::grid::ReservationError;
 
     use super::*;
 

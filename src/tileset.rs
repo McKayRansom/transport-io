@@ -6,7 +6,7 @@ use macroquad::{
     texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
 };
 
-use crate::{grid::GRID_CELL_SIZE, map::GRID_CENTER};
+use crate::{map::grid::GRID_CELL_SIZE, map::GRID_CENTER};
 
 const TILE_SIZE: u32 = 16;
 

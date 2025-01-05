@@ -7,20 +7,20 @@ use macroquad::{
 
 use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct MenuItem<V> {
     value: V,
-    label: &'static str,
+    label: String,
 }
 
 impl<V> MenuItem<V> {
-    pub fn new(value: V, label: &'static str) -> Self {
+    pub fn new(value: V, label: String) -> Self {
         Self { value, label }
     }
 }
 
 pub struct Menu<V> {
-    items: Vec<MenuItem<V>>,
+    pub items: Vec<MenuItem<V>>,
 }
 
 impl<V> Menu<V> {
@@ -47,7 +47,7 @@ impl<V> Menu<V> {
         .movable(false)
         .ui(&mut root_ui(), |ui| {
             for item in &self.items {
-                if ui.button(None, item.label) {
+                if ui.button(None, item.label.as_str()) {
                     selected = Some(&item.value);
                 }
             }

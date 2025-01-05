@@ -6,7 +6,7 @@ use macroquad::{
 };
 
 use crate::{
-    context::Context, grid::{BuildError, BuildResult, Position}, map::Map, tileset::{Sprite, Tileset}
+    context::Context, map::{build::{BuildError, BuildResult}, Map, Position}, tileset::{Sprite, Tileset}
 };
 
 use super::toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};

@@ -10,9 +10,10 @@ pub use reservation::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    grid::{Direction, Position, ReservationError},
     tileset::Tileset, hash_map_id::Id,
 };
+
+use super::{grid::ReservationError, Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
 const OCCUPIED_COST: u32 = 2;
