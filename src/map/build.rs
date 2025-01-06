@@ -1,9 +1,11 @@
-use crate::{
-    map::Map,
-    hash_map_id::Id,
-};
+use crate::{hash_map_id::{HashMapId, Id}, map::Map};
 
-use super::{tile::{Ramp, Road, Tile}, Direction, Position, grid::Grid};
+use super::{
+    building::{Building, BUILDING_SIZE},
+    grid::Grid,
+    tile::{Ramp, Road, Tile},
+    Direction, Position,
+};
 
 #[derive(Debug)]
 pub enum BuildError {
@@ -130,7 +132,7 @@ impl Grid {
         Ok(())
     }
 
-    pub fn build_building(&mut self, pos: &Position, size: (i8, i8), id: Id) -> BuildResult {
+    pub fn build_building_tile(&mut self, pos: &Position, size: (i8, i8), id: Id) -> BuildResult {
         // let pos = &pos.round_to(2);
         for x in 0..size.0 {
             for y in 0..size.1 {
@@ -174,6 +176,20 @@ impl Grid {
         }
         Ok(())
     }
+
+    pub fn build_building(&mut self, buildings: &mut HashMapId<Building>, building: Building) -> Result<Id, BuildError> {
+        self.is_area_clear(&building.pos, BUILDING_SIZE)?;
+        let id = buildings.insert(building);
+        self.build_building_tile(
+            &building.pos,
+            BUILDING_SIZE,
+            id,
+        )?;
+
+        // building.id = self.buildings.id;
+
+        Ok(id)
+    }
 }
 
 impl Map {
@@ -190,6 +206,8 @@ impl Map {
 
         self.grid.clear_area(pos)
     }
+
+
 }
 
 #[cfg(test)]
@@ -271,7 +289,6 @@ mod grid_build_tests {
 
         Ok(())
     }
-
 
     #[test]
     fn test_build_one_way_road() -> BuildResult {

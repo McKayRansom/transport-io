@@ -1,18 +1,18 @@
+mod consts;
+mod context;
 mod hash_map_id;
 mod map;
+mod save;
+mod scene;
 mod tileset;
 mod ui;
-mod scene;
-mod context;
-mod save;
-mod consts;
 
 use consts::PKG_NAME;
 use context::Context;
-use scene::level_select::LevelSelect;
-use scene::{EScene, Scene};
 use scene::gameplay::Gameplay;
+use scene::level_select::LevelSelect;
 use scene::main_menu::MainMenu;
+use scene::{EScene, Scene};
 
 use macroquad::prelude::*;
 fn window_conf() -> Conf {
@@ -38,22 +38,19 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-
     let mut ctx = Context {
         ..Context::default().await
     };
 
-    let mut current_scene: Box<dyn Scene> = Box::new(
-        MainMenu::new(&mut ctx).await
-        // Gameplay::new().await
-    );
+    let mut current_scene: Box<dyn Scene> = match map::levels::TEST_LEVEL {
+        Some(level) => Box::new(Gameplay::new(&mut ctx, scene::GameOptions::Level(level)).await),
+        None => Box::new(MainMenu::new(&mut ctx).await),
+    };
 
     loop {
-
         current_scene.update(&mut ctx);
 
-        let color: Color = Color::from_hex(0x2b313f);
-        clear_background(color);
+        clear_background(BLACK);
 
         current_scene.draw(&mut ctx);
 
@@ -64,7 +61,7 @@ async fn main() {
         if let Some(escene) = ctx.switch_scene_to.clone() {
             current_scene = match escene {
                 EScene::MainMenu => Box::new(MainMenu::new(&mut ctx).await),
-                EScene::Gameplay(options) => Box::new(Gameplay::new(options).await),
+                EScene::Gameplay(options) => Box::new(Gameplay::new(&mut ctx, options).await),
                 EScene::LevelSelect => Box::new(LevelSelect::new(&mut ctx)),
             };
             ctx.switch_scene_to = None;

@@ -11,6 +11,9 @@ use crate::map::Map;
 // use crate::text::draw_text;
 use crate::ui::{TimeSelect, UiState};
 use macroquad::time::get_time;
+use macroquad::window::{screen_height, screen_width};
+
+pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
 
 pub struct Gameplay {
     map: Map,
@@ -20,10 +23,10 @@ pub struct Gameplay {
 }
 
 impl Gameplay {
-    pub async fn new(options: GameOptions) -> Self {
-        Gameplay {
+    pub async fn new(ctx: &mut Context, options: GameOptions) -> Self {
+        let gameplay = Gameplay {
             map: match options {
-                GameOptions::New => Map::new(),
+                GameOptions::New => Map::new(DEFAULT_MAP_SIZE),
                 GameOptions::Level(level) => Map::new_level(level),
                 // TODO: Handle error!
                 GameOptions::Load(path) => Map::load_from_file(path).expect("Failed to load save!"),
@@ -31,7 +34,13 @@ impl Gameplay {
             ui: UiState::new().await,
             last_ui_update: get_time(),
             last_map_update: get_time(),
-        }
+        };
+
+        // TODO: Camera center function
+        let size = gameplay.map.grid.size_px();
+        ctx.tileset.camera = (size.0 /2. - screen_width() / 2., size.1 / 2. - screen_height() / 2.);
+
+        gameplay
     }
 }
 

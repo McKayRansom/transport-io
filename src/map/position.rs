@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub};
+use std::ops::{Add, AddAssign, Div, Sub};
 
 use macroquad::math::Rect;
 use serde::*;
@@ -118,6 +118,19 @@ impl Sub<Position> for Position {
             x: (self.x - other.x) as i8,
             y: (self.y - other.y) as i8,
             z: (self.z - other.z) as i8,
+        }
+    }
+}
+
+
+impl Div<i16> for Position {
+    type Output = Position;
+
+    fn div(self, other: i16) -> Position {
+        Self {
+            x: self.x /other, 
+            y: self.y  / other,
+            z: self.z / other,
         }
     }
 }

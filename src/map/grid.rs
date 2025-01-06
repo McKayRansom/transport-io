@@ -1,5 +1,7 @@
 use std::fmt;
 
+use macroquad::color::Color;
+use macroquad::math::Rect;
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +68,6 @@ impl GridTile {
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct Grid {
     pub tiles: Vec<Vec<GridTile>>,
-    pub size: (i16, i16),
 }
 
 impl Position {}
@@ -97,11 +98,18 @@ impl fmt::Debug for Grid {
 }
 
 impl Grid {
-    pub fn new(size_x: usize, size_y: usize) -> Self {
+    pub fn new(size: (i16, i16)) -> Self {
         Grid {
-            tiles: vec![vec![GridTile::new(); size_x]; size_y],
-            size: (size_x as i16, size_y as i16),
+            tiles: vec![vec![GridTile::new(); size.0 as usize]; size.1 as usize],
         }
+    }
+
+    pub fn size(&self) -> (i16, i16) {
+        (self.tiles[0].len() as i16, self.tiles.len() as i16)
+    }
+
+    pub fn size_px(&self) -> (f32, f32) {
+        (self.tiles[0].len() as f32 * GRID_CELL_SIZE.0, self.tiles.len() as f32 * GRID_CELL_SIZE.1)
     }
 
     #[allow(dead_code)]
@@ -116,9 +124,7 @@ impl Grid {
             .map(|line| line.chars().map(GridTile::new_from_char).collect())
             .collect();
 
-        let size = (tiles[0].len() as i16, tiles.len() as i16);
-
-        Grid { tiles, size }
+        Grid { tiles }
     }
 
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {
@@ -247,6 +253,13 @@ impl Grid {
     }
 
     pub fn draw_tiles(&self, tileset: &Tileset) {
+        let color: Color = Color::from_hex(0x2b313f);
+        let mut rect: Rect = Position::new(0, 0).into();
+        rect.w *= self.tiles[0].len() as f32;
+        rect.h *= self.tiles.len() as f32;
+        tileset.draw_rect(&rect, color);
+
+
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 tile.ground.draw((x as i16, y as i16).into(), tileset);

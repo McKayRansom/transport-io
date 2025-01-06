@@ -4,38 +4,55 @@ use macroquad::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{build::BuildError, grid::Grid, Position};
+use super::Position;
 
 use crate::{
     tileset::{Sprite, Tileset}, hash_map_id::Id,
 };
 
-const BUILDING_SIZE: (i8, i8) = (2, 2);
+pub const BUILDING_SIZE: (i8, i8) = (2, 2);
 
 const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
+// const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
+const HOUSE_UPDATE_TICKS: i32 = 16;
 
-const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
+pub enum SpawnerRates {
+    Slow = 16,
+    Medium = 32,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub pos: Position,
-    id: Id,
+    // pub id: Id,
     pub city_id: Id,
     pub vehicle_on_the_way: Option<Id>,
     production_tics: i32,
+    production_rate: i32,
 }
 
 impl Building {
-    pub fn new(pos: Position, id: Id, city_id: Id, grid: &mut Grid) -> Result<Self, BuildError> {
-        grid.is_area_clear(&pos, BUILDING_SIZE)?;
-        grid.build_building(&pos, BUILDING_SIZE, id)?;
-        Ok(Building {
+    pub fn new_house(pos: Position, city_id: Id) -> Self {
+        Building {
             pos,
-            id,
+            // 0,
             city_id,
             vehicle_on_the_way: None,
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
-        })
+            production_rate: HOUSE_UPDATE_TICKS,
+        }
+    }
+
+    pub fn new_spawner(pos: Position, city_id: Id, spawn_rate: SpawnerRates) -> Self {
+        let update_ticks:i32 =  spawn_rate as i32;
+        Building {
+            pos,
+            // 0,
+            city_id,
+            vehicle_on_the_way: None,
+            production_tics: rand::gen_range(0, update_ticks),
+            production_rate: update_ticks,
+        }
     }
 
     pub fn draw(&self, tileset: &Tileset) {

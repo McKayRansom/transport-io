@@ -35,8 +35,6 @@ use crate::{
 const _CITY_BLOCK_SIZE: i16 = 8;
 const _CITY_BLOCK_COUNT: i16 = 1;
 
-pub const GRID_SIZE: (i16, i16) = (64, 64);
-pub const GRID_CENTER: (i16, i16) = (32, 32);
 
 type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
@@ -51,10 +49,11 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new() -> Self {
+    pub fn new(size: (i16, i16)) -> Self {
         srand(1234);
         Map {
-            grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
+            // grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
+            grid: Grid::new(size),
             vehicles: VehicleHashMap::new(),
             buildings: BuildingHashMap::new(),
             cities: CityHashMap::new(),
@@ -117,7 +116,9 @@ impl Map {
     }
 
     pub fn generate(&mut self) -> BuildResult {
-        self.new_city(GRID_CENTER.into(), "CityVille".to_string())
+        let size: Position = self.grid.size().into();
+        let grid_center: Position = size / 2;
+        self.new_city(grid_center, "CityVille".to_string())
     }
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {
@@ -242,7 +243,7 @@ mod map_tests {
 
     #[test]
     fn test_map_serialize() {
-        let mut map = Map::new();
+        let mut map = Map::new((4, 4).into());
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 

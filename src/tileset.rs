@@ -6,7 +6,7 @@ use macroquad::{
     texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
 };
 
-use crate::{map::grid::GRID_CELL_SIZE, map::GRID_CENTER};
+use crate::{map::grid::GRID_CELL_SIZE};
 
 const TILE_SIZE: u32 = 16;
 
@@ -48,8 +48,7 @@ impl Tileset {
             texture,
             zoom: 1.,
             camera: (
-                GRID_CENTER.0 as f32 * GRID_CELL_SIZE.0 - screen_width() / 2.,
-                GRID_CENTER.1 as f32 * GRID_CELL_SIZE.1 - screen_height() / 2.,
+                0., 0.
             ),
         }
     }
