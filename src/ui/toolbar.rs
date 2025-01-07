@@ -43,6 +43,7 @@ pub enum ToolbarType {
 pub struct Toolbar<V> {
     kind: ToolbarType,
     selected: Option<usize>,
+    mouse_down: Option<usize>,
     pub items: Vec<ToolbarItem<V>>,
     rect: Rect,
 }
@@ -51,9 +52,10 @@ impl<V> Toolbar<V> {
     pub fn new(kind: ToolbarType, items: Vec<ToolbarItem<V>>) -> Self {
         Self {
             kind,
-            rect: Rect::new(0., 0., 0., 0.),
             selected: None,
+            mouse_down: None,
             items,
+            rect: Rect::new(0., 0., 0., 0.),
         }
     }
 
@@ -77,6 +79,11 @@ impl<V> Toolbar<V> {
         }
 
         let window_color = Color::from_hex(0x585858);
+        let mouse_down = is_mouse_button_down(macroquad::input::MouseButton::Left);
+
+        if !mouse_down {
+            self.mouse_down = None;
+        }
 
         draw_rectangle(
             self.rect.x,
@@ -126,9 +133,17 @@ impl<V> Toolbar<V> {
                     Color::new(0.0, 0.0, 0.0, 0.1),
                 );
 
-                if is_mouse_button_down(macroquad::input::MouseButton::Left) {
-                    // TODO: Press again should deselect
-                    self.selected = Some(i);
+                if mouse_down {
+                    if self.mouse_down == None {
+                        if self.selected == None {
+                            self.selected = Some(i);
+                        } else if self.selected == Some(i) {
+                            self.selected = None;
+                        } else {
+                            self.selected = Some(i);
+                        }
+                        self.mouse_down = Some(i);
+                    }
                 }
             }
 

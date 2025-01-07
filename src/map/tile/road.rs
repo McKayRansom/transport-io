@@ -40,6 +40,9 @@ impl Road {
     pub fn new_from_char(c: char) -> Option<Self> {
         let mut road = Road::new();
         match c {
+            '*' => {
+                // unconnected road
+            }
             '>' => {
                 road.connect(Direction::RIGHT);
             }
@@ -94,7 +97,7 @@ impl Road {
     }
 
     pub fn connect(&mut self, dir: Direction) {
-        if !self.connections.contains(&dir) {
+        if dir != Direction::NONE && !self.connections.contains(&dir) {
             self.connections.push(dir);
         }
     }
@@ -190,7 +193,7 @@ impl std::fmt::Debug for Road {
         } else if self.is_connected(Direction::RIGHT) && self.is_connected(Direction::LAYER_DOWN) {
             write!(f, "d")
         } else {
-            write!(f, "?")
+            write!(f, "*")
         }
     }
 }

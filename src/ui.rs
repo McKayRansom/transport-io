@@ -49,7 +49,6 @@ enum ViewMode {
 enum PauseMenuSelect {
     Continue,
     Save,
-    Load,
     Quit,
 }
 
@@ -93,9 +92,57 @@ impl UiState {
             pause_menu: Menu::new(vec![
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
                 MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
-                MenuItem::new(PauseMenuSelect::Load, "Load".to_string()),
                 MenuItem::new(PauseMenuSelect::Quit, "Menu".to_string()),
             ]),
+        }
+    }
+
+    fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) {
+
+        let new_mouse_wheel = mouse_wheel();
+        let new_mouse_pos = mouse_position();
+
+        if root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1)) {
+            return;
+        }
+
+        if new_mouse_wheel.1 != 0. {
+            self.change_zoom(ctx, SCROLL_SENSITIVITY * new_mouse_wheel.1);
+            println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
+        }
+
+        self.view_build.update();
+
+        if self.view_build.is_mouse_over(new_mouse_pos) {
+            return;
+        }
+
+        let pos = Position::from_screen(new_mouse_pos, ctx.tileset.camera, ctx.tileset.zoom);
+        {
+            if map.grid.get_tile(&pos).is_none() {
+                self.view_build.mouse_clear();
+                self.last_mouse_pos = None;
+                self.mouse_pressed = false;
+                return;
+            }
+
+            if is_mouse_button_down(MouseButton::Left) {
+                // macroquad::ui::
+                if !self.mouse_pressed {
+                    self.view_build.mouse_button_down_event(pos, map)
+                }
+                self.mouse_pressed = true;
+            } else {
+                self.mouse_pressed = false;
+            }
+
+            if self
+                .last_mouse_pos
+                .is_none_or(|last_moust_pos| last_moust_pos != pos)
+            {
+                self.view_build.mouse_motion_event(pos, map);
+                self.last_mouse_pos = Some(pos);
+            }
         }
     }
 
@@ -120,44 +167,7 @@ impl UiState {
             ctx.tileset.camera.0 += WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
 
-        let new_mouse_wheel = mouse_wheel();
-        let new_mouse_pos = mouse_position();
-
-        if root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1)) {
-            return;
-        }
-
-        if new_mouse_wheel.1 != 0. {
-            self.change_zoom(ctx, SCROLL_SENSITIVITY * new_mouse_wheel.1);
-            println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
-        }
-
-        if self.view_build.is_mouse_over(new_mouse_pos) {
-            return;
-        }
-
-        let pos = Position::from_screen(new_mouse_pos, ctx.tileset.camera, ctx.tileset.zoom);
-        {
-            if is_mouse_button_down(MouseButton::Left) {
-                // macroquad::ui::
-                if !self.mouse_pressed {
-                    self.view_build.mouse_button_down_event(pos, map)
-                }
-                self.mouse_pressed = true;
-            } else {
-                self.mouse_pressed = false;
-            }
-
-            if self
-                .last_mouse_pos
-                .is_none_or(|last_moust_pos| last_moust_pos != pos)
-            {
-                self.view_build.mouse_motion_event(pos, map);
-                self.last_mouse_pos = Some(pos);
-            }
-        }
-
-        self.view_build.update();
+        self.update_mouse(ctx, map);
     }
 
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
@@ -242,9 +252,9 @@ impl UiState {
         }
 
         self.time_select.items[0].sprite = if self.time_select.get_selected() == Some(&TimeSelect::Pause) {
-            Sprite::new(10, 0)
-        } else {
             Sprite::new(10, 1)
+        } else {
+            Sprite::new(10, 0)
         };
         self.time_select.draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
         self.view_build.draw(map, ctx);
@@ -262,7 +272,6 @@ impl UiState {
                     PauseMenuSelect::Quit => {
                         ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)
                     }
-                    _ => {}
                 }
             }
         }

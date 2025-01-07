@@ -25,8 +25,11 @@ const WASM_SAVE_KEY: &str = "save";
 
 #[derive(Debug)]
 pub enum SaveError {
+    #[allow(unused)]
     FailedToReadFile(std::io::Error),
+    #[allow(unused)]
     FailedToDeserialize(SpannedError),
+    #[allow(unused)]
     FailedToSerialize(ron::Error),
 }
 
@@ -120,6 +123,7 @@ mod save_tests {
     use super::*;
 
     #[test]
+    #[ignore = "Overwrites current save game..."]
     fn test_map_serialize() {
         let mut map = Map::new_blank((4, 4).into());
 

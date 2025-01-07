@@ -57,7 +57,7 @@ impl Map {
     pub fn new_generate(size: (i16, i16)) -> Self {
         let mut map = Self::new_blank(size);
 
-        map.generate();
+        map.generate().expect("Error generating map");
 
         map
     }

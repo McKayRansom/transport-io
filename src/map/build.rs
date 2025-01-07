@@ -82,22 +82,6 @@ impl Grid {
             .edit_road(|road| road.connect(dir))
     }
 
-    pub fn _remove_road(&mut self, pos: &Position, dir: Direction) -> BuildResult {
-        let tile = self.get_tile_mut(pos).ok_or(BuildError::InvalidTile)?;
-        let mut remove_road = false;
-        tile.edit_road(|road| {
-            road.disconnect(dir);
-            if road.connection_count() == 0 {
-                remove_road = true;
-            }
-        })?;
-        if remove_road {
-            tile.clear();
-        }
-
-        Ok(())
-    }
-
     pub fn is_pos_clear(&self, pos: &Position) -> BuildResult {
         if self.get_tile(pos).ok_or(BuildError::InvalidTile)? == &Tile::Empty {
             Ok(())
@@ -144,12 +128,34 @@ impl Grid {
         Ok(())
     }
 
+    pub fn build_road_autoconnect(&mut self, pos: Position) -> BuildResult {
+        let pos = pos.round_to(2);
+
+        self.build_two_way_road(pos, Direction::NONE)?;
+
+        // check for roads to connect to
+        for dir in Direction::ALL {
+            let new_pos = pos + dir * 2;
+            if let Some(Tile::Road(_)) = self.get_tile(&new_pos) {
+                // if road.connection_count() == 0 {
+                    self.build_two_way_road(new_pos, dir)?;
+                    self.build_two_way_road(pos, dir)?;
+                // }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn build_two_way_road(&mut self, pos: Position, dir: Direction) -> BuildResult {
         let pos = pos.round_to(2);
 
+        // we need to be able to overwrite tiles...
         // self.is_area_clear(&pos, (2, 2))?;
 
-        let blueprint = if dir.is_horizontal() {
+        let blueprint = if dir.x == 0 && dir.y == 0 {
+            Grid::new_from_string("**\n**")
+        } else if dir.is_horizontal() {
             Grid::new_from_string("<<\n>>")
         } else {
             Grid::new_from_string(".^\n.^")
@@ -159,7 +165,7 @@ impl Grid {
             for (x, tile) in row.iter().enumerate() {
                 self.build_road(
                     self.pos(x as i16 + pos.x, y as i16 + pos.y),
-                    *tile.ground.iter_connections().next().unwrap(),
+                    *tile.ground.iter_connections().next().unwrap_or(&Direction::NONE),
                 )?
             }
         }
@@ -194,6 +200,8 @@ impl Grid {
 
 impl Map {
     pub fn clear_area(&mut self, pos: &Position) -> BuildResult {
+        let pos = &pos.round_to(2);
+
         if let Some(Tile::Building(building_id)) = self.grid.get_tile(pos) {
             if let Some(building) = self.buildings.hash_map.remove(building_id) {
                 if let Some(city) = self.cities.hash_map.get_mut(&building.city_id) {
@@ -234,12 +242,6 @@ mod grid_build_tests {
         grid.build_road(pos, Direction::UP)?;
         assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('R'));
 
-        grid._remove_road(&pos, Direction::UP)?;
-        assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
-
-        grid._remove_road(&pos, Direction::RIGHT)?;
-        assert_eq!(grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
-
         Ok(())
     }
 
@@ -274,6 +276,11 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_two_way_road() -> BuildResult {
+
+        let mut grid = Grid::new_from_string("____\n____");
+        grid.build_two_way_road(grid.pos(0, 0), Direction::NONE)?;
+        assert_eq!(grid, Grid::new_from_string("**__\n**__"));
+
         let mut grid = Grid::new_from_string("____\n____");
         grid.build_two_way_road(grid.pos(0, 0), Direction::LEFT)?;
         assert_eq!(grid, Grid::new_from_string("<<__\n>>__"));

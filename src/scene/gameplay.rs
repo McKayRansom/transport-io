@@ -39,6 +39,7 @@ impl Gameplay {
         // TODO: Camera center function
         let size = gameplay.map.grid.size_px();
         ctx.tileset.camera = (size.0 /2. - screen_width() / 2., size.1 / 2. - screen_height() / 2.);
+        ctx.tileset.zoom = 1.;
 
         gameplay
     }

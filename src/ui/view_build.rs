@@ -100,6 +100,10 @@ impl ViewBuild {
         self.build_toolbar.is_mouse_over(mouse_pos)
     }
 
+    pub fn mouse_clear(&mut self) {
+        self.last_mouse_pos = None;
+    }
+
     fn mouse_button_down_build(&mut self, mouse_pos: Position, map: &mut Map) -> BuildResult {
         println!("Mouse pressed: pos: {mouse_pos:?}");
         let build_mode = self.build_toolbar.get_selected();
@@ -121,6 +125,12 @@ impl ViewBuild {
                     map.grid.build_bridge(start_pos, mouse_pos)?;
                 } else {
                     self.bridge_start_pos = Some(mouse_pos);
+                }
+            }
+            BuildMode::TwoWayRoad => {
+                if let Some(last_mouse_pos) = self.last_mouse_pos {
+                    // let dir = last_mouse_pos.direction_to(pos);
+                    map.grid.build_road_autoconnect(last_mouse_pos)?;
                 }
             }
             // BuildMode::Roundabout => {
@@ -160,8 +170,8 @@ impl ViewBuild {
                 // }
                 BuildMode::TwoWayRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
-                        let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_two_way_road(last_mouse_pos, dir)?;
+                        // let dir = last_mouse_pos.direction_to(pos);
+                        map.grid.build_road_autoconnect(last_mouse_pos)?;
                     }
                 }
                 BuildMode::OneWayRoad => {
