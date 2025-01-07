@@ -3,10 +3,8 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
 };
-
-use crate::{map::grid::GRID_CELL_SIZE};
 
 const TILE_SIZE: u32 = 16;
 

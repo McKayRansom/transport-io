@@ -3,7 +3,7 @@
 pub enum GameOptions {
     Level(usize),
     New,
-    Load(String),
+    Continue,
 }
 
 

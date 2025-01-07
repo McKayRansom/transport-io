@@ -1,5 +1,5 @@
 
-use crate::{context::Context, ui::menu::{Menu, MenuItem}};
+use crate::{context::Context, map::levels::LEVEL_COUNT, ui::menu::{Menu, MenuItem}};
 
 use super::{EScene, GameOptions, Scene};
 
@@ -12,8 +12,8 @@ pub struct LevelSelect {
 impl LevelSelect {
     pub fn new(_ctx: &mut Context) -> Self {
         let mut menu: Menu<i32> = Menu::new(Vec::new());
-        for i in 0..11 {
-            menu.items.push(MenuItem::new(i, format!("{i}").to_string()));
+        for i in 0..LEVEL_COUNT {
+            menu.items.push(MenuItem::new(i as i32, format!("{i}").to_string()));
         }
         Self {
             menu: menu,

@@ -2,7 +2,7 @@
 // use crate::audio;
 // use crate::consts::*;
 // use crate::font;
-use crate::save::Save;
+// use crate::save::Save;
 use crate::scene::EScene;
 // use crate::settings::Settings;
 use crate::tileset::Tileset;
@@ -24,7 +24,7 @@ pub struct Context {
     // pub render_target_cam: Camera2D,
     pub switch_scene_to: Option<EScene>,
     // pub settings: Settings,
-    pub save: Save,
+    // pub save: Save,
 }
 
 impl Context {
@@ -42,7 +42,7 @@ impl Context {
             // render_target_cam,
             switch_scene_to: None,
             // settings: Settings::load(),
-            save: Save::load(),
+            // save: Save::load(),
         }
     }
 }

@@ -1,10 +1,11 @@
+use ron::de::SpannedError;
 // #[cfg(not(target_family = "wasm"))]
 // use crate::dir;
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
 #[cfg(not(target_family = "wasm"))]
 use std::path::PathBuf;
 
-use crate::consts::VERSION;
+use crate::map::Map;
 
 #[cfg(not(target_family = "wasm"))]
 use directories::ProjectDirs;
@@ -16,50 +17,63 @@ pub fn project_dirs() -> ProjectDirs {
     ProjectDirs::from("com", "yourname", "yourgame").unwrap()
 }
 
-/// game completion progress
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Save {
-    game_version: String,
-}
-
 #[cfg(not(target_family = "wasm"))]
 const SAVE_FILE: &str = "save.ron";
 
 #[cfg(target_family = "wasm")]
 const WASM_SAVE_KEY: &str = "save";
 
-impl Default for Save {
-    fn default() -> Self {
-        Self {
-            game_version: VERSION.to_string(),
-        }
+#[derive(Debug)]
+pub enum SaveError {
+    FailedToReadFile(std::io::Error),
+    FailedToDeserialize(SpannedError),
+    FailedToSerialize(ron::Error),
+}
+
+impl From<std::io::Error> for SaveError {
+    fn from(err: std::io::Error) -> Self {
+        SaveError::FailedToReadFile(err)
     }
 }
 
-impl Save {
-    /// loads the save file from disk; if it doesn't exist, instantiates a new one and saves it
-    pub fn load() -> Self {
-        #[cfg(target_family = "wasm")]
-        let save = Self::load_wasm();
+impl From<SpannedError> for SaveError {
+    fn from(err: SpannedError) -> Self {
+        SaveError::FailedToDeserialize(err)
+    }
+}
 
+
+impl From<ron::Error> for SaveError {
+    fn from(err: ron::Error) -> Self {
+        SaveError::FailedToSerialize(err)
+    }
+}
+
+
+type LoadResult = Result<Map, SaveError>;
+type SaveResult = Result<(), SaveError>;
+
+impl Map {
+
+    pub fn load() -> LoadResult {
         #[cfg(not(target_family = "wasm"))]
-        let save = Self::load_desktop();
-        save.save();
+        let mut map = Self::load_desktop();
+        #[cfg(target_family = "wasm")]
+        let mut map = Self::load_wasm();
 
-        save
+        if let Ok(m) = &mut map {
+            m.fixup().unwrap();
+        }
+
+        map
     }
 
     #[cfg(not(target_family = "wasm"))]
-    fn load_desktop() -> Self {
+    pub fn load_desktop() -> LoadResult {
         let save_path = Self::determine_save_path();
 
-        if save_path.exists() {
-            let toml_str = std::fs::read_to_string(save_path).expect("couldn't read save file");
-            let save: Save = ron::from_str(toml_str.as_str()).unwrap();
-            save
-        } else {
-            Self::default()
-        }
+        let toml_str = std::fs::read_to_string(save_path)?;
+        Ok(ron::from_str(toml_str.as_str())?)
     }
 
     #[cfg(not(target_family = "wasm"))]
@@ -73,31 +87,60 @@ impl Save {
     }
 
     #[cfg(target_family = "wasm")]
-    fn load_wasm() -> Self {
-        let mut save = Self::default();
+    pub fn load_wasm() -> LoadResult {
         let storage = &mut quad_storage::STORAGE.lock().unwrap();
-        if let Some(wasm_save) = storage.get(WASM_SAVE_KEY) {
-            save = ron::from_str(wasm_save.as_str()).unwrap();
-        }
-        save
+        let wasm_save = storage.get(WASM_SAVE_KEY).unwrap();
+        Ok(ron::from_str(wasm_save.as_str()).unwrap())
     }
 
     /// writes the save to local storage
     #[cfg(target_family = "wasm")]
-    fn save(&self) {
+    pub fn save(&self) -> SaveResult {
+        // TODO: Solve unwrap
         let storage = &mut quad_storage::STORAGE.lock().unwrap();
-        storage.set(WASM_SAVE_KEY, &self.to_ron_string().as_str());
+        storage.set(WASM_SAVE_KEY, &self.to_ron_string().unwrap().as_str());
+        Ok(())
     }
 
     #[cfg(not(target_family = "wasm"))]
     /// writes the save to disk
-    fn save(&self) {
-        std::fs::write(Self::determine_save_path(), self.to_ron_string())
-            .expect("unable to write save file");
+    pub fn save(&self) -> SaveResult {
+        Ok(std::fs::write(Self::determine_save_path(), self.to_ron_string()?)?)
     }
 
     /// returns the save data in RON format as a pretty string
-    fn to_ron_string(&self) -> String {
-        ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default()).unwrap()
+    fn to_ron_string(&self) -> Result<String, SaveError> {
+        Ok(ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())?)
+    }
+}
+
+#[cfg(test)]
+mod save_tests {
+
+    use super::*;
+
+    #[test]
+    fn test_map_serialize() {
+        let mut map = Map::new_blank((4, 4).into());
+
+        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
+
+        map.save().unwrap();
+
+        let mut deserialized: Map = Map::load().unwrap();
+
+        assert_eq!(
+            deserialized.grid.get_tile(&deserialized.grid.pos(0, 0)),
+            map.grid.get_tile(&deserialized.grid.pos(0, 0)),
+        );
+
+        let pos = deserialized.grid.pos(0, 0);
+
+        assert!(deserialized
+            .grid
+            .get_tile_mut(&pos)
+            .unwrap()
+            .reserve(1234, pos)
+            .is_err())
     }
 }

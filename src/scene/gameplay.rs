@@ -26,10 +26,10 @@ impl Gameplay {
     pub async fn new(ctx: &mut Context, options: GameOptions) -> Self {
         let gameplay = Gameplay {
             map: match options {
-                GameOptions::New => Map::new(DEFAULT_MAP_SIZE),
+                GameOptions::New => Map::new_generate(DEFAULT_MAP_SIZE),
                 GameOptions::Level(level) => Map::new_level(level),
                 // TODO: Handle error!
-                GameOptions::Load(path) => Map::load_from_file(path).expect("Failed to load save!"),
+                GameOptions::Continue => Map::load().expect("Failed to load save!"),
             },
             ui: UiState::new().await,
             last_ui_update: get_time(),

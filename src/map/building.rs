@@ -16,10 +16,6 @@ const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 // const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
 const HOUSE_UPDATE_TICKS: i32 = 16;
 
-pub enum SpawnerRates {
-    Slow = 16,
-    Medium = 32,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
@@ -40,18 +36,6 @@ impl Building {
             vehicle_on_the_way: None,
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
             production_rate: HOUSE_UPDATE_TICKS,
-        }
-    }
-
-    pub fn new_spawner(pos: Position, city_id: Id, spawn_rate: SpawnerRates) -> Self {
-        let update_ticks:i32 =  spawn_rate as i32;
-        Building {
-            pos,
-            // 0,
-            city_id,
-            vehicle_on_the_way: None,
-            production_tics: rand::gen_range(0, update_ticks),
-            production_rate: update_ticks,
         }
     }
 

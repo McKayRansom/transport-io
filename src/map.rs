@@ -1,9 +1,3 @@
-use std::{
-    fs::{self, File},
-    io::{Read, Write},
-    path::Path,
-};
-
 use build::BuildResult;
 use building::Building;
 use city::City;
@@ -49,7 +43,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(size: (i16, i16)) -> Self {
+    pub fn new_blank(size: (i16, i16)) -> Self {
         srand(1234);
         Map {
             // grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
@@ -60,36 +54,15 @@ impl Map {
         }
     }
 
-    pub fn load_from_file(path: String) -> std::io::Result<Map> {
+    pub fn new_generate(size: (i16, i16)) -> Self {
+        let mut map = Self::new_blank(size);
 
-        let mut file = File::open(Path::new(&path))?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
+        map.generate();
 
-        let mut map: Map = serde_json::from_str(&contents)?;
-
-        if map.fixup().is_err() {
-            println!("Failed to fixup map!")
-            // Err()
-        }
-
-        Ok(map)
+        map
     }
 
-    pub fn save_to_file(&self, path_str: &String) -> std::io::Result<()> {
-        let path = Path::new(path_str);
-        let _ = fs::create_dir_all(path.parent().unwrap());
-
-        let mut file = File::create(path)?;
-
-        let buf = serde_json::to_string(self).unwrap();
-
-        file.write_all(buf.as_bytes())?;
-
-        Ok(())
-    }
-
-    fn fixup(&mut self) -> Result<(), ReservationError> {
+    pub fn fixup(&mut self) -> Result<(), ReservationError> {
         // Any way to not allow this to be called twice?
         for vehicle in &mut self.vehicles.values_mut() {
             vehicle.fixup(&mut self.grid)?
@@ -108,14 +81,14 @@ impl Map {
         }
     }
 
-    pub fn new_city(&mut self, pos: Position, name: String) -> BuildResult {
+    fn new_city(&mut self, pos: Position, name: String) -> BuildResult {
         let mut city = City::new(self.cities.id, pos, name);
         city.generate(&mut self.buildings, &mut self.grid)?;
         self.cities.insert(city);
         Ok(())
     }
 
-    pub fn generate(&mut self) -> BuildResult {
+    fn generate(&mut self) -> BuildResult {
         let size: Position = self.grid.size().into();
         let grid_center: Position = size / 2;
         self.new_city(grid_center, "CityVille".to_string())
@@ -241,30 +214,4 @@ mod map_tests {
         // assert_eq!(map.vehicle_id, 2);
     }
 
-    #[test]
-    fn test_map_serialize() {
-        let mut map = Map::new((4, 4).into());
-
-        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
-
-        let test_path ="saves/test_map.json".to_string();
-
-        map.save_to_file(&test_path).unwrap();
-
-        let mut deserialized: Map = Map::load_from_file(test_path).unwrap();
-
-        assert_eq!(
-            deserialized.grid.get_tile(&deserialized.grid.pos(0, 0)),
-            map.grid.get_tile(&deserialized.grid.pos(0, 0)),
-        );
-
-        let pos = deserialized.grid.pos(0, 0);
-
-        assert!(deserialized
-            .grid
-            .get_tile_mut(&pos)
-            .unwrap()
-            .reserve(1234, pos)
-            .is_err())
-    }
 }

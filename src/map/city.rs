@@ -20,7 +20,8 @@ pub struct City {
     pos: Position,
     name: String,
     // pub rating: f32,
-    pub grow_ticks: u32,
+    grow_ticks: u32,
+    pub grow_rate: u32,
     id: Id,
     pub houses: Vec<Id>,
     // vehicle_on_the_way: Option<Id>,
@@ -32,6 +33,7 @@ impl City {
             pos,
             name,
             grow_ticks: rand::gen_range(0, CITY_GROW_TICKS),
+            grow_rate: CITY_GROW_TICKS,
             id,
             houses: Vec::new(),
         }
@@ -100,11 +102,11 @@ impl City {
     }
 
     pub fn update(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) {
-        // self.grow_ticks += 1;
-        // if self.grow_ticks > CITY_GROW_TICKS {
-        //     self.grow_ticks = 0;
-        //     self.grow_building(buildings, grid);
-        // }
+        self.grow_ticks += 1;
+        if self.grow_ticks > self.grow_rate {
+            self.grow_ticks = 0;
+            self.grow_building(buildings, grid);
+        }
     }
 
     pub fn random_house(&self) -> Id {

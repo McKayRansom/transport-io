@@ -50,7 +50,6 @@ enum PauseMenuSelect {
     Continue,
     Save,
     Load,
-    #[cfg(not(target_family = "wasm"))]
     Quit,
 }
 
@@ -95,7 +94,6 @@ impl UiState {
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
                 MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
                 MenuItem::new(PauseMenuSelect::Load, "Load".to_string()),
-                #[cfg(not(target_family = "wasm"))]
                 MenuItem::new(PauseMenuSelect::Quit, "Menu".to_string()),
             ]),
         }
@@ -258,6 +256,9 @@ impl UiState {
                     PauseMenuSelect::Continue => {
                         self.pause_menu_open = false;
                     }
+                    PauseMenuSelect::Save => {
+                        map.save().expect("Failed to save!");
+                    }
                     PauseMenuSelect::Quit => {
                         ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)
                     }
@@ -292,9 +293,13 @@ impl UiState {
             '-' => ctx.tileset.zoom *= PLUS_MINUS_SENSITVITY,
             '=' => ctx.tileset.zoom /= PLUS_MINUS_SENSITVITY,
 
+            // TODO: This doesn't work on browser??
             '\u{1b}' => {
                 self.pause_menu_open = !self.pause_menu_open;
-            }
+            },
+            'm' => {
+                self.pause_menu_open = !self.pause_menu_open;
+            },
 
             _ => {
                 self.time_select.key_down(ch);

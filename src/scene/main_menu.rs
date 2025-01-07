@@ -15,7 +15,9 @@ use macroquad::text::draw_text;
 use macroquad::window::{screen_height, screen_width};
 
 enum MenuOption {
-    Play,
+    Continue,
+    Scenarios,
+    Freeplay,
     // Settings,
     // Credits,
     #[cfg(not(target_family = "wasm"))]
@@ -32,7 +34,9 @@ impl MainMenu {
     pub async fn new(_ctx: &mut Context) -> Self {
         Self {
             menu: Menu::new(vec![
-                MenuItem::new(MenuOption::Play, "Play".to_string()),
+                MenuItem::new(MenuOption::Continue, "Continue".to_string()),
+                MenuItem::new(MenuOption::Scenarios, "Scenarios".to_string()),
+                MenuItem::new(MenuOption::Freeplay, "Freeplay".to_string()),
                 #[cfg(not(target_family = "wasm"))]
                 MenuItem::new(MenuOption::Quit, "Quit".to_string()),
             ])
@@ -43,8 +47,14 @@ impl MainMenu {
 
     fn menu_option_selected(&self, menu_option: &MenuOption, ctx: &mut Context) {
         match menu_option {
-            MenuOption::Play => {
+            MenuOption::Continue => {
+                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::Continue))
+            }
+            MenuOption::Scenarios => {
                 ctx.switch_scene_to = Some(EScene::LevelSelect);
+            }
+            MenuOption::Freeplay => {
+                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::New))
             }
             // MenuOption::Settings => {
             //     self.settings_subscene.active = true;
