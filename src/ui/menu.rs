@@ -53,6 +53,6 @@ impl<V> Menu<V> {
             }
         });
 
-        return selected;
+        selected
     }
 }

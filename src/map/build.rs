@@ -6,7 +6,7 @@ use crate::{
 use super::{
     building::{Building, BUILDING_SIZE},
     grid::Grid,
-    tile::{Ramp, Road, Tile},
+    tile::{Road, Tile},
     Direction, Position,
 };
 
@@ -120,7 +120,7 @@ impl BuildActionClearArea {
     pub fn new(pos: Position) -> Self {
         let pos = pos.round_to(2);
         Self {
-            pos: pos,
+            pos,
             clear_actions: [
                 BuildActionClearTile::new(pos),
                 BuildActionClearTile::new(pos + Direction::RIGHT),
@@ -170,7 +170,7 @@ impl BuildAction for BuildActionClearArea {
     }
 }
 
-struct BuildActionList {
+pub struct BuildActionList {
     list: Vec<Box<dyn BuildAction>>,
 }
 
@@ -327,6 +327,8 @@ impl Grid {
 
 #[cfg(test)]
 mod grid_build_tests {
+    use crate::map::tile::Ramp;
+
     use super::Direction;
 
     use super::*;
@@ -403,7 +405,7 @@ mod grid_build_tests {
     #[test]
     #[ignore = "bridges are broken :("]
     fn test_build_bridge() -> BuildResult {
-        let mut grid = Grid::new_from_string("____");
+        let grid = Grid::new_from_string("____");
 
         // grid.build_bridge((0, 0).into(), grid.pos(3, 0))?;
 
@@ -437,7 +439,7 @@ mod grid_build_tests {
         // grid.build_two_way_road((0, 0).into(), (0, 0).into()).unwrap();
         // assert_eq!(grid, Grid::new_from_string("**__\n**__"));
 
-        let mut map = &mut Map::new_blank((4, 4));
+        let map = &mut Map::new_blank((4, 4));
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("*<<<\n>>>*\n____\n____"));

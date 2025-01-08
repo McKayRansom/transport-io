@@ -26,29 +26,29 @@ const WASM_SAVE_KEY: &str = "save";
 #[derive(Debug)]
 pub enum SaveError {
     #[allow(unused)]
-    FailedToReadFile(std::io::Error),
+    ReadFile(std::io::Error),
     #[allow(unused)]
-    FailedToDeserialize(SpannedError),
+    Deserialize(SpannedError),
     #[allow(unused)]
-    FailedToSerialize(ron::Error),
+    Serialize(ron::Error),
 }
 
 impl From<std::io::Error> for SaveError {
     fn from(err: std::io::Error) -> Self {
-        SaveError::FailedToReadFile(err)
+        SaveError::ReadFile(err)
     }
 }
 
 impl From<SpannedError> for SaveError {
     fn from(err: SpannedError) -> Self {
-        SaveError::FailedToDeserialize(err)
+        SaveError::Deserialize(err)
     }
 }
 
 
 impl From<ron::Error> for SaveError {
     fn from(err: ron::Error) -> Self {
-        SaveError::FailedToSerialize(err)
+        SaveError::Serialize(err)
     }
 }
 
@@ -125,7 +125,7 @@ mod save_tests {
     #[test]
     #[ignore = "Overwrites current save game..."]
     fn test_map_serialize() {
-        let mut map = Map::new_blank((4, 4).into());
+        let mut map = Map::new_blank((4, 4));
 
         map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
 

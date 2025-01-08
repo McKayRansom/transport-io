@@ -69,7 +69,6 @@ impl<V> Toolbar<V> {
     }
 
     pub fn draw(&mut self, ctx: &Context, x: f32, y: f32) {
-
         if self.kind == ToolbarType::Veritcal {
             self.rect.w = TOOLBAR_SPACE;
             self.rect.h = self.items.len() as f32 * TOOLBAR_SPACE;
@@ -137,17 +136,13 @@ impl<V> Toolbar<V> {
                     Color::new(0.0, 0.0, 0.0, 0.1),
                 );
 
-                if mouse_down {
-                    if self.mouse_down == None {
-                        if self.selected == None {
-                            self.selected = Some(i);
-                        } else if self.selected == Some(i) {
-                            self.selected = None;
-                        } else {
-                            self.selected = Some(i);
-                        }
-                        self.mouse_down = Some(i);
+                if mouse_down && self.mouse_down.is_none() {
+                    if self.selected.is_none() || self.selected != Some(i) {
+                        self.selected = Some(i);
+                    } else {
+                        self.selected = None;
                     }
+                    self.mouse_down = Some(i);
                 }
             }
 

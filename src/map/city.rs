@@ -2,7 +2,7 @@ use macroquad::{color::WHITE, prelude::rand};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    build::{self, BuildAction, BuildError, BuildResult},
+    build::{BuildError, BuildResult},
     building::Building,
     grid::Grid,
     Direction, Position,
@@ -58,7 +58,7 @@ impl City {
         Ok(())
     }
 
-    fn generate_center_roads(&mut self, grid: &mut Grid) -> BuildResult {
+    fn generate_center_roads(&mut self, _grid: &mut Grid) -> BuildResult {
 
         // We need a mut Map for this :(
         // build::action_two_way_road(self.pos, self.pos + Direction::RIGHT * 5)

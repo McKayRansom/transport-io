@@ -16,7 +16,7 @@ impl LevelSelect {
             menu.items.push(MenuItem::new(i as i32, format!("{i}").to_string()));
         }
         Self {
-            menu: menu,
+            menu,
         }
     }
 

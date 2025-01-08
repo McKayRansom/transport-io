@@ -17,11 +17,11 @@ impl Map {
 
         let city_id = map.new_city(
             (LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 / 2).into(),
-            format!("level {level}").into(),
+            format!("level {level}"),
         );
 
         // WOOF
-        map.get_city_mut(city_id).unwrap().grow_rate = std::u32::MAX;
+        map.get_city_mut(city_id).unwrap().grow_rate = u32::MAX;
 
         match level {
             0 => {

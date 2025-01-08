@@ -27,6 +27,7 @@ pub mod menu;
 pub mod skin;
 mod toolbar;
 mod view_build;
+mod build_history;
 
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
@@ -111,7 +112,7 @@ impl UiState {
             println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
         }
 
-        self.view_build.update();
+        self.view_build.update(map);
 
         if self.view_build.is_mouse_over(new_mouse_pos) {
             return;
