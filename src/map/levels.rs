@@ -1,4 +1,4 @@
-use super::{city::City, Map, Position};
+use super::{Map, Position};
 
 const LEVEL_MAP_SIZE: (i16, i16) = (2 * 9, 2 * 9);
 
@@ -15,13 +15,13 @@ impl Map {
     pub fn new_level(level: usize) -> Self {
         let mut map = Self::new_blank(LEVEL_MAP_SIZE);
 
-        let city_id = map.cities.insert(City::new(
-            map.cities.id,
+        let city_id = map.new_city(
             (LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 / 2).into(),
             format!("level {level}").into(),
-        ));
+        );
 
-        map.cities.hash_map.get_mut(&city_id).unwrap().grow_rate = std::u32::MAX;
+        // WOOF
+        map.get_city_mut(city_id).unwrap().grow_rate = std::u32::MAX;
 
         match level {
             0 => {

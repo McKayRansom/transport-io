@@ -64,6 +64,10 @@ impl<V> Toolbar<V> {
         Some(&self.items[selected].value)
     }
 
+    pub fn clear_selected(&mut self) {
+        self.selected = None;
+    }
+
     pub fn draw(&mut self, ctx: &Context, x: f32, y: f32) {
 
         if self.kind == ToolbarType::Veritcal {

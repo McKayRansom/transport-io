@@ -39,7 +39,7 @@ pub struct Map {
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
     pub buildings: BuildingHashMap,
-    pub cities: CityHashMap,
+    cities: CityHashMap,
 }
 
 impl Map {
@@ -81,7 +81,15 @@ impl Map {
         }
     }
 
-    fn new_city(&mut self, pos: Position, name: String) -> BuildResult {
+    pub fn new_city(&mut self, pos: Position, name: String) -> Id {
+        self.cities.insert(City::new(self.cities.id, pos, name))
+    }
+
+    pub fn get_city_mut(&mut self, id: Id) -> Option<&mut City> {
+        self.cities.hash_map.get_mut(&id)
+    }
+
+    fn new_city_generate(&mut self, pos: Position, name: String) -> BuildResult {
         let mut city = City::new(self.cities.id, pos, name);
         city.generate(&mut self.buildings, &mut self.grid)?;
         self.cities.insert(city);
@@ -91,7 +99,7 @@ impl Map {
     fn generate(&mut self) -> BuildResult {
         let size: Position = self.grid.size().into();
         let grid_center: Position = size / 2;
-        self.new_city(grid_center, "CityVille".to_string())
+        self.new_city_generate(grid_center, "CityVille".to_string())
     }
 
     pub fn add_vehicle(&mut self, start_pos: Position, end_pos: Position) -> Option<Id> {

@@ -29,6 +29,19 @@ pub struct Road {
 }
 
 impl Road {
+
+    pub fn new_connected(dir: Direction) -> Self {
+        Road {
+            should_yield: false,
+            reserved: Reserved::new(),
+            connections: if dir != Direction::NONE {
+                vec![dir]
+            } else {
+                Vec::new()
+            },
+        }
+    }
+
     pub fn new() -> Self {
         Road {
             should_yield: false,

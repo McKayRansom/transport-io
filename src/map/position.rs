@@ -77,6 +77,17 @@ impl Position {
             direction,
         )
     }
+
+    pub fn corner_pos(&self, dir: Direction) -> Self {
+        match dir {
+            Direction::LEFT => *self + Direction::RIGHT,
+            Direction::RIGHT => *self + Direction::DOWN,
+            Direction::DOWN => *self,
+            Direction::UP => *self + Direction::DOWN_RIGHT,
+            // Direction::NONE => pos,
+            _ => *self,
+        }
+    }
 }
 
 impl From<(i16, i16)> for Position {

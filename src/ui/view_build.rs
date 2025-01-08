@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use macroquad::{
     color::{Color, RED},
     input::{is_mouse_button_down, MouseButton},
@@ -6,7 +8,12 @@ use macroquad::{
 };
 
 use crate::{
-    context::Context, map::{build::{BuildError, BuildResult}, Map, Position}, tileset::{Sprite, Tileset}
+    context::Context,
+    map::{
+        build::{BuildAction, BuildError, BuildResult},
+        Map, Position,
+    },
+    tileset::{Sprite, Tileset},
 };
 
 use super::toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
@@ -17,16 +24,18 @@ const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
 
 #[derive(Clone, Copy, PartialEq)]
 enum BuildMode {
-    // Vehicle,
-    // Station,
-    // AddRoad,
-    // RemoveRoad,
     TwoWayRoad,
     OneWayRoad,
-    Bridge,
+    // Bridge,
     Clear,
-    // Yield,
-    // Debug,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum BuildActions {
+    Undo,
+    Redo,
+    Copy,
+    Paste,
 }
 
 const BUILD_ERROR_TIME: u32 = 60 * 3;
@@ -41,7 +50,9 @@ pub struct ViewBuild {
     last_mouse_pos: Option<Position>,
     bridge_start_pos: Option<Position>,
     build_toolbar: Toolbar<BuildMode>,
+    edit_action_bar: Toolbar<BuildActions>,
     build_err: Option<BuildErrorMsg>,
+    actions_queue: VecDeque<Box<dyn BuildAction>>,
 }
 
 impl ViewBuild {
@@ -64,11 +75,21 @@ impl ViewBuild {
                         '2',
                         Sprite::new(8, 1),
                     ),
-                    ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '3', Sprite::new(8, 2)),
+                    // ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '3', Sprite::new(8, 2)),
                     ToolbarItem::new(BuildMode::Clear, "Delete", '4', Sprite::new(8, 3)),
                 ],
             ),
+            edit_action_bar: Toolbar::new(
+                ToolbarType::Horizontal,
+                vec![
+                    ToolbarItem::new(BuildActions::Undo, "Undo", 'u', Sprite::new(11, 0)),
+                    ToolbarItem::new(BuildActions::Redo, "Undo", 'u', Sprite::new(11, 1)),
+                    ToolbarItem::new(BuildActions::Copy, "Undo", 'u', Sprite::new(11, 2)),
+                    ToolbarItem::new(BuildActions::Paste, "Undo", 'u', Sprite::new(11, 3)),
+                ],
+            ),
             build_err: None,
+            actions_queue: VecDeque::new(),
         }
     }
 
@@ -112,35 +133,14 @@ impl ViewBuild {
         }
         match build_mode.unwrap() {
             BuildMode::Clear => {
-                map.clear_area(&mouse_pos)?;
-            }
-            // BuildMode::Yield => {
-            //     if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&mouse_pos) {
-            //         road.should_yield = !road.should_yield;
-            //     }
-            // }
-            BuildMode::Bridge => {
-                if let Some(start_pos) = self.bridge_start_pos {
-                    self.bridge_start_pos = None;
-                    map.grid.build_bridge(start_pos, mouse_pos)?;
-                } else {
-                    self.bridge_start_pos = Some(mouse_pos);
-                }
+                // map.clear_area(&mouse_pos)?;
             }
             BuildMode::TwoWayRoad => {
                 if let Some(last_mouse_pos) = self.last_mouse_pos {
                     // let dir = last_mouse_pos.direction_to(pos);
-                    map.grid.build_road_autoconnect(last_mouse_pos)?;
+                    // map.grid.build_road_autoconnect(last_mouse_pos)?;
                 }
             }
-            // BuildMode::Roundabout => {
-            //     let roundabout = map.add_intersection();
-            //     for tile: Tile in map.path_grid.get_tiles(pos, 2) {
-            //         if let Tile::Road(road) = tile {
-            //             road.intersection = roundabout;
-            //         }
-            //     }
-            // }
             _ => {}
         }
 
@@ -153,8 +153,9 @@ impl ViewBuild {
         }
     }
 
-    fn mouse_motion_build(&mut self, pos: Position, map: &mut Map) -> BuildResult {
+    fn mouse_motion_build(&mut self, pos: Position, map: &mut Map) -> Result<Box<dyn BuildAction>, BuildError> {
         if is_mouse_button_down(MouseButton::Left) && self.build_toolbar.get_selected().is_some() {
+            println!("Mouse motion, x: {}, y: {}", pos.x, pos.y);
             match self.build_toolbar.get_selected().unwrap() {
                 // BuildMode::AddRoad => {
                 //     if let Some(last_mouse_pos) = self.last_mouse_pos {
@@ -171,24 +172,22 @@ impl ViewBuild {
                 BuildMode::TwoWayRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
                         // let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_road_autoconnect(last_mouse_pos)?;
+                        // map.grid.build_road_autoconnect(last_mouse_pos)?;
                     }
                 }
                 BuildMode::OneWayRoad => {
                     if let Some(last_mouse_pos) = self.last_mouse_pos {
-                        let dir = last_mouse_pos.direction_to(pos);
-                        map.grid.build_one_way_road(last_mouse_pos, dir)?;
+                        // let dir = last_mouse_pos.direction_to(pos);
+                        // map.grid.build_one_way_road(last_mouse_pos, pos)?;
                     }
                 }
                 BuildMode::Clear => {
-                    map.clear_area(&pos)?;
+                    // map.clear_area(&pos)?;
                 }
-                _ => {}
             }
         }
-        println!("Mouse motion, x: {}, y: {}", pos.x, pos.y);
 
-        Ok(())
+        Err(BuildError::InvalidTile)
     }
 
     pub fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
@@ -212,15 +211,15 @@ impl ViewBuild {
         rect.w *= 2.;
         rect.h *= 2.;
         match self.build_toolbar.get_selected() {
-            Some(BuildMode::Bridge) => {
-                if let Some(start_pos) = self.bridge_start_pos {
-                    for pos in start_pos.iter_line_to(last_mouse_pos).0 {
-                        tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
-                    }
-                } else {
-                    tileset.draw_rect(&rect, SELECTED_BUILD);
-                }
-            }
+            // Some(BuildMode::Bridge) => {
+            //     if let Some(start_pos) = self.bridge_start_pos {
+            //         for pos in start_pos.iter_line_to(last_mouse_pos).0 {
+            //             tileset.draw_rect(&Rect::from(pos), SELECTED_BUILD);
+            //         }
+            //     } else {
+            //         tileset.draw_rect(&rect, SELECTED_BUILD);
+            //     }
+            // }
             // Some(BuildMode::Debug) => {
             //     if let Some((path, _cost)) = map.grid.find_road(&last_mouse_pos) {
             //         for pos in path {
@@ -247,14 +246,31 @@ impl ViewBuild {
 
         self.draw_build_err(&ctx.tileset);
 
-        self.build_toolbar.draw(
-            ctx,
-            screen_width() / 2.0,
-            screen_height() - TOOLBAR_SPACE,
-        );
+        self.build_toolbar
+            .draw(ctx, screen_width() / 2.0, screen_height() - TOOLBAR_SPACE);
+
+        self.edit_action_bar
+            .draw(ctx, screen_width() - (TOOLBAR_SPACE * 4.), screen_height() - TOOLBAR_SPACE);
+    }
+
+    fn do_edit_action(&mut self, action: BuildActions) {
+        match action {
+            BuildActions::Undo => {
+                // self.
+            },
+            BuildActions::Redo => todo!(),
+            BuildActions::Copy => todo!(),
+            BuildActions::Paste => todo!(),
+        }
     }
 
     pub fn update(&mut self) {
+
         self.update_build_err();
+
+        if let Some(action) = self.edit_action_bar.get_selected().cloned() {
+            self.do_edit_action(action);
+            self.edit_action_bar.clear_selected();
+        }
     }
 }

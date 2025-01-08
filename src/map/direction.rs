@@ -25,6 +25,8 @@ impl Direction {
     pub const UP: Direction = Direction::new(0, -1, 0);
     pub const DOWN: Direction = Direction::new(0, 1, 0);
 
+    pub const DOWN_RIGHT: Direction = Direction::new(1, 1, 0);
+
     pub const LAYER_UP: Direction = Direction::new(0, 0, 1);
     pub const LAYER_DOWN: Direction = Direction::new(0, 0, -1);
     pub const LAYER_DOWN_2: Direction = Direction::new(0, 0, -2);
