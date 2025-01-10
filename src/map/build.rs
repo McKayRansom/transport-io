@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    building::{Building, BUILDING_SIZE},
+    building::{self, Building, BUILDING_SIZE},
     grid::Grid,
     tile::{Road, Tile},
     Direction, Position,
@@ -170,6 +170,58 @@ impl BuildAction for BuildActionClearArea {
 
             map.buildings.hash_map.insert(id, building);
         }
+
+        Ok(())
+    }
+}
+
+
+pub struct BuildActionBuilding {
+    pos: Position,
+    building: Building,
+    building_id: Option<Id>,
+}
+
+impl BuildActionBuilding {
+    pub fn new(pos: Position, building: Building) -> Self {
+        let pos = pos.round_to(2);
+        Self {
+            pos,
+            building,
+            building_id: None,
+        }
+    }
+}
+
+impl BuildAction for BuildActionBuilding {
+    fn execute(&mut self, map: &mut Map) -> BuildResult {
+
+        self.building_id = Some(map.buildings.insert(self.building));
+        // if let Some((id, building)) = self.old_building {
+            // if let Some(city) = map.get_city_mut(building.city_id) {
+                // city.houses.push(id);
+            // }
+
+            // map.buildings.hash_map.insert(id, building);
+        // }
+
+        Ok(())
+    }
+
+    fn undo(&mut self, map: &mut Map) -> BuildResult {
+
+        if let Some(building_id) = self.building_id {
+            if let Some(_building) = map.buildings.hash_map.remove(&building_id) {
+                // if let Some(city) = map.cities.hash_map.get_mut(&building.city_id) {
+                //     if let Some(pos) = city.houses.iter().position(|x| x == &building_id) {
+                //         city.houses.swap_remove(pos);
+                //     }
+                // }
+                // self.old_building = Some((*building_id, building));
+                self.building_id = None;
+            }
+        }
+
 
         Ok(())
     }

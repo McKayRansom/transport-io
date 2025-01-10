@@ -8,8 +8,7 @@ use macroquad::{
 use crate::{
     context::Context,
     map::{
-        build::{action_one_way_road, action_two_way_road, BuildAction, BuildActionClearArea, BuildError, BuildResult},
-        Map, Position,
+        build::{action_one_way_road, action_two_way_road, BuildAction, BuildActionBuilding, BuildActionClearArea, BuildError, BuildResult}, building::Building, Map, Position
     },
     tileset::{Sprite, Tileset},
 };
@@ -28,6 +27,7 @@ enum BuildMode {
     TwoWayRoad,
     OneWayRoad,
     // Bridge,
+    Station,
     Clear,
 }
 
@@ -76,7 +76,8 @@ impl ViewBuild {
                         '2',
                         Sprite::new(8, 1),
                     ),
-                    ToolbarItem::new(BuildMode::Clear, "Delete", '3', Sprite::new(8, 3)),
+                    ToolbarItem::new(BuildMode::Station, "Station", '3', Sprite::new(8, 4)),
+                    ToolbarItem::new(BuildMode::Clear, "Delete", '4', Sprite::new(8, 3)),
                 ],
             ),
             edit_action_bar: Toolbar::new(
@@ -141,6 +142,9 @@ impl ViewBuild {
                     None
                 }
             }
+            BuildMode::Station => {
+                Some(Box::new(BuildActionBuilding::new(mouse_pos, Building::new_station(mouse_pos))))
+            }
             _ => None,
         }
     }
@@ -170,6 +174,7 @@ impl ViewBuild {
                         return Some(Box::new(BuildActionClearArea::new(pos)));
                     }
                 }
+                BuildMode::Station => {}
             }
         }
 

@@ -6,7 +6,7 @@ use macroquad::rand::srand;
 use serde::{Deserialize, Serialize};
 
 pub mod build;
-mod building;
+pub mod building;
 mod city;
 pub mod grid;
 pub mod tile;
