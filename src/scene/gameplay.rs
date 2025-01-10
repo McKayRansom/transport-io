@@ -1,12 +1,11 @@
-// use std::path::Path;
-
-// use super::pause::Pause;
-use super::{GameOptions, Scene};
+use super::{EScene, GameOptions, Scene};
 // use crate::audio::play_sfx;
 use crate::context::Context;
 // use crate::input::action_pressed;
 // use crate::input::Action;
 use crate::map::Map;
+use crate::save::LoadResult;
+use crate::ui::popup::{Popup, PopupResult};
 // use crate::menu::MenuSelect;
 // use crate::text::draw_text;
 use crate::ui::{TimeSelect, UiState};
@@ -20,20 +19,27 @@ pub struct Gameplay {
     ui: UiState,
     last_ui_update: f64,
     last_map_update: f64,
+    popup: Option<Popup>,
+}
+
+impl GameOptions {
+    pub fn create(&self) -> LoadResult {
+        match &self {
+            GameOptions::New => Ok(Map::new_generate(DEFAULT_MAP_SIZE)),
+            GameOptions::Level(level) => Ok(Map::new_level(*level)),
+            GameOptions::Continue => Map::load(),
+        }
+    }
 }
 
 impl Gameplay {
-    pub async fn new(ctx: &mut Context, options: GameOptions) -> Self {
+    pub async fn new(ctx: &mut Context, map: Map) -> Self {
         let gameplay = Gameplay {
-            map: match options {
-                GameOptions::New => Map::new_generate(DEFAULT_MAP_SIZE),
-                GameOptions::Level(level) => Map::new_level(level),
-                // TODO: Handle error!
-                GameOptions::Continue => Map::load().expect("Failed to load save!"),
-            },
+            map: map,
             ui: UiState::new().await,
             last_ui_update: get_time(),
             last_map_update: get_time(),
+            popup: None,
         };
 
         // TODO: Camera center function
@@ -62,7 +68,9 @@ impl Scene for Gameplay {
         };
 
         if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open) && get_time() - self.last_map_update > map_speed {
-            self.map.update();
+            if self.map.update() {
+                self.popup = Some(Popup::new(format!("Level completed!")));
+            }
             self.last_map_update = get_time();
         }
         
@@ -72,28 +80,14 @@ impl Scene for Gameplay {
         self.map.draw(&ctx.tileset);
 
         self.ui.draw(&self.map, ctx);
-        // match self.ui.draw(&self.map, ctx) {
-        //     MenuSelect::Continue => {
-        //         if let Ok(map) = Map::load_from_file(Path::new("saves/game.json")) {
-        //             self.map = map;
-        //             self.menu = false;
-        //         }
-        //     }
 
-        //     MenuSelect::NewGame => {
-        //         self.map = Map::new();
-        //         if self.map.generate().is_err() {
-        //             println!("Error generating map!");
-        //         }
-        //         self.menu = false;
-        //     }
-
-        //     MenuSelect::Save => {
-        //         self.map.save_to_file(Path::new("saves/game.json")).unwrap();
-        //     }
-
-        //     _ => {}
-        // }
+        if let Some(popup) = &self.popup {
+            match popup.draw() {
+                Some(PopupResult::Ok) => ctx.switch_scene_to = Some(EScene::Gameplay(Map::new_level(1))),
+                Some(PopupResult::Cancel) => self.popup = None,
+                None => {},
+            }
+        }
     }
 }
 

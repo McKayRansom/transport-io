@@ -4,7 +4,10 @@ use super::{EScene, Scene};
 // use crate::audio::play_sfx;
 use crate::consts::*;
 use crate::context::Context;
-use crate::ui::menu::{Menu, MenuItem};
+use crate::ui::{
+    menu::{Menu, MenuItem},
+    popup::Popup}
+    ;
 // use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
 // use crate::input::{action_pressed, Action};
 // use crate::text::{self, draw_text};
@@ -14,6 +17,7 @@ use macroquad::text::draw_text;
 // use macroquad::ui::{hash, root_ui, widgets};
 use macroquad::window::{screen_height, screen_width};
 
+#[derive(Clone)]
 enum MenuOption {
     Continue,
     Scenarios,
@@ -28,6 +32,8 @@ pub struct MainMenu {
     menu: Menu<MenuOption>,
     // settings_subscene: Settings,
     // credits_subscene: Credits,
+    popup: Option<Popup>,
+
 }
 
 impl MainMenu {
@@ -39,22 +45,26 @@ impl MainMenu {
                 MenuItem::new(MenuOption::Freeplay, "Freeplay".to_string()),
                 #[cfg(not(target_family = "wasm"))]
                 MenuItem::new(MenuOption::Quit, "Quit".to_string()),
-            ])
+            ]),
+            popup: None,
             // settings_subscene: Settings::new(ctx, false),
             // credits_subscene: Credits::new(ctx),
         }
     }
 
-    fn menu_option_selected(&self, menu_option: &MenuOption, ctx: &mut Context) {
+    fn menu_option_selected(&mut self, menu_option: MenuOption, ctx: &mut Context) {
         match menu_option {
             MenuOption::Continue => {
-                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::Continue))
+                match super::GameOptions::Continue.create() {
+                    Ok(map) => ctx.switch_scene_to = Some(EScene::Gameplay(map)),
+                    Err(_) => self.popup = Some(Popup::new(format!("Error loading save"))),
+                }
             }
             MenuOption::Scenarios => {
                 ctx.switch_scene_to = Some(EScene::LevelSelect);
             }
             MenuOption::Freeplay => {
-                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::New))
+                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::New.create().expect("Error generating map")))
             }
             // MenuOption::Settings => {
             //     self.settings_subscene.active = true;
@@ -114,7 +124,7 @@ impl Scene for MainMenu {
             WHITE,
         );
     
-        if let Some(selected) = self.menu.draw() {
+        if let Some(selected) = self.menu.draw().cloned() {
             self.menu_option_selected(selected, ctx);
         }
 
@@ -127,5 +137,13 @@ impl Scene for MainMenu {
             20.,
             WHITE,
         );
+
+        if let Some(popup) = &self.popup {
+            match popup.draw() {
+                None => {}
+                Some(crate::ui::popup::PopupResult::Ok) => self.popup = None,
+                Some(crate::ui::popup::PopupResult::Cancel) => self.popup = None,
+            }
+        }
     }
 }

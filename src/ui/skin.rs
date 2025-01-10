@@ -1,4 +1,4 @@
-use macroquad::{color::Color, math::RectOffset, ui::{root_ui, Skin}};
+use macroquad::{color::{Color, BLACK}, math::RectOffset, ui::{root_ui, Skin}};
 
 pub const MENU_FONT_SIZE: u16 = 48;
 pub const MENU_MARGIN: f32 = 16.;
@@ -8,13 +8,13 @@ pub async fn init() {
         // let font = load_ttf_font("examples/ui_assets/MinimalPixel v2.ttf")
         //     .await
         //     .unwrap();
-        // let label_style = root_ui()
-        //     .style_builder()
-        //     .with_font(&font)
-        //     .unwrap()
-        //     .text_color(Color::from_rgba(120, 120, 120, 255))
-        //     .font_size(15)
-        //     .build();
+        let label_style = root_ui()
+            .style_builder()
+            // .with_font(&font)
+            // .unwrap()
+            .text_color(BLACK)
+            .font_size(MENU_FONT_SIZE)
+            .build();
 
         let window_color = Color::from_hex(0x585858);
 
@@ -135,7 +135,7 @@ pub async fn init() {
         Skin {
             window_style,
             button_style,
-            // label_style,
+            label_style,
             // checkbox_style,
             // editbox_style,
             // combobox_style,

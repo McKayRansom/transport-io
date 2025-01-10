@@ -7,16 +7,13 @@ pub enum GameOptions {
 }
 
 
-/// enum of various scenes that exist
-// not sure if there's a better way to do this...
-#[derive(Clone, Debug)]
 pub enum EScene {
-    Gameplay(GameOptions),
+    Gameplay(Map),
     MainMenu,
     LevelSelect,
 }
 
-use crate::context::Context;
+use crate::{context::Context, map::Map};
 
 // pub mod credits;
 pub mod gameplay;

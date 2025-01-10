@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use super::{Direction, Position};
 
 use crate::{
-    tileset::{Sprite, Tileset}, hash_map_id::Id,
+    hash_map_id::Id,
+    tileset::{Sprite, Tileset},
 };
 
 pub const BUILDING_SIZE: (i8, i8) = (2, 2);
@@ -30,6 +31,7 @@ pub struct Building {
     // pub id: Id,
     pub city_id: Id,
     pub vehicle_on_the_way: Option<Id>,
+    pub arrived_count: i32,
     production_tics: i32,
     production_rate: i32,
     building_type: BuildingType,
@@ -43,6 +45,7 @@ impl Building {
             // 0,
             city_id,
             vehicle_on_the_way: None,
+            arrived_count: 0,
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
             production_rate: HOUSE_UPDATE_TICKS,
             building_type: BuildingType::House,
@@ -54,6 +57,7 @@ impl Building {
             pos,
             city_id: 0,
             vehicle_on_the_way: None,
+            arrived_count: 0,
             production_tics: 0,
             production_rate: 0,
             building_type: BuildingType::Station,
@@ -71,10 +75,17 @@ impl Building {
             BuildingType::Station => &STATION_SPRITE,
         };
         tileset.draw_tile(*sprite, color, &self.pos.into(), 0.0);
+
+        tileset.draw_text(
+            format!("{}", self.arrived_count).as_str(),
+            16.,
+            WHITE,
+            &(self.pos + Direction::DOWN_RIGHT).into(),
+        );
     }
 
     // pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
-        // pos.default_connections()
+    // pos.default_connections()
     // }
 
     pub fn update(&mut self) -> bool {
@@ -89,5 +100,5 @@ impl Building {
         } else {
             false
         }
-   }
+    }
 }

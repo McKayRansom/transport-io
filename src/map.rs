@@ -11,8 +11,8 @@ mod city;
 pub mod grid;
 pub mod tile;
 
-pub mod vehicle;
 pub mod levels;
+pub mod vehicle;
 
 mod position;
 pub use position::Position;
@@ -22,20 +22,25 @@ use tile::Tile;
 use vehicle::{Status, Vehicle};
 
 use crate::{
-    tileset::Tileset,
     hash_map_id::{HashMapId, Id},
+    tileset::Tileset,
 };
 
 const _CITY_BLOCK_SIZE: i16 = 8;
 const _CITY_BLOCK_COUNT: i16 = 1;
-
 
 type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
 type CityHashMap = HashMapId<City>;
 
 #[derive(Serialize, Deserialize)]
+pub struct MapMetadata {
+    pub is_level: bool,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Map {
+    pub metadata: MapMetadata,
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
     pub buildings: BuildingHashMap,
@@ -46,6 +51,7 @@ impl Map {
     pub fn new_blank(size: (i16, i16)) -> Self {
         srand(1234);
         Map {
+            metadata: MapMetadata { is_level: false },
             // grid: Grid::new(GRID_SIZE.0 as usize, GRID_SIZE.1 as usize),
             grid: Grid::new(size),
             vehicles: VehicleHashMap::new(),
@@ -74,6 +80,7 @@ impl Map {
     #[allow(unused)]
     pub fn new_from_string(string: &str) -> Self {
         Map {
+            metadata: MapMetadata{is_level: false},
             grid: Grid::new_from_string(string),
             vehicles: VehicleHashMap::new(),
             buildings: BuildingHashMap::new(),
@@ -111,18 +118,26 @@ impl Map {
         }
     }
 
-    fn update_buildings(&mut self) {
+    fn update_buildings(&mut self) -> bool {
         let mut vehicles_to_add: Vec<(Id, Position)> = Vec::new();
+        let mut all_goals_met = true;
+
         for building in self.buildings.values_mut() {
             if building.update() {
                 vehicles_to_add.push((building.city_id, building.pos));
+            }
+
+
+            if building.arrived_count < 10 {
+                all_goals_met = false;
             }
         }
 
         for (city_id, start_pos) in vehicles_to_add {
             // generate a random destination
             if let Some(destination_building) = self
-                .buildings.hash_map
+                .buildings
+                .hash_map
                 .get(&self.cities.hash_map[&city_id].random_house())
             {
                 let destination_pos = destination_building.pos;
@@ -131,9 +146,11 @@ impl Map {
                 // destination_building.vehicle_on_the_way = _vehicle;
             }
         }
+
+        all_goals_met
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> bool {
         let mut to_remove: Vec<(Id, Status)> = Vec::new();
         for s in self.vehicles.hash_map.iter_mut() {
             let status = s.1.update(&mut self.grid);
@@ -141,24 +158,29 @@ impl Map {
                 to_remove.push((*s.0, status));
             }
         }
-        for id in to_remove {
-            let vehicle = self.vehicles.hash_map.get_mut(&id.0).unwrap();
-            if let Some(Tile::Building(building_id)) = self.grid.get_tile(&vehicle.destination) {
-                if let Some(building) = self.buildings.hash_map.get_mut(building_id) {
-                    building.vehicle_on_the_way = None;
+        for (id, status) in to_remove {
+            let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
+                if let Some(Tile::Building(building_id)) = self.grid.get_tile(&vehicle.destination) {
+                    if let Some(building) = self.buildings.hash_map.get_mut(building_id) {
+                        if status == Status::ReachedDestination {
+                            building.arrived_count += 1;
+                        } else if building.arrived_count > 0 {
+                            building.arrived_count -= 1;
+                        }
+                    }
                 }
-            }
-            self.vehicles.hash_map.remove(&id.0);
+           self.vehicles.hash_map.remove(&id);
 
             // self.update_rating(id.1 == Status::ReachedDestination);
         }
 
-        self.update_buildings();
+        let all_goals_met = self.update_buildings();
 
         for city in self.cities.values_mut() {
             city.update(&mut self.buildings, &mut self.grid);
         }
 
+        all_goals_met
     }
 
     pub fn draw(&self, tileset: &Tileset) {
@@ -221,5 +243,4 @@ mod map_tests {
         // assert_eq!(map.vehicles.len(), 1);
         // assert_eq!(map.vehicle_id, 2);
     }
-
 }

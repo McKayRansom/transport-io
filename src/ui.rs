@@ -24,6 +24,7 @@ use view_build::ViewBuild;
 
 mod grades;
 pub mod menu;
+pub mod popup;
 pub mod skin;
 mod toolbar;
 mod view_build;

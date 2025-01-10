@@ -44,7 +44,7 @@ async fn main() {
     };
 
     let mut current_scene: Box<dyn Scene> = match map::levels::TEST_LEVEL {
-        Some(level) => Box::new(Gameplay::new(&mut ctx, scene::GameOptions::Level(level)).await),
+        Some(level) => Box::new(Gameplay::new(&mut ctx, scene::GameOptions::Level(level).create().unwrap()).await),
         None => Box::new(MainMenu::new(&mut ctx).await),
     };
 
@@ -59,13 +59,12 @@ async fn main() {
             break;
         }
 
-        if let Some(escene) = ctx.switch_scene_to.clone() {
+        if let Some(escene) = ctx.switch_scene_to.take() {
             current_scene = match escene {
                 EScene::MainMenu => Box::new(MainMenu::new(&mut ctx).await),
-                EScene::Gameplay(options) => Box::new(Gameplay::new(&mut ctx, options).await),
+                EScene::Gameplay(map) => Box::new(Gameplay::new(&mut ctx, map).await),
                 EScene::LevelSelect => Box::new(LevelSelect::new(&mut ctx)),
             };
-            ctx.switch_scene_to = None;
         }
 
         next_frame().await;

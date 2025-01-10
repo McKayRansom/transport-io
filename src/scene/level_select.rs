@@ -21,7 +21,7 @@ impl LevelSelect {
     }
 
     fn level_selected(&self, selected: &i32, ctx: &mut Context) {
-        ctx.switch_scene_to = Some(EScene::Gameplay(GameOptions::Level(*selected as usize)));
+        ctx.switch_scene_to = Some(EScene::Gameplay(GameOptions::Level(*selected as usize).create().expect("Error loading Level")));
     }
 }
 

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    building::{self, Building, BUILDING_SIZE},
+    building::{Building, BUILDING_SIZE},
     grid::Grid,
     tile::{Road, Tile},
     Direction, Position,

@@ -53,7 +53,7 @@ impl From<ron::Error> for SaveError {
 }
 
 
-type LoadResult = Result<Map, SaveError>;
+pub type LoadResult = Result<Map, SaveError>;
 type SaveResult = Result<(), SaveError>;
 
 impl Map {
@@ -64,8 +64,9 @@ impl Map {
         #[cfg(target_family = "wasm")]
         let mut map = Self::load_wasm();
 
-        if let Ok(m) = &mut map {
-            m.fixup().unwrap();
+        match &mut map {
+            Ok(m) => m.fixup().unwrap(),
+            Err(err) => println!("Error loading save: {:?}", *err),
         }
 
         map

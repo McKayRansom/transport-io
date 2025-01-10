@@ -15,6 +15,8 @@ impl Map {
     pub fn new_level(level: usize) -> Self {
         let mut map = Self::new_blank(LEVEL_MAP_SIZE);
 
+        map.metadata.is_level = true;
+
         let city_id = map.new_city(
             (LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 / 2).into(),
             format!("level {level}"),
@@ -48,6 +50,7 @@ impl Map {
             .generate_building(pos, &mut self.buildings, &mut self.grid)
             .unwrap();
     }
+
 }
 
 #[cfg(test)]
