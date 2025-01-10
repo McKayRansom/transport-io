@@ -222,6 +222,17 @@ impl BuildAction for BuildActionList {
     }
 }
 
+pub enum BuildRoadHeight {
+    Level,
+    Bridge,
+    Tunnel
+}
+
+pub enum BuildRoadType {
+    TwoWayRoad,
+    OneWayRoad,
+}
+
 fn build_road_segments_line(action_list: &mut BuildActionList, start_pos: Position, end_pos: Position) {
     let (it, dir) = start_pos.iter_line_to(end_pos);
     for pos in it {
@@ -402,44 +413,19 @@ mod grid_build_tests {
         );
     }
 
-    #[test]
-    #[ignore = "bridges are broken :("]
-    fn test_build_bridge() -> BuildResult {
-        let grid = Grid::new_from_string("____");
-
-        // grid.build_bridge((0, 0).into(), grid.pos(3, 0))?;
-
-        assert_eq!(
-            grid.get_tile(&(0, 0).into()).unwrap(),
-            &Tile::Ramp(Ramp::new(Direction::LAYER_UP))
-        );
-
-        assert_eq!(
-            grid.get_tile(&(1, 0, 1).into()).unwrap(),
-            &Tile::Road(Road::new_from_char('>').unwrap())
-        );
-
-        assert_eq!(
-            grid.get_tile(&(2, 0, 1).into()).unwrap(),
-            &Tile::Road(Road::new_from_char('>').unwrap())
-        );
-
-        assert_eq!(
-            grid.get_tile(&(3, 0, 1).into()).unwrap(),
-            &Tile::Road(Road::new_from_char('d').unwrap())
-        );
-
-        Ok(())
-    }
 
     #[test]
     fn test_build_two_way_road() {
-        // TODO
-        // let mut grid = Grid::new_from_string("____\n____");
-        // grid.build_two_way_road((0, 0).into(), (0, 0).into()).unwrap();
-        // assert_eq!(grid, Grid::new_from_string("**__\n**__"));
 
         let map = &mut Map::new_blank((4, 4));
+
+        // let mut action_same_place = action_two_way_road((0, 0).into(), (1, 0).into());
+        // action_same_place.execute(map).unwrap();
+        // assert_eq!(map.grid, Grid::new_from_string("**__\n**__\n____\n____"));
+        // action_same_place.undo(map).unwrap();
+        // assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+
+
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("*<<<\n>>>*\n____\n____"));
@@ -472,7 +458,7 @@ mod grid_build_tests {
     }
 
     #[test]
-    fn test_build_one_way_road() -> BuildResult {
+    fn test_build_one_way_road() {
         let mut map = Map::new_blank((4, 4));
         let mut action_right = action_one_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(&mut map).unwrap();
@@ -485,7 +471,23 @@ mod grid_build_tests {
         assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n**__"));
         action_down.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+    }
 
-        Ok(())
+
+    #[test]
+    #[ignore = "bridges are broken :("]
+    fn test_build_bridge() {
+        let mut map = Map::new_blank((4, 4));
+        let mut action_right = action_one_way_road((0, 0).into(), (2, 0).into());
+        action_right.execute(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string(">>>*\n>>>*\n____\n____"));
+        action_right.undo(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+
+        let mut action_down = action_one_way_road((0, 0).into(), (0, 2).into());
+        action_down.execute(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n**__"));
+        action_down.undo(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
     }
 }

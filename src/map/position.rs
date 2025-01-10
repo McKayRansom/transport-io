@@ -54,8 +54,10 @@ impl Position {
             Direction::DOWN
         } else if new_pos.y < self.y && y_diff > x_diff {
             Direction::UP
-        } else {
+        } else if new_pos.x < self.x {
             Direction::LEFT
+        } else {
+            Direction::NONE
         }
     }
 

@@ -9,6 +9,7 @@ mod ui;
 
 use consts::PKG_NAME;
 use context::Context;
+use miniquad::conf::Icon;
 use scene::gameplay::Gameplay;
 use scene::level_select::LevelSelect;
 use scene::main_menu::MainMenu;
@@ -19,11 +20,11 @@ fn window_conf() -> Conf {
     Conf {
         fullscreen: false,
         high_dpi: true,
-        // icon: Some(Icon {
-        //     small: include_bytes!("../icons/16x16.rgba").to_owned(),
-        //     medium: include_bytes!("../icons/32x32.rgba").to_owned(),
-        //     big: include_bytes!("../icons/64x64.rgba").to_owned(),
-        // }),
+        icon: Some(Icon {
+            small: include_bytes!("../icons/16x16.rgba").to_owned(),
+            medium: include_bytes!("../icons/32x32.rgba").to_owned(),
+            big: include_bytes!("../icons/64x64.rgba").to_owned(),
+        }),
         platform: miniquad::conf::Platform {
             linux_backend: miniquad::conf::LinuxBackend::WaylandWithX11Fallback,
             ..Default::default()

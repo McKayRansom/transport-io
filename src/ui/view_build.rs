@@ -189,6 +189,7 @@ impl ViewBuild {
 
     pub fn key_down(&mut self, ch: char) {
         self.build_toolbar.key_down(ch);
+        self.edit_action_bar.key_down(ch);
     }
 
     fn draw_selected(&self, last_mouse_pos: Position, _map: &Map, tileset: &Tileset) {
