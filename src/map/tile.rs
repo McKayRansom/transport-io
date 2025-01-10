@@ -74,11 +74,12 @@ impl Tile {
         }
     }
 
-    pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
+    pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
         match self {
-            Tile::Road(road) => road.iter_connections(),
-            Tile::Building(_) => Direction::ALL.iter(),
-            _ => [].iter(),
+            Tile::Road(road) => road.iter_connections(pos),
+            // we gotta fix this
+            Tile::Building(_) => pos.default_connections(),
+            _ => [].as_slice(),
         }
     }
 
@@ -87,7 +88,7 @@ impl Tile {
         let rect = Rect::from(pos);
 
         match self {
-            Tile::Road(road) => road.draw(&rect, tileset),
+            Tile::Road(road) => road.draw(pos, &rect, tileset),
             // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
             _ => {}
         }

@@ -123,7 +123,7 @@ impl Map {
             // generate a random destination
             if let Some(destination_building) = self
                 .buildings.hash_map
-                .get_mut(&self.cities.hash_map[&city_id].random_house())
+                .get(&self.cities.hash_map[&city_id].random_house())
             {
                 let destination_pos = destination_building.pos;
                 let _vehicle = self.add_vehicle(start_pos, destination_pos);

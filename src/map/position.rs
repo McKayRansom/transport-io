@@ -9,6 +9,11 @@ use super::{Direction, grid::GRID_CELL_SIZE};
 pub const Z_GROUND: i16 = 0;
 // pub const Z_BRIDGE: i16 = 1;
 
+const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
+const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];
+const BOT_RIGHT_DIRS: [Direction; 2] = [Direction::UP, Direction::RIGHT];
+const BOT_LEFT_DIRS: [Direction; 2] = [Direction::RIGHT, Direction::DOWN];
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Position {
     pub x: i16,
@@ -90,6 +95,21 @@ impl Position {
             _ => *self,
         }
     }
+
+    // .<
+    // >^
+    pub fn default_connections(&self) -> &'static[Direction] {
+        let x_rem = self.x % 2;
+        let y_rem = self.y % 2;
+        match (x_rem, y_rem) {
+            (0, 0) => &TOP_LEFT_DIRS,
+            (1, 0) => &TOP_RIGHT_DIRS,
+            (1, 1) => &BOT_RIGHT_DIRS,
+            (0, 1) => &BOT_LEFT_DIRS,
+            _ => &[],
+        }
+    }
+
 }
 
 impl From<(i16, i16)> for Position {
@@ -239,5 +259,13 @@ mod position_tests {
 
         let line: Vec<Position> = iter.collect();
         assert_eq!(line, vec![pos(0, 0), pos(1, 0), pos(2, 0), pos(3, 0)]);
+    }
+
+    #[test]
+    fn test_round_dir() {
+        assert_eq!(
+            pos(0, 0).default_connections()[0], 
+            Direction::DOWN
+        )
     }
 }

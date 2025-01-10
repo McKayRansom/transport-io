@@ -13,6 +13,7 @@ use super::Reserved;
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
 const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
 const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
+const ROAD_TURN_SPRITE: Sprite = Sprite::new(3, 3);
 const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
 const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(3, 7, (1, 1));
 const ROAD_BRIDGE_SPRITE: Sprite = Sprite::new(3, 5);
@@ -125,11 +126,15 @@ impl Road {
         self.connections.len() as u32
     }
 
-    pub fn iter_connections(&self) -> std::slice::Iter<'_, Direction> {
-        self.connections.iter()
+    pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
+        if self.connections.len() > 0 {
+            self.connections.as_slice()
+        } else {
+            &pos.default_connections()[0..1]
+        }
     }
 
-    pub fn draw(&self, rect: &Rect, tileset: &Tileset) {
+    pub fn draw(&self, pos: Position, rect: &Rect, tileset: &Tileset) {
         let connection_count = self.connection_count();
 
         if connection_count != 1 {
@@ -151,6 +156,10 @@ impl Road {
             } else {
                 tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
             }
+        }
+
+        if connection_count == 0 {
+            tileset.draw_tile(ROAD_TURN_SPRITE, WHITE, rect, pos.default_connections()[0].to_radians());
         }
 
         // if self.reserved {
@@ -246,8 +255,8 @@ mod road_tests {
         road.connect(Direction::RIGHT);
         road.connect(Direction::LEFT);
         assert_eq!(
-            road.iter_connections().collect::<Vec<&Direction>>(),
-            vec![&Direction::RIGHT, &Direction::LEFT]
+            road.iter_connections(&Position::new(0, 0)),
+            vec![Direction::RIGHT, Direction::LEFT].as_slice()
         );
     }
 }

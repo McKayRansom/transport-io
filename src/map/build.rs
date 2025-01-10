@@ -27,6 +27,7 @@ pub struct BuildRoad {
     pos: Position,
     dir: Direction,
     was_empty: bool,
+    was_already: bool,
 }
 
 impl BuildRoad {
@@ -35,6 +36,7 @@ impl BuildRoad {
             pos,
             dir,
             was_empty: false,
+            was_already: false,
         }
     }
 }
@@ -53,6 +55,7 @@ impl BuildAction for BuildRoad {
             }
             Tile::Road(road) => {
                 self.was_empty = false;
+                self.was_already = road.is_connected(self.dir);
                 road.connect(self.dir);
                 Ok(())
             }
@@ -69,7 +72,9 @@ impl BuildAction for BuildRoad {
             *tile = Tile::Empty;
             Ok(())
         } else if let Tile::Road(road) = tile {
-            road.disconnect(self.dir);
+            if !self.was_already {
+                road.disconnect(self.dir);
+            }
             Ok(())
         } else {
             Err(BuildError::InvalidTile)
@@ -432,6 +437,19 @@ mod grid_build_tests {
         action_right.undo(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
+        // Execute again shouldn't undo
+        action_right.execute(map).unwrap();
+        action_right.execute(map).unwrap();
+        action_right.undo(map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("*<<<\n>>>*\n____\n____"));
+    }
+
+    #[test]
+    fn test_build_two_way_road_again() {
+
+        let map = &mut Map::new_blank((4, 4));
+
+        let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         let mut action_down = action_two_way_road((0, 0).into(), (0, 2).into());
         action_down.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string(".*__\n.^__\n.^__\n*^__"));

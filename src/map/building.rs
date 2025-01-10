@@ -4,7 +4,7 @@ use macroquad::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Position;
+use super::{Direction, Position};
 
 use crate::{
     tileset::{Sprite, Tileset}, hash_map_id::Id,
@@ -15,7 +15,6 @@ pub const BUILDING_SIZE: (i8, i8) = (2, 2);
 const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 // const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
 const HOUSE_UPDATE_TICKS: i32 = 16;
-
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
@@ -47,6 +46,10 @@ impl Building {
         };
         tileset.draw_tile(HOUSE_SPRITE, color, &self.pos.into(), 0.0);
     }
+
+    // pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
+        // pos.default_connections()
+    // }
 
     pub fn update(&mut self) -> bool {
         self.production_tics += 1;
