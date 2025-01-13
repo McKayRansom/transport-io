@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bitflags = "2.7.0"
 directories = "5.0.1"
 macroquad = "0.4.13"
 macroquad-profiler = "0.2.0"

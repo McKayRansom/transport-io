@@ -39,7 +39,6 @@ pub struct Building {
 
 impl Building {
     pub fn new_house(pos: Position, city_id: Id) -> Self {
-        let pos = pos.round_to(2);
         Building {
             pos,
             // 0,

@@ -76,7 +76,6 @@ impl City {
         buildings: &mut HashMapId<Building>,
         grid: &mut Grid,
     ) -> BuildResult {
-        let pos = pos.round_to(2);
         self.houses
             .push(grid.build_building(buildings, Building::new_house(pos, self.id))?);
 
