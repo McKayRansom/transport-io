@@ -128,7 +128,7 @@ impl Map {
         self.generate_center_roads()?;
 
         for dir in [(2, 2), (2, -2), (-2, 2), (-2, -2)] {
-            BuildActionBuilding::new(Building::new_house(pos + dir.into(), city_id))
+            BuildActionBuilding::new(self, Building::new_house(pos + dir.into(), city_id))
                 .execute(self)?;
         }
 
@@ -165,16 +165,6 @@ impl Map {
 
     pub fn reserve_building_id(&mut self) -> Id {
         self.buildings.reserve_id()
-    }
-
-    pub fn add_building(&mut self, building: Building) -> Id {
-        let id = self.buildings.insert(building);
-
-        if let Some(city) = self.cities.hash_map.get_mut(&building.city_id) {
-            city.houses.push(id);
-        }
-
-        id
     }
 
     pub fn remove_building(&mut self, id: &Id) -> Option<Building> {

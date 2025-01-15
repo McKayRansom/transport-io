@@ -87,13 +87,13 @@ pub enum ReservationError {
 
 impl fmt::Debug for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\ng")?;
-        for x in 0..self.tiles[0].len() {
-            write!(f, "{}", x % 10)?;
-        }
+        // write!(f, "\ng")?;
+        // for x in 0..self.tiles[0].len() {
+        //     write!(f, "{}", x % 10)?;
+        // }
         writeln!(f)?;
         for y in 0..self.tiles.len() {
-            write!(f, "{}", y)?;
+            // write!(f, "{}", y)?;
             let mut has_bridges = false;
             for x in 0..self.tiles[y].len() {
                 self.tiles[y][x].ground.fmt(f)?;

@@ -28,7 +28,7 @@ pub enum YieldType {
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ramp {
-    dir: Direction,
+    pub dir: Direction,
 }
 
 impl Ramp {
@@ -40,8 +40,8 @@ impl Ramp {
 impl fmt::Debug for Ramp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.dir {
-            Direction::LAYER_UP  => write!(f, "u"),
-            Direction::LAYER_DOWN => write!(f, "d"),
+            Direction::RIGHT  => write!(f, ")"),
+            Direction::LEFT => write!(f, "("),
             _ => write!(f, "r?"),
         }
     }
@@ -63,6 +63,8 @@ impl Tile {
     pub fn new_from_char(ch: char) -> Self {
         match ch {
             'h' => Tile::Building(0),
+            ')' => Tile::Ramp(Ramp { dir: Direction::RIGHT }),
+            '(' => Tile::Ramp(Ramp { dir: Direction::LEFT }),
             '_' => Tile::Empty,
             _ => {
                 if let Some(road) = Road::new_from_char(ch) {

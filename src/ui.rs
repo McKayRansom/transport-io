@@ -3,7 +3,6 @@ use crate::{
     map::{tile::Tile, vehicle::Vehicle, Map, Position},
     tileset::{Sprite, Tileset},
 };
-use grades::Grades;
 use macroquad::{
     input::{
         get_char_pressed, is_key_down, is_mouse_button_down, mouse_position, mouse_wheel, KeyCode,
@@ -22,7 +21,6 @@ use menu::{Menu, MenuItem};
 use toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 use view_build::ViewBuild;
 
-mod grades;
 pub mod menu;
 pub mod popup;
 pub mod skin;
@@ -61,7 +59,6 @@ pub struct UiState {
     pub time_select: Toolbar<TimeSelect>,
     view_toolbar: Toolbar<ViewMode>,
     view_build: ViewBuild,
-    grades: Grades,
     pub pause_menu_open: bool,
     pause_menu: Menu<PauseMenuSelect>,
 }
@@ -89,7 +86,6 @@ impl UiState {
                 ],
             ),
             view_build: ViewBuild::new(),
-            grades: Grades::new().await,
             pause_menu_open: false,
             pause_menu: Menu::new(vec![
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),

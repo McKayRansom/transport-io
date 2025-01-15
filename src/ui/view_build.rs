@@ -142,14 +142,14 @@ impl ViewBuild {
         println!("Mouse pressed: pos: {mouse_pos:?}");
         match self.build_toolbar.get_selected()? {
             BuildMode::Clear => {
-                if map.grid.is_area_clear(&mouse_pos, (2, 2)).is_err() {
-                    Some(Box::new(BuildActionClearArea::new(mouse_pos)))
+                if map.grid.is_area_clear(&mouse_pos.round_to(2), (2, 2)).is_err() {
+                    Some(Box::new(BuildActionClearArea::new(mouse_pos.round_to(2), (2, 2))))
                 } else {
                     None
                 }
             }
             BuildMode::Station => {
-                Some(Box::new(BuildActionBuilding::new(Building::new_station(mouse_pos, 1))))
+                Some(Box::new(BuildActionBuilding::new(map, Building::new_station(mouse_pos, 1))))
             }
             BuildMode::Bridge => {
                 if let Some(pos) = self.bridge_start_pos {
@@ -188,8 +188,8 @@ impl ViewBuild {
                     }
                 }
                 BuildMode::Clear => {
-                    if map.grid.is_area_clear(&pos, (2, 2)).is_err() {
-                        return Some(Box::new(BuildActionClearArea::new(pos)));
+                    if map.grid.is_area_clear(&pos.round_to(2), (2, 2)).is_err() {
+                        return Some(Box::new(BuildActionClearArea::new(pos.round_to(2), (2, 2))));
                     }
                 }
                 BuildMode::Bridge => {
