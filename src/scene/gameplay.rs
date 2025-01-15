@@ -83,8 +83,11 @@ impl Scene for Gameplay {
 
         if let Some(popup) = &self.popup {
             match popup.draw() {
-                Some(PopupResult::Ok) => ctx.switch_scene_to = Some(EScene::Gameplay(Map::new_level(1))),
-                Some(PopupResult::Cancel) => self.popup = None,
+                Some(PopupResult::Ok) => ctx.switch_scene_to = Some(EScene::Gameplay(Map::new_level(self.map.metadata.level_number + 1))),
+                Some(PopupResult::Cancel) => {
+                    self.popup = None;
+                    self.map.metadata.level_complete = true;
+                },
                 None => {},
             }
         }

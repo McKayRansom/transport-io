@@ -28,6 +28,7 @@ pub struct BuildRoad {
     dir: Direction,
     was_empty: bool,
     was_already: bool,
+    station: Option<Id>,
 }
 
 impl BuildRoad {
@@ -37,6 +38,17 @@ impl BuildRoad {
             dir,
             was_empty: false,
             was_already: false,
+            station: None,
+        }
+    }
+
+    pub fn new_station(pos: Position, dir: Direction, station: Option<Id>) -> Self {
+        Self {
+            pos,
+            dir,
+            was_empty: false,
+            was_already: false,
+            station,
         }
     }
 }
@@ -50,13 +62,19 @@ impl BuildAction for BuildRoad {
         match tile {
             Tile::Empty => {
                 self.was_empty = true;
-                *tile = Tile::Road(Road::new_connected(self.dir));
+                *tile = Tile::Road(Road::new_connected(self.dir, self.station));
                 Ok(())
             }
             Tile::Road(road) => {
                 self.was_empty = false;
                 self.was_already = road.is_connected(self.dir);
                 road.connect(self.dir);
+
+                // Oh god o f
+                if self.station.is_some() {
+                    road.station = self.station;
+                }
+
                 Ok(())
             }
             _ => Err(BuildError::OccupiedTile),
@@ -99,10 +117,19 @@ impl BuildAction for BuildActionClearTile {
             .grid
             .get_tile_mut(&self.pos)
             .ok_or(BuildError::InvalidTile)?;
-        self.tile = Some(tile.clone());
-        *tile = Tile::Empty;
-        Ok(())
-    }
+
+        match tile {
+            Tile::Building(_) if map.metadata.is_level => {
+                // do not allow destroying tiles in level mode
+                Err(BuildError::OccupiedTile)
+            }
+            _ => {
+                self.tile = Some(tile.clone());
+                *tile = Tile::Empty;
+                Ok(())
+            }
+        }
+   }
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
         let tile = map
@@ -126,12 +153,7 @@ impl BuildActionClearArea {
         let pos = pos.round_to(2);
         Self {
             pos,
-            clear_actions: [
-                BuildActionClearTile::new(pos),
-                BuildActionClearTile::new(pos + Direction::RIGHT),
-                BuildActionClearTile::new(pos + Direction::DOWN),
-                BuildActionClearTile::new(pos + Direction::DOWN_RIGHT),
-            ],
+            clear_actions: Direction::SQUARE.map(|dir| BuildActionClearTile::new(pos + dir)),
             old_building: None,
         }
     }
@@ -139,14 +161,11 @@ impl BuildActionClearArea {
 
 impl BuildAction for BuildActionClearArea {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
-        if let Some(Tile::Building(building_id)) = map.grid.get_tile(&self.pos) {
-            if let Some(building) = map.buildings.hash_map.remove(building_id) {
-                if let Some(city) = map.cities.hash_map.get_mut(&building.city_id) {
-                    if let Some(pos) = city.houses.iter().position(|x| x == building_id) {
-                        city.houses.swap_remove(pos);
-                    }
-                }
-                self.old_building = Some((*building_id, building));
+
+        // TODO: Move to ClearTile
+        if let Some(Tile::Building(building_id)) = map.grid.get_tile(&self.pos).cloned() {
+            if let Some(building) = map.remove_building(&building_id) {
+                self.old_building = Some((building_id, building));
             }
         }
 
@@ -175,58 +194,6 @@ impl BuildAction for BuildActionClearArea {
     }
 }
 
-
-pub struct BuildActionBuilding {
-    pos: Position,
-    building: Building,
-    building_id: Option<Id>,
-}
-
-impl BuildActionBuilding {
-    pub fn new(pos: Position, building: Building) -> Self {
-        let pos = pos.round_to(2);
-        Self {
-            pos,
-            building,
-            building_id: None,
-        }
-    }
-}
-
-impl BuildAction for BuildActionBuilding {
-    fn execute(&mut self, map: &mut Map) -> BuildResult {
-
-        self.building_id = Some(map.buildings.insert(self.building));
-        // if let Some((id, building)) = self.old_building {
-            // if let Some(city) = map.get_city_mut(building.city_id) {
-                // city.houses.push(id);
-            // }
-
-            // map.buildings.hash_map.insert(id, building);
-        // }
-
-        Ok(())
-    }
-
-    fn undo(&mut self, map: &mut Map) -> BuildResult {
-
-        if let Some(building_id) = self.building_id {
-            if let Some(_building) = map.buildings.hash_map.remove(&building_id) {
-                // if let Some(city) = map.cities.hash_map.get_mut(&building.city_id) {
-                //     if let Some(pos) = city.houses.iter().position(|x| x == &building_id) {
-                //         city.houses.swap_remove(pos);
-                //     }
-                // }
-                // self.old_building = Some((*building_id, building));
-                self.building_id = None;
-            }
-        }
-
-
-        Ok(())
-    }
-}
-
 pub struct BuildActionList {
     list: Vec<Box<dyn BuildAction>>,
 }
@@ -234,6 +201,10 @@ pub struct BuildActionList {
 impl BuildActionList {
     pub fn new() -> Self {
         Self { list: Vec::new() }
+    }
+
+    pub fn new_from_vec(vec: Vec<Box<dyn BuildAction>>) -> Self {
+        Self { list: vec }
     }
 
     pub fn append(&mut self, item: Box<dyn BuildAction>) {
@@ -282,15 +253,21 @@ impl BuildAction for BuildActionList {
 pub enum BuildRoadHeight {
     Level,
     Bridge,
-    Tunnel
+    Tunnel,
 }
 
 pub enum BuildRoadType {
+    // Someday maybe road selection?
+    OneLaneRoad,
     TwoWayRoad,
     OneWayRoad,
 }
 
-fn build_road_segments_line(action_list: &mut BuildActionList, start_pos: Position, end_pos: Position) {
+fn build_road_segments_line(
+    action_list: &mut BuildActionList,
+    start_pos: Position,
+    end_pos: Position,
+) {
     let (it, dir) = start_pos.iter_line_to(end_pos);
     for pos in it {
         action_list.append(Box::new(BuildRoad::new(pos, dir)));
@@ -299,6 +276,7 @@ fn build_road_segments_line(action_list: &mut BuildActionList, start_pos: Positi
     action_list.append(Box::new(BuildRoad::new(end_pos + dir, Direction::NONE)));
 }
 
+pub struct RoadBuildOption {}
 
 pub fn action_two_way_road(start_pos: Position, end_pos: Position) -> BuildActionList {
     let mut action_list = BuildActionList::new();
@@ -307,12 +285,28 @@ pub fn action_two_way_road(start_pos: Position, end_pos: Position) -> BuildActio
     let start_pos = start_pos.round_to(2);
     let end_pos = end_pos.round_to(2);
 
+    // not sure about this...
+    if start_pos == end_pos {
+        for dir in Direction::SQUARE {
+            action_list.append(Box::new(BuildRoad::new(start_pos + dir, Direction::NONE)));
+        }
+        return action_list;
+    }
+
     // let's start with the traffic in the current direction
-    build_road_segments_line(&mut action_list, start_pos.corner_pos(dir), end_pos.corner_pos(dir));
+    build_road_segments_line(
+        &mut action_list,
+        start_pos.corner_pos(dir),
+        end_pos.corner_pos(dir),
+    );
 
     // do opposite direction
     let op_dir = dir.inverse();
-    build_road_segments_line(&mut action_list, end_pos.corner_pos(op_dir), start_pos.corner_pos(op_dir));
+    build_road_segments_line(
+        &mut action_list,
+        end_pos.corner_pos(op_dir),
+        start_pos.corner_pos(op_dir),
+    );
 
     action_list
 }
@@ -329,21 +323,100 @@ pub fn action_one_way_road(pos: Position, end_pos: Position) -> BuildActionList 
     let end_pos = end_pos.corner_pos(dir);
 
     build_road_segments_line(&mut action_list, pos, end_pos);
-    build_road_segments_line(&mut action_list, pos + dir.rotate_left(), end_pos + dir.rotate_left());
+    build_road_segments_line(
+        &mut action_list,
+        pos + dir.rotate_left(),
+        end_pos + dir.rotate_left(),
+    );
 
     action_list
 }
 
+pub struct BuildActionStation {
+    road_actions: BuildActionList,
+    building: Building,
+    building_id: Id,
+}
 
-impl Tile {
-    // Left in for now for building houses
-    pub fn build(&mut self, tile: Tile) -> BuildResult {
-        if *self == Tile::Empty {
-            *self = tile;
-            Ok(())
-        } else {
-            Err(BuildError::OccupiedTile)
+impl BuildActionStation {
+    pub fn new(map: &mut Map, pos: Position, building: Building) -> Self {
+        let pos = pos.round_to(2);
+        let building_id = map.reserve_building_id();
+        Self {
+            road_actions: BuildActionList::new_from_vec(
+                Direction::SQUARE
+                    .iter()
+                    .map(|dir| -> Box<dyn BuildAction> {
+                        Box::new(BuildRoad::new_station(pos + *dir, Direction::NONE, Some(building_id)))
+                    })
+                    .collect(),
+            ),
+            building,
+            building_id,
         }
+    }
+}
+
+impl BuildAction for BuildActionStation {
+    fn execute(&mut self, map: &mut Map) -> BuildResult {
+        map.insert_building(self.building_id, self.building);
+
+        // hack for spawners
+        
+
+        self.road_actions.execute(map)
+    }
+
+    fn undo(&mut self, map: &mut Map) -> BuildResult {
+        map.remove_building(&self.building_id);
+        self.road_actions.undo(map)
+    }
+}
+
+pub struct BuildActionBuilding {
+    building: Building,
+    building_id: Option<Id>,
+}
+
+impl BuildActionBuilding {
+    pub fn new(building: Building) -> Self {
+        Self {
+            building,
+            building_id: None,
+        }
+    }
+}
+
+impl BuildAction for BuildActionBuilding {
+    fn execute(&mut self, map: &mut Map) -> BuildResult {
+        self.building_id = Some(map.add_building(self.building));
+
+        for dir in Direction::SQUARE {
+            match map.grid.get_tile_mut(&(self.building.pos + dir)) {
+                Some(tile) if tile == &Tile::Empty => {
+                    *tile = Tile::Building(self.building_id.unwrap());
+                }
+                _ => {
+                    return Err(BuildError::OccupiedTile);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn undo(&mut self, map: &mut Map) -> BuildResult {
+        if let Some(building_id) = self.building_id {
+            if let Some(_building) = map.remove_building(&building_id) {
+                self.building_id = None;
+            }
+        }
+
+        for dir in Direction::SQUARE {
+            *map.grid.get_tile_mut(&(self.building.pos + dir)).unwrap() = Tile::Empty;
+        }
+
+        Ok(())
     }
 }
 
@@ -364,39 +437,10 @@ impl Grid {
         }
         Ok(())
     }
-
-    pub fn build_building_tile(&mut self, pos: &Position, size: (i8, i8), id: Id) -> BuildResult {
-        // let pos = &pos.round_to(2);
-        for x in 0..size.0 {
-            for y in 0..size.1 {
-                self.get_tile_mut(&(*pos + Direction::from((x, y))))
-                    .ok_or(BuildError::InvalidTile)?
-                    .build(Tile::Building(id))?;
-            }
-        }
-        Ok(())
-    }
-
-
-    pub fn build_building(
-        &mut self,
-        buildings: &mut HashMapId<Building>,
-        building: Building,
-    ) -> Result<Id, BuildError> {
-        self.is_area_clear(&building.pos, BUILDING_SIZE)?;
-        let id = buildings.insert(building);
-        self.build_building_tile(&building.pos, BUILDING_SIZE, id)?;
-
-        // building.id = self.buildings.id;
-
-        Ok(id)
-    }
 }
 
 #[cfg(test)]
 mod grid_build_tests {
-    use crate::map::tile::Ramp;
-
     use super::Direction;
 
     use super::*;
@@ -443,45 +487,19 @@ mod grid_build_tests {
         clear_action.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("ee\nee"));
 
-        let city_id = map.new_city((0, 0).into(), "test_city".into());
-
-        map.cities
-            .hash_map
-            .get_mut(&city_id)
-            .unwrap()
-            .generate_building((0, 0).into(), &mut map.buildings, &mut map.grid)
-            .unwrap();
-
-        assert_ne!(map.grid, Grid::new_from_string("ee\nee"));
-
         clear_action.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("ee\nee"));
-
-        assert_eq!(
-            map.cities.hash_map.get_mut(&city_id).unwrap().houses.len(),
-            0
-        );
-
-        clear_action.undo(map).unwrap();
-
-        assert_eq!(
-            map.cities.hash_map.get_mut(&city_id).unwrap().houses.len(),
-            1
-        );
     }
-
 
     #[test]
     fn test_build_two_way_road() {
-
         let map = &mut Map::new_blank((4, 4));
 
-        // let mut action_same_place = action_two_way_road((0, 0).into(), (1, 0).into());
-        // action_same_place.execute(map).unwrap();
-        // assert_eq!(map.grid, Grid::new_from_string("**__\n**__\n____\n____"));
-        // action_same_place.undo(map).unwrap();
-        // assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
-
+        let mut action_same_place = action_two_way_road((0, 0).into(), (1, 0).into());
+        action_same_place.execute(map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("**__\n**__\n____\n____"));
+        action_same_place.undo(map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(map).unwrap();
@@ -498,7 +516,6 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_two_way_road_again() {
-
         let map = &mut Map::new_blank((4, 4));
 
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
@@ -517,14 +534,11 @@ mod grid_build_tests {
 
         // test failures
         let mut action_fail_invalid_tile = action_two_way_road((0, 0).into(), (4, 0).into());
-        assert_eq!(action_fail_invalid_tile.execute(map).unwrap_err(),
-            BuildError::InvalidTile);
+        assert_eq!(
+            action_fail_invalid_tile.execute(map).unwrap_err(),
+            BuildError::InvalidTile
+        );
 
-        let mut action_fail_occupied = action_two_way_road((0, 0).into(), (2, 0).into());
-        map.grid.build_building(&mut map.buildings, Building::new_house((0, 0).into(), 1)).unwrap();
-        assert_eq!(action_fail_occupied.execute(map).unwrap_err(),
-            BuildError::OccupiedTile);
- 
     }
 
     #[test]
@@ -543,7 +557,6 @@ mod grid_build_tests {
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
     }
 
-
     #[test]
     #[ignore = "bridges are broken :("]
     fn test_build_bridge() {
@@ -559,5 +572,50 @@ mod grid_build_tests {
         assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n**__"));
         action_down.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+    }
+
+    #[test]
+    fn test_build_building() {
+        let mut map = Map::new_blank((4, 4));
+        let pos: Position = (0, 0).into();
+        let city_id = map.new_city(pos, "test".into());
+        let building: Building = Building::new_house(pos, city_id);
+        let mut action_house = BuildActionBuilding::new(building);
+
+        action_house.execute(&mut map).unwrap();
+
+        assert_eq!(
+            map.cities.hash_map.get(&city_id).unwrap().houses[0],
+            action_house.building_id.unwrap()
+        );
+
+        for dir in Direction::SQUARE {
+            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(1));
+        }
+
+        action_house.undo(&mut map).unwrap();
+
+        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+        assert!(&action_house.building_id.is_none());
+
+        // Redo
+        action_house.execute(&mut map).unwrap();
+        for dir in Direction::SQUARE {
+            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(2));
+        }
+
+        // Clear
+        let mut clear_action = BuildActionClearArea::new((0, 0).into());
+
+        clear_action.execute(&mut map).unwrap();
+
+        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+        assert!(map.get_building(&action_house.building_id.unwrap()).is_none());
+
+        // Undo clear
+        clear_action.undo(&mut map).unwrap();
+        for dir in Direction::SQUARE {
+            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(2));
+        }
     }
 }

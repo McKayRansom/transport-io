@@ -32,6 +32,7 @@ impl Direction {
     pub const LAYER_DOWN_2: Direction = Direction::new(0, 0, -2);
 
     pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::LEFT, Direction::UP, Direction::DOWN];
+    pub const SQUARE: [Direction; 4] = [Direction::NONE, Direction::RIGHT, Direction::DOWN, Direction::DOWN_RIGHT];
 
     pub fn inverse(&self) -> Self {
         Direction::new(-self.x, -self.y, self.z)

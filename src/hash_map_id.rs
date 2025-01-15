@@ -19,6 +19,12 @@ impl<V> HashMapId<V> {
         }
     }
 
+    pub fn reserve_id(&mut self) -> Id {
+        let id = self.id;
+        self.id += 1;
+        id
+    }
+
     pub fn insert(&mut self, value: V) -> Id {
         let id = self.id;
         self.id += 1;

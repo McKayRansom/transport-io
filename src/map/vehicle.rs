@@ -6,6 +6,7 @@ use macroquad::math::Rect;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::consts::SpawnerColors;
 use crate::tileset::Sprite;
 use crate::tileset::Tileset;
 use crate::hash_map_id::Id;
@@ -37,7 +38,9 @@ pub struct Vehicle {
     lag_pos_pixels: Direction,
     dir: Direction,
     blocking_tile: Option<Position>,
+    // TODO: pass in buildingid
     pub destination: Position,
+    pub color: SpawnerColors,
     reserved: Vec<Reservation>,
 }
 
@@ -75,6 +78,7 @@ impl Vehicle {
             lag_pos_pixels: Direction::NONE,
             dir: Direction::RIGHT,
             blocking_tile: None,
+            color: SpawnerColors::Blue,
             destination,
             reserved: vec![reservation],
         };
@@ -275,26 +279,25 @@ impl Vehicle {
         rect.x += self.lag_pos_pixels.x as f32;
         rect.y += self.lag_pos_pixels.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
 
-        let vehicle_red = Color::from_hex(0xf9524c);
-        let vehicle_blue = Color::from_hex(0xa0dae8);
-        let vehicle_yellow = Color::from_hex(0xf8c768);
+        // let vehicle_red = Color::from_hex(0xf9524c);
+        // let vehicle_blue = Color::from_hex(0xa0dae8);
+        // let vehicle_yellow = Color::from_hex(0xf8c768);
 
-        let mut color = vehicle_blue;
+        // let mut color = vehicle_blue;
 
-        if self.path.is_none() {
-            color = vehicle_red;
-        // } else if self.blocking_tile.is_some() {
-        } else if self.trip_late() < 0.75 {
-            color = vehicle_yellow;
-        }
-
+        // if self.path.is_none() {
+        //     color = vehicle_red;
+        // // } else if self.blocking_tile.is_some() {
+        // } else if self.trip_late() < 0.75 {
+        //     color = vehicle_yellow;
+        // }
         // draw shadow
         let mut shadow_rect = rect;
         shadow_rect.x += 2.;
         shadow_rect.y += 2.;
         tileset.draw_tile(CAR_SHADOW_SPRITE, WHITE, &shadow_rect, self.dir.to_radians());
 
-        tileset.draw_tile(CAR_SPRITE, color, &rect, self.dir.to_radians());
+        tileset.draw_tile(CAR_SPRITE, self.color.color(), &rect, self.dir.to_radians());
     }
 
     pub(crate) fn draw_detail(&self, tileset: &Tileset) {

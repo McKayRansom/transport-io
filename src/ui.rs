@@ -175,12 +175,12 @@ impl UiState {
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
         ui.label(
             None,
-            &format!("Vehicle Trip: {:?}", vehicle.trip_completed_percent()),
+            &format!("VT: {:?}", vehicle.trip_completed_percent()),
         );
         // self.grades.draw(ui, vehicle.trip_completed_percent());
 
-        ui.label(None, &format!("Vehicle Late: {:?}", vehicle.trip_late()));
-        self.grades.draw(ui, vehicle.trip_late());
+        ui.label(None, &format!("VL: {:?}", vehicle.trip_late()));
+        // self.grades.draw(ui, vehicle.trip_late());
         vehicle.draw_detail(tileset);
     }
 
@@ -198,8 +198,8 @@ impl UiState {
             Tile::Ramp(_) => {
                 ui.label(None, "Ramp");
             }
-            Tile::Building(buliding_id) => {
-                if let Some(building) = map.buildings.hash_map.get(buliding_id) {
+            Tile::Building(building) => {
+                if let Some(building) = map.get_building(building) {
                     ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
                     if let Some(vehicle_id) = building.vehicle_on_the_way {
                         if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
@@ -215,6 +215,9 @@ impl UiState {
                     if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                         self.draw_vehicle_details(ui, &ctx.tileset, vehicle);
                     }
+                }
+                if let Some(station_id) = road.station {
+                    ui.label(None, &format!("S {:?}", station_id));
                 }
             }
         }

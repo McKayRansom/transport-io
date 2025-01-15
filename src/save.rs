@@ -128,7 +128,7 @@ mod save_tests {
     fn test_map_serialize() {
         let mut map = Map::new_blank((4, 4));
 
-        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0));
+        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0), crate::consts::SpawnerColors::Blue);
 
         map.save().unwrap();
 

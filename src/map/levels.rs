@@ -1,4 +1,8 @@
-use super::{Map, Position};
+use crate::consts::SpawnerColors;
+
+use super::{
+    build::{BuildAction, BuildActionStation}, building::Building, Direction, Map, Position
+};
 
 const LEVEL_MAP_SIZE: (i16, i16) = (2 * 9, 2 * 9);
 
@@ -16,6 +20,8 @@ impl Map {
         let mut map = Self::new_blank(LEVEL_MAP_SIZE);
 
         map.metadata.is_level = true;
+        map.metadata.level_complete = false;
+        map.metadata.level_number = level;
 
         let city_id = map.new_city(
             (LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 / 2).into(),
@@ -27,14 +33,14 @@ impl Map {
 
         match level {
             0 => {
-                map.new_spawner(LEFT_POS);
-                map.new_spawner(RIGHT_POS);
+                map.new_spawner(LEFT_POS, Direction::RIGHT, SpawnerColors::Blue);
+                map.new_spawner(RIGHT_POS, Direction::LEFT, SpawnerColors::Red);
             }
             1 => {
-                map.new_spawner(LEFT_POS);
-                map.new_spawner(RIGHT_POS);
-                map.new_spawner(TOP_POS);
-                map.new_spawner(BOT_POS);
+                map.new_spawner(LEFT_POS, Direction::RIGHT, SpawnerColors::Blue);
+                map.new_spawner(RIGHT_POS, Direction::LEFT, SpawnerColors::Red);
+                map.new_spawner(TOP_POS, Direction::DOWN, SpawnerColors::Green);
+                map.new_spawner(BOT_POS, Direction::UP, SpawnerColors::Yellow);
             }
             _ => {}
         }
@@ -42,15 +48,12 @@ impl Map {
         map
     }
 
-    pub fn new_spawner(&mut self, pos: Position) {
-        self.cities
-            .hash_map
-            .get_mut(&1)
+    pub fn new_spawner(&mut self, pos: Position, dir: Direction, color: SpawnerColors) {
+        let pos = pos.round_to(2);
+        BuildActionStation::new(self, pos, Building::new_spawner(pos, dir, color, 1))
+            .execute(self)
             .unwrap()
-            .generate_building(pos, &mut self.buildings, &mut self.grid)
-            .unwrap();
     }
-
 }
 
 #[cfg(test)]

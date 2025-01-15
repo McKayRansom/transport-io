@@ -2,33 +2,35 @@ use macroquad::{
     color::{Color, WHITE},
     prelude::rand,
 };
-use pathfinding::matrix::directions::N;
 use serde::{Deserialize, Serialize};
 
 use super::{Direction, Position};
 
 use crate::{
-    hash_map_id::Id,
-    tileset::{Sprite, Tileset},
+    consts::SpawnerColors, hash_map_id::Id, tileset::{Sprite, Tileset}
 };
 
 pub const BUILDING_SIZE: (i8, i8) = (2, 2);
 
 const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 const STATION_SPRITE: Sprite = Sprite::new_size(6, 2, BUILDING_SIZE);
-// const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
-const HOUSE_UPDATE_TICKS: i32 = 16;
+const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
+const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
+const SPAWNER_UPDATE_TICKS: i32 = 16;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 enum BuildingType {
     House,
     Station,
+    Spawner,
 }
+
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub pos: Position,
-    // pub id: Id,
+    dir: Option<Direction>,
+    pub color: SpawnerColors,
     pub city_id: Id,
     pub vehicle_on_the_way: Option<Id>,
     pub arrived_count: i32,
@@ -41,7 +43,8 @@ impl Building {
     pub fn new_house(pos: Position, city_id: Id) -> Self {
         Building {
             pos,
-            // 0,
+            dir: None,
+            color: SpawnerColors::Blue,
             city_id,
             vehicle_on_the_way: None,
             arrived_count: 0,
@@ -51,27 +54,39 @@ impl Building {
         }
     }
 
-    pub fn new_station(pos: Position) -> Self {
+    pub fn new_station(pos: Position, city_id: Id) -> Self {
         Building {
             pos,
-            city_id: 0,
+            dir: None,
+            color: SpawnerColors::Blue,
+            city_id,
             vehicle_on_the_way: None,
             arrived_count: 0,
-            production_tics: 0,
-            production_rate: 0,
-            building_type: BuildingType::Station,
+            production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
+            production_rate: HOUSE_UPDATE_TICKS,
+            building_type: BuildingType::House,
+        }
+    }
+
+    pub fn new_spawner(pos: Position, dir: Direction, color: SpawnerColors, city_id: Id) -> Self {
+        Building {
+            pos,
+            dir: Some(dir),
+            color,
+            city_id,
+            vehicle_on_the_way: None,
+            arrived_count: 0,
+            production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
+            production_rate: SPAWNER_UPDATE_TICKS,
+            building_type: BuildingType::Spawner,
         }
     }
 
     pub fn draw(&self, tileset: &Tileset) {
-        let color = if self.vehicle_on_the_way.is_some() {
-            Color::new(0.5, 0.5, 0.5, 1.0)
-        } else {
-            WHITE
-        };
-        let sprite: &Sprite = match self.building_type {
-            BuildingType::House => &HOUSE_SPRITE,
-            BuildingType::Station => &STATION_SPRITE,
+        let (sprite, color): (&Sprite, Color) = match self.building_type {
+            BuildingType::House => (&HOUSE_SPRITE, WHITE),
+            BuildingType::Station => (&STATION_SPRITE, WHITE),
+            BuildingType::Spawner => (&SPAWNER_SPRITE, self.color.color()),
         };
         tileset.draw_tile(*sprite, color, &self.pos.into(), 0.0);
 
@@ -88,9 +103,9 @@ impl Building {
     // }
 
     pub fn update(&mut self) -> bool {
-        if self.building_type == BuildingType::House {
+        if self.building_type != BuildingType::Station {
             self.production_tics += 1;
-            if self.production_tics >= HOUSE_UPDATE_TICKS {
+            if self.production_tics >= self.production_rate {
                 self.production_tics = 0;
                 true
             } else {

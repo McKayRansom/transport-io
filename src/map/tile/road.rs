@@ -5,7 +5,7 @@ use macroquad::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    map::{grid::GRID_Z_OFFSET, Direction, Position}, tileset::{Sprite, Tileset}
+    hash_map_id::Id, map::{grid::GRID_Z_OFFSET, Direction, Position}, tileset::{Sprite, Tileset}
 };
 
 use super::Reserved;
@@ -23,6 +23,7 @@ const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
+    pub station: Option<Id>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub reserved: Reserved,
@@ -31,8 +32,9 @@ pub struct Road {
 
 impl Road {
 
-    pub fn new_connected(dir: Direction) -> Self {
+    pub fn new_connected(dir: Direction, station: Option<Id>) -> Self {
         Road {
+            station: station,
             should_yield: false,
             reserved: Reserved::new(),
             connections: if dir != Direction::NONE {
@@ -45,6 +47,7 @@ impl Road {
 
     pub fn new() -> Self {
         Road {
+            station: None,
             should_yield: false,
             reserved: Reserved::new(),
             connections: Vec::new(),
@@ -130,6 +133,7 @@ impl Road {
         if self.connections.len() > 0 {
             self.connections.as_slice()
         } else {
+            // Dead ends don't need this
             &pos.default_connections()[0..1]
         }
     }

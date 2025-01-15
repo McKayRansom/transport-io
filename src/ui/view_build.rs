@@ -143,7 +143,7 @@ impl ViewBuild {
                 }
             }
             BuildMode::Station => {
-                Some(Box::new(BuildActionBuilding::new(mouse_pos, Building::new_station(mouse_pos))))
+                Some(Box::new(BuildActionBuilding::new(Building::new_station(mouse_pos, 1))))
             }
             _ => None,
         }

@@ -2,7 +2,7 @@ use macroquad::{color::WHITE, prelude::rand};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    build::{BuildError, BuildResult},
+    build::BuildError,
     building::Building,
     grid::Grid,
     Direction, Position,
@@ -39,50 +39,8 @@ impl City {
         }
     }
 
-    pub fn generate(
-        &mut self,
-        buildings: &mut HashMapId<Building>,
-        grid: &mut Grid,
-    ) -> BuildResult {
-        self.generate_center_roads(grid)?;
 
-        self.generate_building(self.pos + (2, 2).into(), buildings, grid)?;
-        self.generate_building(self.pos + (2, -2).into(), buildings, grid)?;
-        self.generate_building(self.pos + (-2, 2).into(), buildings, grid)?;
-        self.generate_building(self.pos + (-2, -2).into(), buildings, grid)?;
-
-        for _ in 0..10 {
-            self.grow_building(buildings, grid);
-        }
-
-        Ok(())
-    }
-
-    fn generate_center_roads(&mut self, _grid: &mut Grid) -> BuildResult {
-
-        // We need a mut Map for this :(
-        // build::action_two_way_road(self.pos, self.pos + Direction::RIGHT * 5)
-        //     .execute(map);
-        // grid.build_two_way_road(self.pos, self.pos + Direction::LEFT * 5)?;
-        // grid.build_two_way_road(self.pos, self.pos + Direction::UP * 5)?;
-        // grid.build_two_way_road(self.pos, self.pos + Direction::DOWN * 5)?;
-
-        Ok(())
-    }
-
-    pub fn generate_building(
-        &mut self,
-        pos: Position,
-        buildings: &mut HashMapId<Building>,
-        grid: &mut Grid,
-    ) -> BuildResult {
-        self.houses
-            .push(grid.build_building(buildings, Building::new_house(pos, self.id))?);
-
-        Ok(())
-    }
-
-    fn grow_building(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) {
+    pub fn grow_building(&self, buildings: &HashMapId<Building>, grid: &Grid) -> Option<Building> {
         let start_house_id = self.random_house();
         if let Some(building) = buildings.hash_map.get(&start_house_id) {
             let mut building_pos = building.pos;
@@ -90,24 +48,28 @@ impl City {
             loop {
                 let pos = building_pos + dir;
                 building_pos = pos;
-                match self.generate_building(pos, buildings, grid) {
-                    Ok(_) => break,
+                match grid.is_area_clear(&pos, (2, 2)) {
+                    Ok(_) => return Some(Building::new_house(pos, self.id)),
                     Err(BuildError::OccupiedTile) => continue,
                     Err(BuildError::InvalidTile) => break,
                 }
             }
         }
+
+        None
     }
 
     pub fn draw(&self, tileset: &Tileset) {
         tileset.draw_text(self.name.as_str(), 32., WHITE, &self.pos.into());
     }
 
-    pub fn update(&mut self, buildings: &mut HashMapId<Building>, grid: &mut Grid) {
+    pub fn update(&mut self, buildings: &HashMapId<Building>, grid: &mut Grid) -> Option<Building> {
         self.grow_ticks += 1;
         if self.grow_ticks > self.grow_rate {
             self.grow_ticks = 0;
-            self.grow_building(buildings, grid);
+            self.grow_building(buildings, grid)
+        } else {
+            None
         }
     }
 

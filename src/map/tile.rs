@@ -13,7 +13,7 @@ use crate::{
     tileset::Tileset, hash_map_id::Id,
 };
 
-use super::{grid::ReservationError, Direction, Position};
+use super::{grid::ReservationError, vehicle, Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
 const OCCUPIED_COST: u32 = 2;
@@ -176,6 +176,20 @@ impl Tile {
             // },
             self.cost(),
         )
+    }
+
+    pub fn get_building_id(&self) -> Option<Id> {
+        match self {
+            Tile::Building(building_id) => {
+                Some(*building_id)
+            }
+            Tile::Road(road) => {
+                road.station
+            }
+            _ => {
+                None
+            }
+        }
     }
 }
 
