@@ -96,11 +96,17 @@ impl Road {
                 road.connect(Direction::RIGHT);
                 road.connect(Direction::UP);
             }
-            'u' => {
+            '}' => {
                 road.connect(Direction::RIGHT + Direction::LAYER_UP);
             }
-            'd' => {
+            ']' => {
                 road.connect(Direction::RIGHT + Direction::LAYER_DOWN);
+            }
+            '{' => {
+                road.connect(Direction::LEFT + Direction::LAYER_UP);
+            }
+            '[' => {
+                road.connect(Direction::LEFT + Direction::LAYER_DOWN);
             }
             _ => {
                 return None;
@@ -214,11 +220,17 @@ impl std::fmt::Debug for Road {
             write!(f, "^")
         } else if self.is_connected(Direction::DOWN) {
             write!(f, ".")
-        } else if self.is_connected(Direction::RIGHT) && self.is_connected(Direction::LAYER_UP) {
-            write!(f, "u")
-        } else if self.is_connected(Direction::RIGHT) && self.is_connected(Direction::LAYER_DOWN) {
-            write!(f, "d")
-        } else {
+        } else if self.is_connected(Direction::RIGHT + Direction::LAYER_UP) {
+            write!(f, "}}")
+        } else if self.is_connected(Direction::RIGHT + Direction::LAYER_DOWN) {
+            write!(f, "]")
+        } 
+        else if self.is_connected(Direction::LEFT + Direction::LAYER_UP) {
+            write!(f, "{{")
+        } else if self.is_connected(Direction::LEFT + Direction::LAYER_DOWN) {
+            write!(f, "[")
+        }
+        else {
             write!(f, "*")
         }
     }

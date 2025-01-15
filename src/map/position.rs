@@ -87,10 +87,10 @@ impl Position {
 
     pub fn corner_pos(&self, dir: Direction) -> Self {
         match dir {
-            Direction::LEFT => *self + Direction::RIGHT,
-            Direction::RIGHT => *self + Direction::DOWN,
-            Direction::DOWN => *self,
-            Direction::UP => *self + Direction::DOWN_RIGHT,
+            Direction::LEFT => *self + Direction::DOWN_RIGHT,
+            Direction::RIGHT => *self,
+            Direction::DOWN => *self + Direction::RIGHT,
+            Direction::UP => *self + Direction::DOWN,
             // Direction::NONE => pos,
             _ => *self,
         }
@@ -179,7 +179,7 @@ impl AddAssign<Direction> for Position {
 pub struct PositionIterator {
     position: Position,
     direction: Direction,
-    count: usize,
+    pub count: usize,
 }
 
 impl Iterator for PositionIterator {

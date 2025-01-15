@@ -43,6 +43,13 @@ impl GridTile {
         }
     }
 
+    fn new_from_char_layers(args: (char, char)) -> Self {
+        GridTile {
+            ground: Tile::new_from_char(args.0),
+            bridge: Tile::new_from_char(args.1),
+        }
+    }
+
     fn get(&self, pos_z: i16) -> Option<&Tile> {
         if pos_z == 0 {
             Some(&self.ground)
@@ -80,17 +87,25 @@ pub enum ReservationError {
 
 impl fmt::Debug for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "g")?;
+        write!(f, "\ng")?;
         for x in 0..self.tiles[0].len() {
             write!(f, "{}", x % 10)?;
         }
         writeln!(f)?;
         for y in 0..self.tiles.len() {
             write!(f, "{}", y)?;
+            let mut has_bridges = false;
             for x in 0..self.tiles[y].len() {
                 self.tiles[y][x].ground.fmt(f)?;
+                has_bridges |= self.tiles[y][x].bridge != Tile::Empty;
             }
-            writeln!(f)?;
+            if has_bridges {
+                write!(f, "  ")?;
+                for x in 0..self.tiles[y].len() {
+                    self.tiles[y][x].bridge.fmt(f)?;
+                }
+            }
+           writeln!(f)?;
         }
         Ok(())
     }
@@ -124,6 +139,17 @@ impl Grid {
         let tiles: Vec<Vec<GridTile>> = string
             .split_ascii_whitespace()
             .map(|line| line.chars().map(GridTile::new_from_char).collect())
+            .collect();
+
+        Grid { tiles }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_from_string_layers(string: &str, bridge_layer: &str) -> Grid {
+        let tiles: Vec<Vec<GridTile>> = string
+            .split_ascii_whitespace()
+            .zip(bridge_layer.split_ascii_whitespace())
+            .map(|(line, bridge_line)| line.chars().zip(bridge_line.chars()).map(GridTile::new_from_char_layers).collect())
             .collect();
 
         Grid { tiles }
@@ -193,8 +219,7 @@ impl Grid {
             .iter()
             .filter_map(|dir| {
                 let new_pos = *pos + *dir;
-                self.get_tile(&new_pos)
-                    .map(|tile| tile.road_successor(&new_pos))
+                self.get_tile(&new_pos).map(|tile| (new_pos, tile.cost()))
             })
             .collect()
     }

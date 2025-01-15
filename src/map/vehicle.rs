@@ -1,4 +1,3 @@
-use macroquad::color::Color;
 use macroquad::color::BLUE;
 use macroquad::color::RED;
 use macroquad::color::WHITE;

@@ -1,10 +1,7 @@
-use crate::{
-    hash_map_id::{HashMapId, Id},
-    map::Map,
-};
+use crate::{hash_map_id::Id, map::Map};
 
 use super::{
-    building::{Building, BUILDING_SIZE},
+    building::Building,
     grid::Grid,
     tile::{Road, Tile},
     Direction, Position,
@@ -129,7 +126,7 @@ impl BuildAction for BuildActionClearTile {
                 Ok(())
             }
         }
-   }
+    }
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
         let tile = map
@@ -161,7 +158,6 @@ impl BuildActionClearArea {
 
 impl BuildAction for BuildActionClearArea {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
-
         // TODO: Move to ClearTile
         if let Some(Tile::Building(building_id)) = map.grid.get_tile(&self.pos).cloned() {
             if let Some(building) = map.remove_building(&building_id) {
@@ -250,86 +246,147 @@ impl BuildAction for BuildActionList {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum BuildRoadHeight {
     Level,
     Bridge,
-    Tunnel,
+    // Tunnel,
 }
 
-pub enum BuildRoadType {
-    // Someday maybe road selection?
-    OneLaneRoad,
-    TwoWayRoad,
-    OneWayRoad,
+pub enum BuildRoadDir {
+    Forward,
+    Backward,
 }
 
-fn build_road_segments_line(
-    action_list: &mut BuildActionList,
-    start_pos: Position,
-    end_pos: Position,
-) {
-    let (it, dir) = start_pos.iter_line_to(end_pos);
-    for pos in it {
-        action_list.append(Box::new(BuildRoad::new(pos, dir)));
+pub struct BuildRoadLane {
+    dir: BuildRoadDir,
+    // Eventually: Bus-only, train, speed, etc...
+}
+
+impl BuildRoadLane {
+    pub fn get_build_dir(&self, dir: Direction, index: usize, length: usize) -> Direction {
+        if index != length - 1 {
+            dir
+        } else {
+            Direction::NONE
+        }
     }
 
-    action_list.append(Box::new(BuildRoad::new(end_pos + dir, Direction::NONE)));
+    fn build(
+        &self,
+        action_list: &mut BuildActionList,
+        mut pos: Position,
+        mut dir: Direction,
+        mut i: usize,
+        count: usize,
+        height: BuildRoadHeight,
+    ) {
+        if matches!(self.dir, BuildRoadDir::Backward) {
+            i = (count - 1) - i;
+            dir = dir.inverse();
+        }
+        let mut dir = self.get_build_dir(dir, i, count);
+
+        match height {
+            BuildRoadHeight::Level => {
+                action_list.append(Box::new(BuildRoad::new(pos, dir)));
+            }
+            BuildRoadHeight::Bridge => {
+                match i {
+                    0 => {
+                        dir = dir + Direction::LAYER_UP;
+                    }
+                    _ if i == count - 2 => {
+                        dir = dir + Direction::LAYER_DOWN;
+                        pos = pos + Direction::LAYER_UP;
+                    }
+                    _ if i == count - 1 => {}
+                    _ => {
+                        pos = pos + Direction::LAYER_UP;
+                    }
+                }
+
+                action_list.append(Box::new(BuildRoad::new(pos, dir)));
+            }
+            // BuildRoadHeight::Tunnel => todo!(),
+        }
+    }
 }
 
-pub struct RoadBuildOption {}
+pub struct RoadBuildOption {
+    height: BuildRoadHeight,
+    lanes: &'static [BuildRoadLane],
+}
 
-pub fn action_two_way_road(start_pos: Position, end_pos: Position) -> BuildActionList {
+pub fn action_build_road(
+    start: Position,
+    end: Position,
+    options: RoadBuildOption,
+) -> BuildActionList {
     let mut action_list = BuildActionList::new();
 
-    let dir = start_pos.direction_to(end_pos);
-    let start_pos = start_pos.round_to(2);
-    let end_pos = end_pos.round_to(2);
+    let dir = start.direction_to(end);
+    let op_dir = dir.inverse();
 
     // not sure about this...
-    if start_pos == end_pos {
+    if start == end {
         for dir in Direction::SQUARE {
-            action_list.append(Box::new(BuildRoad::new(start_pos + dir, Direction::NONE)));
+            action_list.append(Box::new(BuildRoad::new(start + dir, Direction::NONE)));
         }
         return action_list;
     }
 
-    // let's start with the traffic in the current direction
-    build_road_segments_line(
-        &mut action_list,
-        start_pos.corner_pos(dir),
-        end_pos.corner_pos(dir),
-    );
+    // TODO: verify these are in a straight line...
+    let start = start.round_to(2).corner_pos(dir);
+    let end = end.round_to(2).corner_pos(op_dir);
 
-    // do opposite direction
-    let op_dir = dir.inverse();
-    build_road_segments_line(
-        &mut action_list,
-        end_pos.corner_pos(op_dir),
-        start_pos.corner_pos(op_dir),
-    );
+    let (it, dir) = start.iter_line_to(end);
+    let count = it.count;
+    for (i, mut pos) in it.enumerate() {
+        // go through lanes left to right
+        for lane in options.lanes {
+            lane.build(&mut action_list, pos, dir, i, count, options.height);
+            pos += dir.rotate_right();
+        }
+    }
 
     action_list
 }
 
+pub const TWO_WAY_ROAD_LANES: &[BuildRoadLane] = &[
+    BuildRoadLane {
+        dir: BuildRoadDir::Backward,
+    },
+    BuildRoadLane {
+        dir: BuildRoadDir::Forward,
+    },
+];
+
+pub const ONE_WAY_ROAD_LANES: &[BuildRoadLane] = &[
+    BuildRoadLane {
+        dir: BuildRoadDir::Forward,
+    },
+    BuildRoadLane {
+        dir: BuildRoadDir::Forward,
+    },
+];
+
+pub fn action_two_way_road(start_pos: Position, end_pos: Position) -> BuildActionList {
+    let options = RoadBuildOption {
+        height: BuildRoadHeight::Level,
+        lanes: TWO_WAY_ROAD_LANES,
+    };
+
+    action_build_road(start_pos, end_pos, options)
+}
+
 pub fn action_one_way_road(pos: Position, end_pos: Position) -> BuildActionList {
-    let mut action_list = BuildActionList::new();
+    let options = RoadBuildOption {
+        height: BuildRoadHeight::Level,
+        lanes: ONE_WAY_ROAD_LANES,
+    };
 
-    let dir = pos.direction_to(end_pos);
-
-    let pos = pos.round_to(2);
-    let end_pos = end_pos.round_to(2);
-
-    let pos = pos.corner_pos(dir);
-    let end_pos = end_pos.corner_pos(dir);
-
-    build_road_segments_line(&mut action_list, pos, end_pos);
-    build_road_segments_line(
-        &mut action_list,
-        pos + dir.rotate_left(),
-        end_pos + dir.rotate_left(),
-    );
-
-    action_list
+    action_build_road(pos, end_pos, options)
 }
 
 pub struct BuildActionStation {
@@ -347,7 +404,11 @@ impl BuildActionStation {
                 Direction::SQUARE
                     .iter()
                     .map(|dir| -> Box<dyn BuildAction> {
-                        Box::new(BuildRoad::new_station(pos + *dir, Direction::NONE, Some(building_id)))
+                        Box::new(BuildRoad::new_station(
+                            pos + *dir,
+                            Direction::NONE,
+                            Some(building_id),
+                        ))
                     })
                     .collect(),
             ),
@@ -362,7 +423,6 @@ impl BuildAction for BuildActionStation {
         map.insert_building(self.building_id, self.building);
 
         // hack for spawners
-        
 
         self.road_actions.execute(map)
     }
@@ -495,7 +555,7 @@ mod grid_build_tests {
     fn test_build_two_way_road() {
         let map = &mut Map::new_blank((4, 4));
 
-        let mut action_same_place = action_two_way_road((0, 0).into(), (1, 0).into());
+        let mut action_same_place = action_two_way_road((0, 0).into(), (0, 0).into());
         action_same_place.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("**__\n**__\n____\n____"));
         action_same_place.undo(map).unwrap();
@@ -538,7 +598,6 @@ mod grid_build_tests {
             action_fail_invalid_tile.execute(map).unwrap_err(),
             BuildError::InvalidTile
         );
-
     }
 
     #[test]
@@ -558,20 +617,39 @@ mod grid_build_tests {
     }
 
     #[test]
-    #[ignore = "bridges are broken :("]
     fn test_build_bridge() {
         let mut map = Map::new_blank((4, 4));
-        let mut action_right = action_one_way_road((0, 0).into(), (2, 0).into());
-        action_right.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string(">>>*\n>>>*\n____\n____"));
-        action_right.undo(&mut map).unwrap();
+        let mut action = action_build_road(
+            (0, 0).into(),
+            (2, 0).into(),
+            RoadBuildOption {
+                height: BuildRoadHeight::Bridge,
+                lanes: &ONE_WAY_ROAD_LANES,
+            },
+        );
+        action.execute(&mut map).unwrap();
+        assert_eq!(
+            map.grid,
+            Grid::new_from_string_layers("}ee*\n}ee*\n____\n____", "e>]e\ne>]e\n____\n____")
+        );
+
+        action.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
-        let mut action_down = action_one_way_road((0, 0).into(), (0, 2).into());
-        action_down.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n**__"));
-        action_down.undo(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
+        let mut action = action_build_road(
+            (0, 0).into(),
+            (2, 0).into(),
+            RoadBuildOption {
+                height: BuildRoadHeight::Bridge,
+                lanes: &TWO_WAY_ROAD_LANES,
+            },
+        );
+
+        action.execute(&mut map).unwrap();
+        assert_eq!(
+            map.grid,
+            Grid::new_from_string_layers("*ee{\n}ee*\n____\n____", "e[<e\ne>]e\n____\n____")
+        );
     }
 
     #[test]
@@ -610,7 +688,9 @@ mod grid_build_tests {
         clear_action.execute(&mut map).unwrap();
 
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
-        assert!(map.get_building(&action_house.building_id.unwrap()).is_none());
+        assert!(map
+            .get_building(&action_house.building_id.unwrap())
+            .is_none());
 
         // Undo clear
         clear_action.undo(&mut map).unwrap();

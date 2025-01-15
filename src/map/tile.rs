@@ -13,7 +13,7 @@ use crate::{
     tileset::Tileset, hash_map_id::Id,
 };
 
-use super::{grid::ReservationError, vehicle, Direction, Position};
+use super::{grid::ReservationError, Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
 const OCCUPIED_COST: u32 = 2;
@@ -161,21 +161,6 @@ impl Tile {
 
     pub(crate) fn is_road(&self) -> bool {
         matches!(self, Tile::Road(_))
-    }
-
-    pub fn road_successor(&self, pos: &Position) -> (Position, u32) {
-        (
-            match self {
-                Tile::Ramp(ramp) => *pos + ramp.dir,
-                _ => *pos,
-            },
-            // if self.is_road() {
-            //     new_pos
-            // } else {
-            //     *pos + dir.rotate_left()
-            // },
-            self.cost(),
-        )
     }
 
     pub fn get_building_id(&self) -> Option<Id> {

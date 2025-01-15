@@ -50,6 +50,11 @@ impl Direction {
         Direction::new(self.y, -self.x, self.z)
     }
 
+    pub fn rotate_right(self) -> Self {
+
+        Direction::new(-self.y, self.x, self.z)
+    }
+
     pub fn to_radians(self) -> f32 {
         let mut dir: f32 = 0.;
         if self.x > 0 {
@@ -134,6 +139,11 @@ mod direction_tests {
         assert_eq!(Direction::DOWN.rotate_left(), Direction::RIGHT);
         assert_eq!(Direction::LEFT.rotate_left(), Direction::DOWN);
         assert_eq!(Direction::UP.rotate_left(), Direction::LEFT);
+
+        assert_eq!(Direction::RIGHT.rotate_right(), Direction::DOWN);
+        assert_eq!(Direction::DOWN.rotate_right(), Direction::LEFT);
+        assert_eq!(Direction::LEFT.rotate_right(), Direction::UP);
+        assert_eq!(Direction::UP.rotate_right(), Direction::RIGHT);
     }
 
     #[test]
