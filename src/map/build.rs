@@ -307,15 +307,14 @@ impl BuildRoadLane {
                 }
 
                 action_list.append(Box::new(BuildRoad::new(pos, dir)));
-            }
-            // BuildRoadHeight::Tunnel => todo!(),
+            } // BuildRoadHeight::Tunnel => todo!(),
         }
     }
 }
 
 pub struct RoadBuildOption {
-    height: BuildRoadHeight,
-    lanes: &'static [BuildRoadLane],
+    pub height: BuildRoadHeight,
+    pub lanes: &'static [BuildRoadLane],
 }
 
 pub fn action_build_road(

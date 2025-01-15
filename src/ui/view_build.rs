@@ -8,7 +8,7 @@ use macroquad::{
 use crate::{
     context::Context,
     map::{
-        build::{action_one_way_road, action_two_way_road, BuildAction, BuildActionBuilding, BuildActionClearArea, BuildError, BuildResult}, building::Building, Map, Position
+        build::{action_build_road, action_one_way_road, action_two_way_road, BuildAction, BuildActionBuilding, BuildActionClearArea, BuildError, BuildResult, RoadBuildOption, TWO_WAY_ROAD_LANES}, building::Building, Map, Position
     },
     tileset::{Sprite, Tileset},
 };
@@ -26,7 +26,7 @@ const SELECTED_DELETE: Color = Color::new(1.0, 0., 0., 0.3);
 enum BuildMode {
     TwoWayRoad,
     OneWayRoad,
-    // Bridge,
+    Bridge,
     Station,
     Clear,
 }
@@ -49,7 +49,7 @@ pub struct BuildErrorMsg {
 
 pub struct ViewBuild {
     last_mouse_pos: Option<Position>,
-    // bridge_start_pos: Option<Position>,
+    bridge_start_pos: Option<Position>,
     build_toolbar: Toolbar<BuildMode>,
     edit_action_bar: Toolbar<BuildActions>,
     build_err: Option<BuildErrorMsg>,
@@ -60,7 +60,7 @@ impl ViewBuild {
     pub fn new() -> Self {
         Self {
             last_mouse_pos: None,
-            // bridge_start_pos: None,
+            bridge_start_pos: None,
             build_toolbar: Toolbar::new(
                 ToolbarType::Horizontal,
                 vec![
@@ -76,8 +76,14 @@ impl ViewBuild {
                         '2',
                         Sprite::new(8, 1),
                     ),
-                    ToolbarItem::new(BuildMode::Station, "Station", '3', Sprite::new(8, 4)),
-                    ToolbarItem::new(BuildMode::Clear, "Delete", '4', Sprite::new(8, 3)),
+                    ToolbarItem::new(
+                        BuildMode::Bridge,
+                        "Build a bridge",
+                        '3',
+                        Sprite::new(8, 2),
+                    ),
+                    ToolbarItem::new(BuildMode::Station, "Station", '4', Sprite::new(8, 4)),
+                    ToolbarItem::new(BuildMode::Clear, "Delete", '5', Sprite::new(8, 3)),
                 ],
             ),
             edit_action_bar: Toolbar::new(
@@ -145,6 +151,18 @@ impl ViewBuild {
             BuildMode::Station => {
                 Some(Box::new(BuildActionBuilding::new(Building::new_station(mouse_pos, 1))))
             }
+            BuildMode::Bridge => {
+                if let Some(pos) = self.bridge_start_pos {
+                    self.bridge_start_pos = None;
+                    Some(Box::new(action_build_road(pos, mouse_pos, RoadBuildOption{
+                        height: crate::map::build::BuildRoadHeight::Bridge,
+                        lanes: &TWO_WAY_ROAD_LANES,
+                    })))
+                } else {
+                    self.bridge_start_pos = Some(mouse_pos);
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -173,6 +191,8 @@ impl ViewBuild {
                     if map.grid.is_area_clear(&pos, (2, 2)).is_err() {
                         return Some(Box::new(BuildActionClearArea::new(pos)));
                     }
+                }
+                BuildMode::Bridge => {
                 }
                 BuildMode::Station => {}
             }
