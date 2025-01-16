@@ -13,6 +13,7 @@ pub mod tile;
 
 pub mod levels;
 pub mod vehicle;
+pub mod draw;
 
 mod position;
 pub use position::Position;
@@ -24,7 +25,6 @@ use vehicle::{Status, Vehicle};
 use crate::{
     consts::SpawnerColors,
     hash_map_id::{HashMapId, Id},
-    tileset::Tileset,
 };
 
 const _CITY_BLOCK_SIZE: i16 = 8;
@@ -150,10 +150,12 @@ impl Map {
         start_pos: Position,
         end_pos: Position,
         color: SpawnerColors,
+        dir: Option<Direction>,
     ) -> Option<Id> {
         let id = self.vehicles.id;
         if let Ok(mut vehicle) = Vehicle::new(start_pos, id, end_pos, &mut self.grid) {
             vehicle.color = color;
+            vehicle.dir = dir.unwrap_or(Direction::UP);
             Some(self.vehicles.insert(vehicle))
         } else {
             None
@@ -219,6 +221,7 @@ impl Map {
                         start_building.spawn_pos(),
                         destination_building.destination_pos(),
                         destination_building.color,
+                        start_building.dir
                     )
                     .is_none()
                 {
@@ -272,32 +275,6 @@ impl Map {
         }
 
         all_goals_met && !self.metadata.level_complete
-    }
-
-    pub fn draw(&self, tileset: &Tileset) {
-        self.grid.draw_tiles(tileset);
-
-        for b in self.grid.buildings.hash_map.values() {
-            b.draw(tileset);
-        }
-
-        for s in self.vehicles.hash_map.iter() {
-            if s.1.pos.z == 0 {
-                s.1.draw(tileset);
-            }
-        }
-
-        self.grid.draw_bridges(tileset);
-
-        for s in self.vehicles.hash_map.iter() {
-            if s.1.pos.z == 1 {
-                s.1.draw(tileset);
-            }
-        }
-
-        for c in self.cities.hash_map.values() {
-            c.draw(tileset);
-        }
     }
 }
 

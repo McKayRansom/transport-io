@@ -39,7 +39,7 @@ pub struct Vehicle {
     // position
     pub pos: Position,
     lag_pos_pixels: Direction,
-    dir: Direction,
+    pub dir: Direction,
     // This is an optimization and doesn't need to be saved
     #[serde(skip_serializing, skip_deserializing)]
     blocking_tile: Option<Position>,

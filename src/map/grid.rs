@@ -1,14 +1,10 @@
 use std::fmt;
-
-use macroquad::color::Color;
-use macroquad::math::Rect;
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
 use super::tile::{Reservation, Tile, YieldType};
 use super::{BuildingHashMap, Direction, Position};
 use crate::hash_map_id::{HashMapId, Id};
-use crate::tileset::Tileset;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
 // const EMPTY_ROAD_COLOR: Color = WHITE;
@@ -25,7 +21,7 @@ pub type Path = Option<(Vec<Position>, PathCost)>;
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GridTile {
     pub ground: Tile,
-    bridge: Tile,
+    pub bridge: Tile,
 }
 
 impl GridTile {
@@ -285,29 +281,6 @@ impl Grid {
         }
 
         None
-    }
-
-    pub fn draw_tiles(&self, tileset: &Tileset) {
-        let color: Color = Color::from_hex(0x2b313f);
-        let mut rect: Rect = Position::new(0, 0).into();
-        rect.w *= self.tiles[0].len() as f32;
-        rect.h *= self.tiles.len() as f32;
-        tileset.draw_rect(&rect, color);
-
-        for (y, row) in self.tiles.iter().enumerate() {
-            for (x, tile) in row.iter().enumerate() {
-                tile.ground.draw((x as i16, y as i16).into(), tileset);
-            }
-        }
-    }
-
-    pub fn draw_bridges(&self, tileset: &Tileset) {
-        for (y, row) in self.tiles.iter().enumerate() {
-            for (x, tile) in row.iter().enumerate() {
-                tile.bridge
-                    .draw_bridge((x as i16, y as i16, 1).into(), tileset, &tile.ground);
-            }
-        }
     }
 }
 

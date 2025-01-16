@@ -38,6 +38,10 @@ impl Direction {
         Direction::new(-self.x, -self.y, self.z)
     }
 
+    pub fn flatten(&self) -> Self {
+        Direction::new(self.x, self.y, 0)
+    }
+
     pub fn random() -> Self {
         Direction::ALL[rand::gen_range(0, Direction::ALL.len()) as usize]
     }

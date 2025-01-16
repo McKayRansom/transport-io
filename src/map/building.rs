@@ -29,7 +29,7 @@ enum BuildingType {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub pos: Position,
-    dir: Option<Direction>,
+    pub dir: Option<Direction>,
     pub color: SpawnerColors,
     pub city_id: Id,
     pub vehicle_on_the_way: Option<Id>,

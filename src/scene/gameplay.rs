@@ -1,6 +1,7 @@
 use super::{EScene, GameOptions, Scene};
 // use crate::audio::play_sfx;
 use crate::context::Context;
+use crate::map::draw::draw_map;
 // use crate::input::action_pressed;
 // use crate::input::Action;
 use crate::map::Map;
@@ -84,7 +85,7 @@ impl Scene for Gameplay {
     }
 
     fn draw(&mut self, ctx: &mut Context) {
-        self.map.draw(&ctx.tileset);
+        draw_map(&self.map, &ctx.tileset);
 
         self.ui.draw(&self.map, ctx);
 

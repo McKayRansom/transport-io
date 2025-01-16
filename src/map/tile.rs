@@ -1,7 +1,5 @@
 use std::fmt;
 
-use macroquad::math::Rect;
-
 mod road;
 pub use road::*;
 
@@ -9,9 +7,7 @@ mod reservation;
 pub use reservation::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    tileset::Tileset, hash_map_id::Id,
-};
+use crate::hash_map_id::Id;
 
 use super::{grid::ReservationError, Direction, Position};
 
@@ -85,26 +81,6 @@ impl Tile {
         }
     }
 
-    #[allow(clippy::single_match)]
-    pub fn draw(&self, pos: Position, tileset: &Tileset) {
-        let rect = Rect::from(pos);
-
-        match self {
-            Tile::Road(road) => road.draw(pos, &rect, tileset),
-            // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
-            _ => {}
-        }
-    }
-
-    pub fn draw_bridge(&self, pos: Position, tileset: &Tileset, tile_below: &Tile) {
-        if let Tile::Road(road) = self {
-            if let Tile::Ramp(_) = tile_below {
-                road.draw_bridge(&pos, tileset, true);
-            } else {
-                road.draw_bridge(&pos, tileset, false);
-            }
-        }
-    }
 
     pub fn reserve(&mut self, id: Id, pos: Position) -> Result<Reservation, ReservationError> {
         match self {

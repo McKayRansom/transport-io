@@ -1,24 +1,10 @@
-use macroquad::{
-    color::{Color, WHITE},
-    math::Rect,
-};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    hash_map_id::Id, map::{grid::GRID_Z_OFFSET, Direction, Position}, tileset::{Sprite, Tileset}
+    hash_map_id::Id, map::{Direction, Position}
 };
 
 use super::Reserved;
-
-const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
-const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
-const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
-const ROAD_TURN_SPRITE: Sprite = Sprite::new(3, 3);
-const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
-const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(3, 7, (1, 1));
-const ROAD_BRIDGE_SPRITE: Sprite = Sprite::new(3, 5);
-
-const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
@@ -139,62 +125,8 @@ impl Road {
         if !self.connections.is_empty() {
             self.connections.as_slice()
         } else {
-            // Dead ends don't need this
+            // Dead ends need this maybe?
             &pos.default_connections()[0..1]
-        }
-    }
-
-    pub fn draw(&self, pos: Position, rect: &Rect, tileset: &Tileset) {
-        let connection_count = self.connection_count();
-
-        if connection_count != 1 {
-            tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
-        }
-
-        for dir in self.connections.iter() {
-            if connection_count == 1 {
-                if self.should_yield {
-                    tileset.draw_tile(ROAD_YIELD_SPRITE, WHITE, rect, dir.to_radians());
-                } else if dir.z != 0 {
-                    // let mut rect_2 = *rect;
-                    // rect_2.y -= GRID_CELL_SIZE.1 as f32;
-                    // tileset.draw_tile(ROAD_RAMP_SPRITE_2, WHITE, &rect_2, dir.to_radians());
-                    // tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
-                } else {
-                    tileset.draw_tile(ROAD_STRAIGHT_SPRITE, WHITE, rect, dir.to_radians());
-                };
-            } else {
-                tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
-            }
-        }
-
-        if connection_count == 0 {
-            tileset.draw_tile(ROAD_TURN_SPRITE, WHITE, rect, pos.default_connections()[0].to_radians());
-        }
-
-        // if self.reserved {
-        //     tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
-        // }
-    }
-
-    pub fn draw_bridge(&self, pos: &Position, tileset: &Tileset, ramp_below: bool) {
-        // shadow
-        let mut shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
-        shadow_rect.x += GRID_Z_OFFSET;
-        tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
-
-        let rect = Rect::from(*pos);
-        for dir in self.connections.iter() {
-            if ramp_below {
-                if dir.z != 0 {
-                    let dir = dir.inverse();
-                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
-                } else {
-                    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
-                }
-            } else {
-                tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
-            }
         }
     }
 }

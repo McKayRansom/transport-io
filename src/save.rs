@@ -45,19 +45,16 @@ impl From<SpannedError> for SaveError {
     }
 }
 
-
 impl From<ron::Error> for SaveError {
     fn from(err: ron::Error) -> Self {
         SaveError::Serialize(err)
     }
 }
 
-
 pub type LoadResult = Result<Map, SaveError>;
 type SaveResult = Result<(), SaveError>;
 
 impl Map {
-
     pub fn load() -> LoadResult {
         #[cfg(not(target_family = "wasm"))]
         let mut map = Self::load_desktop();
@@ -109,12 +106,18 @@ impl Map {
     #[cfg(not(target_family = "wasm"))]
     /// writes the save to disk
     pub fn save(&self) -> SaveResult {
-        Ok(std::fs::write(Self::determine_save_path(), self.to_ron_string()?)?)
+        Ok(std::fs::write(
+            Self::determine_save_path(),
+            self.to_ron_string()?,
+        )?)
     }
 
     /// returns the save data in RON format as a pretty string
     fn to_ron_string(&self) -> Result<String, SaveError> {
-        Ok(ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())?)
+        Ok(ron::ser::to_string_pretty(
+            self,
+            ron::ser::PrettyConfig::default(),
+        )?)
     }
 }
 
@@ -128,7 +131,12 @@ mod save_tests {
     fn test_map_serialize() {
         let mut map = Map::new_blank((4, 4));
 
-        map.add_vehicle(map.grid.pos(0, 0), map.grid.pos(1, 0), crate::consts::SpawnerColors::Blue);
+        map.add_vehicle(
+            map.grid.pos(0, 0),
+            map.grid.pos(1, 0),
+            crate::consts::SpawnerColors::Blue,
+            None,
+        );
 
         map.save().unwrap();
 
