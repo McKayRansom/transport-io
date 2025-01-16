@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub type Id = u64;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct HashMapId<V> {
     pub id: Id,
     pub hash_map: HashMap<Id, V>,

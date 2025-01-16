@@ -34,7 +34,7 @@ impl Road {
 
     pub fn new_connected(dir: Direction, station: Option<Id>) -> Self {
         Road {
-            station: station,
+            station,
             should_yield: false,
             reserved: Reserved::new(),
             connections: if dir != Direction::NONE {
@@ -136,7 +136,7 @@ impl Road {
     }
 
     pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
-        if self.connections.len() > 0 {
+        if !self.connections.is_empty() {
             self.connections.as_slice()
         } else {
             // Dead ends don't need this

@@ -166,7 +166,7 @@ impl BuildActionClearArea {
         if let Tile::Road(road) = map.grid.get_tile_build(&bridge_pos)? {
             if road
                 .iter_connections(&bridge_pos)
-                .get(0)
+                .first()
                 .ok_or(BuildError::InvalidTile)?
                 != &dir
             {
@@ -185,7 +185,7 @@ impl BuildActionClearArea {
             if road.connection_count() == 0 || !contains {
                 self.clear_tile(map, bridge_pos)?;
             }
-            bridge_pos = bridge_pos + dir;
+            bridge_pos += dir;
         }
 
         let end_ramp_pos = bridge_pos + Direction::LAYER_DOWN;
@@ -353,17 +353,17 @@ impl BuildRoadLane {
                     1 => {
                         action_list
                             .append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
-                        pos = pos + Direction::LAYER_UP;
+                        pos += Direction::LAYER_UP;
                     }
                     _ if i == count - 2 => {
                         action_list
                             .append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
                         dir = dir + Direction::LAYER_DOWN;
-                        pos = pos + Direction::LAYER_UP;
+                        pos += Direction::LAYER_UP;
                     }
                     _ if i == count - 1 => {}
                     _ => {
-                        pos = pos + Direction::LAYER_UP;
+                        pos += Direction::LAYER_UP;
                     }
                 }
 
@@ -502,7 +502,7 @@ impl BuildActionBuilding {
     pub fn new(map: &mut Map, building: Building) -> Self {
         Self {
             building,
-            building_id: map.buildings.reserve_id(),
+            building_id: map.reserve_building_id(),
         }
     }
 }
@@ -555,6 +555,8 @@ impl Grid {
 
 #[cfg(test)]
 mod grid_build_tests {
+    use crate::hash_map_id::HashMapId;
+
     use super::Direction;
 
     use super::*;
@@ -678,7 +680,7 @@ mod grid_build_tests {
             (2, 0).into(),
             RoadBuildOption {
                 height: BuildRoadHeight::Bridge,
-                lanes: &ONE_WAY_ROAD_LANES,
+                lanes: ONE_WAY_ROAD_LANES,
             },
         );
         action.execute(&mut map).unwrap();
@@ -701,7 +703,7 @@ mod grid_build_tests {
             (2, 0).into(),
             RoadBuildOption {
                 height: BuildRoadHeight::Bridge,
-                lanes: &TWO_WAY_ROAD_LANES,
+                lanes: TWO_WAY_ROAD_LANES,
             },
         );
 
@@ -784,6 +786,7 @@ mod grid_build_tests {
 
         action_house.undo(&mut map).unwrap();
 
+        map.grid.buildings = HashMapId::new();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
         // Redo

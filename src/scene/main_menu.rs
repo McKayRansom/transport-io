@@ -6,8 +6,8 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::ui::{
     menu::{Menu, MenuItem},
-    popup::Popup}
-    ;
+    popup::Popup,
+};
 // use crate::ui::skin::{MENU_FONT_SIZE, MENU_MARGIN};
 // use crate::input::{action_pressed, Action};
 // use crate::text::{self, draw_text};
@@ -33,7 +33,6 @@ pub struct MainMenu {
     // settings_subscene: Settings,
     // credits_subscene: Credits,
     popup: Option<Popup>,
-
 }
 
 impl MainMenu {
@@ -54,17 +53,19 @@ impl MainMenu {
 
     fn menu_option_selected(&mut self, menu_option: MenuOption, ctx: &mut Context) {
         match menu_option {
-            MenuOption::Continue => {
-                match super::GameOptions::Continue.create() {
-                    Ok(map) => ctx.switch_scene_to = Some(EScene::Gameplay(map)),
-                    Err(_) => self.popup = Some(Popup::new(format!("Error loading save"))),
-                }
-            }
+            MenuOption::Continue => match super::GameOptions::Continue.create() {
+                Ok(map) => ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(map))),
+                Err(_) => self.popup = Some(Popup::new("Error loading save".into())),
+            },
             MenuOption::Scenarios => {
                 ctx.switch_scene_to = Some(EScene::LevelSelect);
             }
             MenuOption::Freeplay => {
-                ctx.switch_scene_to = Some(EScene::Gameplay(super::GameOptions::New.create().expect("Error generating map")))
+                ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(
+                    super::GameOptions::New
+                        .create()
+                        .expect("Error generating map"),
+                )))
             }
             // MenuOption::Settings => {
             //     self.settings_subscene.active = true;
@@ -105,25 +106,17 @@ impl Scene for MainMenu {
 
         let menu_height = 300.;
 
-        let x =-300. + screen_width() / 2.;
+        let x = -300. + screen_width() / 2.;
         let y = -menu_height + screen_height() / 2.;
         let font_size = 120.0;
-    
+
         let shadow_y = y + 5.;
         let shadow_x = x + 5.;
-    
-        draw_text(
-            "Transport IO",
-            shadow_x, shadow_y, font_size,
-            BLACK,
-        );
-    
-        draw_text(
-            "Transport IO",
-            x, y, font_size,
-            WHITE,
-        );
-    
+
+        draw_text("Transport IO", shadow_x, shadow_y, font_size, BLACK);
+
+        draw_text("Transport IO", x, y, font_size, WHITE);
+
         if let Some(selected) = self.menu.draw().cloned() {
             self.menu_option_selected(selected, ctx);
         }

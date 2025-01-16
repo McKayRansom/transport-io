@@ -54,7 +54,6 @@ pub struct Map {
     pub metadata: MapMetadata,
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
-    buildings: BuildingHashMap,
     cities: CityHashMap,
 }
 
@@ -65,7 +64,6 @@ impl Map {
             metadata: MapMetadata::new(),
             grid: Grid::new(size),
             vehicles: VehicleHashMap::new(),
-            buildings: BuildingHashMap::new(),
             cities: CityHashMap::new(),
         }
     }
@@ -93,7 +91,6 @@ impl Map {
             metadata: MapMetadata::new(),
             grid: Grid::new_from_string(string),
             vehicles: VehicleHashMap::new(),
-            buildings: BuildingHashMap::new(),
             cities: CityHashMap::new(),
         }
     }
@@ -164,11 +161,11 @@ impl Map {
     }
 
     pub fn reserve_building_id(&mut self) -> Id {
-        self.buildings.reserve_id()
+        self.grid.buildings.reserve_id()
     }
 
     pub fn remove_building(&mut self, id: &Id) -> Option<Building> {
-        if let Some(building) = self.buildings.hash_map.remove(id) {
+        if let Some(building) = self.grid.buildings.hash_map.remove(id) {
             if let Some(city) = self.cities.hash_map.get_mut(&building.city_id) {
                 if let Some(pos) = city.houses.iter().position(|x| x == id) {
                     city.houses.swap_remove(pos);
@@ -181,7 +178,7 @@ impl Map {
     }
 
     pub fn get_building(&self, id: &Id) -> Option<&Building> {
-        self.buildings.hash_map.get(id)
+        self.grid.buildings.hash_map.get(id)
     }
 
     pub fn insert_building(&mut self, id: Id, building: Building) {
@@ -189,14 +186,14 @@ impl Map {
             city.houses.push(id);
         }
 
-        self.buildings.hash_map.insert(id, building);
+        self.grid.buildings.hash_map.insert(id, building);
     }
 
     fn update_buildings(&mut self) -> bool {
         let mut vehicles_to_add: Vec<(Id, Position)> = Vec::new();
         let mut all_goals_met = true;
 
-        for building in self.buildings.values_mut() {
+        for building in self.grid.buildings.values_mut() {
             if building.update() {
                 vehicles_to_add.push((building.city_id, building.pos));
             }
@@ -209,7 +206,7 @@ impl Map {
         for (city_id, start_pos) in vehicles_to_add {
             // generate a random destination
             if let Some(destination_building) = self
-                .buildings
+                .grid.buildings
                 .hash_map
                 .get(&self.cities.hash_map[&city_id].random_house())
             {
@@ -247,7 +244,7 @@ impl Map {
                 .map(Tile::get_building_id)
             {
                 // let building_id = tile.get_building_id()
-                if let Some(building) = self.buildings.hash_map.get_mut(&building_id) {
+                if let Some(building) = self.grid.buildings.hash_map.get_mut(&building_id) {
                     if status == Status::ReachedDestination {
                         building.arrived_count += 1;
                     } else if building.arrived_count > 0 {
@@ -264,7 +261,7 @@ impl Map {
 
         let mut building_to_add: Vec<Building> = Vec::new();
         for city in self.cities.values_mut() {
-            if let Some(building) = city.update(&mut self.buildings, &mut self.grid) {
+            if let Some(building) = city.update(&mut self.grid) {
                 building_to_add.push(building);
             }
         }
@@ -289,7 +286,7 @@ impl Map {
             }
         }
 
-        for b in self.buildings.hash_map.values() {
+        for b in self.grid.buildings.hash_map.values() {
             b.draw(tileset);
         }
 

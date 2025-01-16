@@ -8,7 +8,7 @@ pub enum GameOptions {
 
 
 pub enum EScene {
-    Gameplay(Map),
+    Gameplay(Box<Map>),
     MainMenu,
     LevelSelect,
 }

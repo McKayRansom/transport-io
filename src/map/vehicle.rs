@@ -29,18 +29,23 @@ const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 #[derive(Serialize, Deserialize)]
 pub struct Vehicle {
     pub id: Id,
+    // pathing
     path: Path,
+    reserved: Vec<Reservation>,
     path_index: usize,
     path_time_ticks: u32,
     elapsed_ticks: u32,
+    pub destination: Position,
+    // position
     pub pos: Position,
     lag_pos_pixels: Direction,
     dir: Direction,
+    // This is an optimization and doesn't need to be saved
+    #[serde(skip_serializing, skip_deserializing)]
     blocking_tile: Option<Position>,
-    // TODO: pass in buildingid
-    pub destination: Position,
+
+    // this could be calculated from destination
     pub color: SpawnerColors,
-    reserved: Vec<Reservation>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd)]
@@ -146,6 +151,7 @@ impl Vehicle {
     fn update_speed(&mut self) {
 
         // TODO: fix bugs with x not a multiple of SPEED_PIXELS...
+        // match self.lag_pos_pixels.x.cmp(&0)
         if self.lag_pos_pixels.x > 0 {
             self.lag_pos_pixels.x -= SPEED_PIXELS_PER_TICK;
         } else if self.lag_pos_pixels.x < 0 {

@@ -15,7 +15,7 @@ use macroquad::window::{screen_height, screen_width};
 pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
 
 pub struct Gameplay {
-    map: Map,
+    map: Box<Map>,
     ui: UiState,
     last_ui_update: f64,
     last_map_update: f64,
@@ -33,9 +33,9 @@ impl GameOptions {
 }
 
 impl Gameplay {
-    pub async fn new(ctx: &mut Context, map: Map) -> Self {
+    pub async fn new(ctx: &mut Context, map: Box<Map>) -> Self {
         let gameplay = Gameplay {
-            map: map,
+            map,
             ui: UiState::new().await,
             last_ui_update: get_time(),
             last_map_update: get_time(),
@@ -44,7 +44,10 @@ impl Gameplay {
 
         // TODO: Camera center function
         let size = gameplay.map.grid.size_px();
-        ctx.tileset.camera = (size.0 /2. - screen_width() / 2., size.1 / 2. - screen_height() / 2.);
+        ctx.tileset.camera = (
+            size.0 / 2. - screen_width() / 2.,
+            size.1 / 2. - screen_height() / 2.,
+        );
         ctx.tileset.zoom = 1.;
 
         gameplay
@@ -67,13 +70,17 @@ impl Scene for Gameplay {
             1. / 16.
         };
 
-        if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open) && get_time() - self.last_map_update > map_speed {
+        if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open)
+            && get_time() - self.last_map_update > map_speed
+        {
             if self.map.update() {
-                self.popup = Some(Popup::new(format!("Level completed!")));
+                self.popup = Some(Popup::new(format!(
+                    "Level {} completed!",
+                    self.map.metadata.level_number
+                )));
             }
             self.last_map_update = get_time();
         }
-        
     }
 
     fn draw(&mut self, ctx: &mut Context) {
@@ -83,14 +90,17 @@ impl Scene for Gameplay {
 
         if let Some(popup) = &self.popup {
             match popup.draw() {
-                Some(PopupResult::Ok) => ctx.switch_scene_to = Some(EScene::Gameplay(Map::new_level(self.map.metadata.level_number + 1))),
+                Some(PopupResult::Ok) => {
+                    ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(Map::new_level(
+                        self.map.metadata.level_number + 1,
+                    ))))
+                }
                 Some(PopupResult::Cancel) => {
                     self.popup = None;
                     self.map.metadata.level_complete = true;
-                },
-                None => {},
+                }
+                None => {}
             }
         }
     }
 }
-

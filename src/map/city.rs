@@ -9,7 +9,7 @@ use super::{
 };
 
 use crate::{
-    hash_map_id::{HashMapId, Id},
+    hash_map_id::Id,
     tileset::Tileset,
 };
 
@@ -40,9 +40,9 @@ impl City {
     }
 
 
-    pub fn grow_building(&self, buildings: &HashMapId<Building>, grid: &Grid) -> Option<Building> {
+    pub fn grow_building(&self, grid: &Grid) -> Option<Building> {
         let start_house_id = self.random_house();
-        if let Some(building) = buildings.hash_map.get(&start_house_id) {
+        if let Some(building) = grid.buildings.hash_map.get(&start_house_id) {
             let mut building_pos = building.pos;
             let dir = Direction::random();
             loop {
@@ -63,11 +63,11 @@ impl City {
         tileset.draw_text(self.name.as_str(), 32., WHITE, &self.pos.into());
     }
 
-    pub fn update(&mut self, buildings: &HashMapId<Building>, grid: &mut Grid) -> Option<Building> {
+    pub fn update(&mut self, grid: &mut Grid) -> Option<Building> {
         self.grow_ticks += 1;
         if self.grow_ticks > self.grow_rate {
             self.grow_ticks = 0;
-            self.grow_building(buildings, grid)
+            self.grow_building(grid)
         } else {
             None
         }

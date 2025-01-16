@@ -6,8 +6,8 @@ use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 
 use super::tile::{Reservation, Tile, YieldType};
-use super::{Direction, Position};
-use crate::hash_map_id::Id;
+use super::{BuildingHashMap, Direction, Position};
+use crate::hash_map_id::{HashMapId, Id};
 use crate::tileset::Tileset;
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
@@ -74,6 +74,7 @@ impl GridTile {
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct Grid {
     pub tiles: Vec<Vec<GridTile>>,
+    pub buildings: BuildingHashMap,
 }
 
 impl Position {}
@@ -115,6 +116,7 @@ impl Grid {
     pub fn new(size: (i16, i16)) -> Self {
         Grid {
             tiles: vec![vec![GridTile::new(); size.0 as usize]; size.1 as usize],
+            buildings: HashMapId::new(),
         }
     }
 
@@ -141,7 +143,7 @@ impl Grid {
             .map(|line| line.chars().map(GridTile::new_from_char).collect())
             .collect();
 
-        Grid { tiles }
+        Grid { tiles, buildings: HashMapId::new()}
     }
 
     #[allow(dead_code)]
@@ -152,7 +154,7 @@ impl Grid {
             .map(|(line, bridge_line)| line.chars().zip(bridge_line.chars()).map(GridTile::new_from_char_layers).collect())
             .collect();
 
-        Grid { tiles }
+        Grid { tiles, buildings: HashMapId::new() }
     }
 
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {

@@ -44,7 +44,13 @@ async fn main() {
     };
 
     let mut current_scene: Box<dyn Scene> = match map::levels::TEST_LEVEL {
-        Some(level) => Box::new(Gameplay::new(&mut ctx, scene::GameOptions::Level(level).create().unwrap()).await),
+        Some(level) => Box::new(
+            Gameplay::new(
+                &mut ctx,
+                Box::new(scene::GameOptions::Level(level).create().unwrap()),
+            )
+            .await,
+        ),
         None => Box::new(MainMenu::new(&mut ctx).await),
     };
 

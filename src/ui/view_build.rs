@@ -156,7 +156,7 @@ impl ViewBuild {
                     self.bridge_start_pos = None;
                     Some(Box::new(action_build_road(pos, mouse_pos, RoadBuildOption{
                         height: crate::map::build::BuildRoadHeight::Bridge,
-                        lanes: &TWO_WAY_ROAD_LANES,
+                        lanes: TWO_WAY_ROAD_LANES,
                     })))
                 } else {
                     self.bridge_start_pos = Some(mouse_pos);
