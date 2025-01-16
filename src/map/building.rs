@@ -98,9 +98,29 @@ impl Building {
         );
     }
 
-    // pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
-    // pos.default_connections()
-    // }
+    pub fn spawn_pos(&self) -> Position {
+        if let Some(dir) = self.dir {
+            self.pos.corner_pos(dir.inverse())
+        } else {
+            self.pos
+        }
+    }
+
+    pub fn destination_pos(&self) -> Position {
+        if let Some(dir) = self.dir {
+            self.pos.corner_pos(dir)
+        } else {
+            self.pos
+        }
+    }
+
+    pub fn update_arrived(&mut self, success: bool) {
+        if success {
+            self.arrived_count += 1;
+        } else if self.arrived_count > 0 {
+            self.arrived_count -= 1;
+        }
+    }
 
     pub fn update(&mut self) -> bool {
         if self.building_type != BuildingType::Station {

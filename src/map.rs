@@ -190,12 +190,12 @@ impl Map {
     }
 
     fn update_buildings(&mut self) -> bool {
-        let mut vehicles_to_add: Vec<(Id, Position)> = Vec::new();
+        let mut vehicles_to_add: Vec<Id> = Vec::new();
         let mut all_goals_met = true;
 
-        for building in self.grid.buildings.values_mut() {
+        for (id, building) in &mut self.grid.buildings.hash_map {
             if building.update() {
-                vehicles_to_add.push((building.city_id, building.pos));
+                vehicles_to_add.push(*id);
             }
 
             if building.arrived_count < 10 {
@@ -203,23 +203,32 @@ impl Map {
             }
         }
 
-        for (city_id, start_pos) in vehicles_to_add {
+        for building_id in vehicles_to_add {
             // generate a random destination
-            if let Some(destination_building) = self
-                .grid.buildings
-                .hash_map
-                .get(&self.cities.hash_map[&city_id].random_house())
-            {
-                if destination_building.pos == start_pos {
-                    // TODO: Some way to not pick the same house
-                    continue;
-                }
-                // TODO: PASS THIS MESS
-                let _vehicle = self.add_vehicle(
-                    start_pos,
-                    destination_building.pos,
-                    destination_building.color,
-                );
+            let start_building = self.grid.buildings.hash_map.get(&building_id).unwrap();
+
+            let end_building_id = self.cities.hash_map[&start_building.city_id].random_house();
+
+            if end_building_id == building_id {
+                continue;
+            }
+
+            if let Some(destination_building) = self.grid.buildings.hash_map.get(&end_building_id) {
+                if self
+                    .add_vehicle(
+                        start_building.spawn_pos(),
+                        destination_building.destination_pos(),
+                        destination_building.color,
+                    )
+                    .is_none()
+                {
+                    self.grid
+                        .buildings
+                        .hash_map
+                        .get_mut(&end_building_id)
+                        .unwrap()
+                        .update_arrived(false);
+                };
 
                 // destination_building.vehicle_on_the_way = _vehicle;
             }
@@ -245,11 +254,7 @@ impl Map {
             {
                 // let building_id = tile.get_building_id()
                 if let Some(building) = self.grid.buildings.hash_map.get_mut(&building_id) {
-                    if status == Status::ReachedDestination {
-                        building.arrived_count += 1;
-                    } else if building.arrived_count > 0 {
-                        building.arrived_count -= 1;
-                    }
+                    building.update_arrived(status == Status::ReachedDestination);
                 }
             }
             self.vehicles.hash_map.remove(&id);
@@ -272,6 +277,10 @@ impl Map {
     pub fn draw(&self, tileset: &Tileset) {
         self.grid.draw_tiles(tileset);
 
+        for b in self.grid.buildings.hash_map.values() {
+            b.draw(tileset);
+        }
+
         for s in self.vehicles.hash_map.iter() {
             if s.1.pos.z == 0 {
                 s.1.draw(tileset);
@@ -284,10 +293,6 @@ impl Map {
             if s.1.pos.z == 1 {
                 s.1.draw(tileset);
             }
-        }
-
-        for b in self.grid.buildings.hash_map.values() {
-            b.draw(tileset);
         }
 
         for c in self.cities.hash_map.values() {
