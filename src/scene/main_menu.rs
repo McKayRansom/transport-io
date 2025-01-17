@@ -13,7 +13,8 @@ use crate::ui::{
 // use crate::text::{self, draw_text};
 use macroquad::color::{BLACK, WHITE};
 // use macroquad::math::vec2;
-use macroquad::text::draw_text;
+use macroquad::text::{draw_text, draw_text_ex, measure_text};
+use macroquad::ui::hash;
 // use macroquad::ui::{hash, root_ui, widgets};
 use macroquad::window::{screen_height, screen_width};
 
@@ -103,21 +104,45 @@ impl Scene for MainMenu {
         //     self.credits_subscene.draw(ctx);
         //     return;
         // }
+        let menu_height = 200.;
 
-        let menu_height = 300.;
+        let font_size: u16 = 120;
 
-        let x = -300. + screen_width() / 2.;
+        let measure = measure_text("Transport IO", Some(&ctx.font), font_size, 1.);
+
+        let x = -measure.width / 2. + screen_width() / 2.;
         let y = -menu_height + screen_height() / 2.;
-        let font_size = 120.0;
 
         let shadow_y = y + 5.;
         let shadow_x = x + 5.;
 
-        draw_text("Transport IO", shadow_x, shadow_y, font_size, BLACK);
+        draw_text_ex(
+            "Transport IO",
+            shadow_x,
+            shadow_y,
+            macroquad::text::TextParams {
+                font: Some(&ctx.font),
+                font_size,
+                color: BLACK,
+                ..Default::default()
+            },
+        );
 
-        draw_text("Transport IO", x, y, font_size, WHITE);
+        draw_text_ex(
+            "Transport IO",
+            x,
+            y,
+            macroquad::text::TextParams {
+                font: Some(&ctx.font),
+                font_size,
+                color: WHITE,
+                ..Default::default()
+            },
+        );
 
-        if let Some(selected) = self.menu.draw().cloned() {
+        // draw_text("Transport IO", x, y, font_size, WHITE);
+
+        if let Some(selected) = self.menu.draw(hash!()).cloned() {
             self.menu_option_selected(selected, ctx);
         }
 
@@ -125,7 +150,7 @@ impl Scene for MainMenu {
             // ctx,
             format!("v{}", VERSION).as_str(),
             40.,
-            VIRTUAL_HEIGHT - 40.,
+            screen_height() - 40.,
             // text::Size::Small,
             20.,
             WHITE,

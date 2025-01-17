@@ -262,7 +262,7 @@ impl UiState {
         self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
 
         if self.pause_menu_open {
-            if let Some(selected) = self.pause_menu.draw() {
+            if let Some(selected) = self.pause_menu.draw(hash!()) {
                 match selected {
                     PauseMenuSelect::Continue => {
                         self.pause_menu_open = false;

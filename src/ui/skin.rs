@@ -1,20 +1,30 @@
-use macroquad::{color::{Color, BLACK, WHITE}, math::RectOffset, text::load_ttf_font, texture::Image, ui::{root_ui, Skin}};
+use macroquad::{
+    color::{Color, WHITE},
+    math::RectOffset,
+    text::{load_ttf_font, Font},
+    texture::Image,
+    ui::{root_ui, Skin},
+};
 
 pub const MENU_FONT_SIZE: u16 = 48;
 pub const MENU_MARGIN: f32 = 16.;
-pub const BUTTON_MARGIN_TOP: f32 = 2.;
-pub const BUTTON_MARGIN_SIDE: f32 = 16.;
+pub const MENU_OUTER_MARGIN: f32 = 16.;
 
-pub async fn init() {
+pub const BUTTON_INNER_MARGIN: (f32, f32) = (16., 2.);
+pub const BUTTON_OUTER_MARGIN: (f32, f32) = (16., 8.);
+pub const BUTTON_MARGIN: (f32, f32) = (
+    BUTTON_INNER_MARGIN.0 + BUTTON_OUTER_MARGIN.0,
+    BUTTON_INNER_MARGIN.1 + BUTTON_OUTER_MARGIN.1,
+);
+
+pub async fn init() -> Font {
+    // let font = load_ttf_font("resources/Micro5-Regular.ttf").await.unwrap();
+
+    let font = load_ttf_font("resources/Jersey10-Regular.ttf")
+        .await
+        .unwrap();
+
     let skin2 = {
-        // let font = load_ttf_font("resources/Jersey10-Regular.ttf")
-        //     .await
-        //     .unwrap();
-
-        let font = load_ttf_font("resources/Micro5-Regular.ttf")
-            .await
-            .unwrap();
-
         let label_style = root_ui()
             .style_builder()
             .with_font(&font)
@@ -26,7 +36,7 @@ pub async fn init() {
         // let window_color = Color::from_hex(0x585858);
         // let window_color = Color::new(0., 0., 0., 0.);
         // let window_color = Color::new(0., 0.,0., 0.3);
-        let window_color = Color::new(1., 1.,1., 0.9);
+        let window_color = Color::new(1., 1., 1., 1.0);
 
         let window_style = root_ui()
             .style_builder()
@@ -44,46 +54,67 @@ pub async fn init() {
             .color(window_color)
             // .font_size(120)
             // .text_color(WHITE)
-            .background_margin(RectOffset::new(8., 8., 8., 8.))
-            .margin(RectOffset::new(MENU_MARGIN, MENU_MARGIN, MENU_MARGIN, MENU_MARGIN))
+            .background_margin(RectOffset::new(
+                MENU_OUTER_MARGIN,
+                MENU_OUTER_MARGIN,
+                MENU_OUTER_MARGIN,
+                MENU_OUTER_MARGIN,
+            ))
+            .margin(RectOffset::new(
+                MENU_MARGIN,
+                MENU_MARGIN,
+                MENU_MARGIN,
+                MENU_MARGIN,
+            ))
             .build();
 
         let button_style = root_ui()
             .style_builder()
-        .background(
-            Image::from_file_with_format(
-                include_bytes!("../../resources/button_background_2.png"),
-                None,
+            .background(
+                Image::from_file_with_format(
+                    include_bytes!("../../resources/button_background_2.png"),
+                    None,
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        )
-        .background_margin(RectOffset::new(16.0, 16.0, 8.0, 8.0))
-        .background_hovered(
-            Image::from_file_with_format(
-                include_bytes!("../../resources/button_hovered_background_2.png"),
-                None,
+            .background_margin(RectOffset::new(
+                BUTTON_OUTER_MARGIN.0,
+                BUTTON_OUTER_MARGIN.0,
+                BUTTON_OUTER_MARGIN.1,
+                BUTTON_OUTER_MARGIN.1,
+            ))
+            .background_hovered(
+                Image::from_file_with_format(
+                    include_bytes!("../../resources/button_hovered_background_2.png"),
+                    None,
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        )
-        .background_clicked(
-            Image::from_file_with_format(
-                include_bytes!("../../resources/button_clicked_background_2.png"),
-                None,
+            .background_clicked(
+                Image::from_file_with_format(
+                    include_bytes!("../../resources/button_clicked_background_2.png"),
+                    None,
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        )
-        .with_font(&font)
-        .unwrap()
-        .margin(RectOffset::new(16., 16., 2., 2.))
-        // .color_clicked(Color::from_rgba(187, 187, 187, 255))
-        // .color_hovered(Color::from_rgba(170, 170, 170, 235))
-        // .text_color(Color::from_rgba(0, 0, 0, 255))
-        // .text_color(Color::from_rgba(180, 180, 100, 255))
-        .text_color(WHITE)
-        .text_color_hovered(WHITE)
-        .text_color_clicked(WHITE)
-        .font_size(MENU_FONT_SIZE)
-        .build();
+            .with_font(&font)
+            .unwrap()
+            .margin(RectOffset::new(
+                BUTTON_INNER_MARGIN.0,
+                BUTTON_INNER_MARGIN.0,
+                BUTTON_INNER_MARGIN.1,
+                BUTTON_INNER_MARGIN.1,
+            ))
+            .color_inactive(WHITE)
+            // .color_clicked(Color::from_rgba(187, 187, 187, 255))
+            // .color_hovered(Color::from_rgba(170, 170, 170, 235))
+            // .text_color(Color::from_rgba(0, 0, 0, 255))
+            // .text_color(Color::from_rgba(180, 180, 100, 255))
+            .text_color(WHITE)
+            .text_color_hovered(WHITE)
+            .text_color_clicked(WHITE)
+            .font_size(MENU_FONT_SIZE)
+            .build();
 
         // let checkbox_style = root_ui()
         //     .style_builder()
@@ -152,12 +183,13 @@ pub async fn init() {
             // checkbox_style,
             // editbox_style,
             // combobox_style,
-
             margin,
-            
+
             ..root_ui().default_skin()
         }
     };
 
     root_ui().push_skin(&skin2);
+
+    font
 }

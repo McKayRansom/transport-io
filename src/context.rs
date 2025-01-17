@@ -1,3 +1,5 @@
+use macroquad::text::Font;
+
 // use crate::assets_path::determine_asset_path;
 // use crate::audio;
 // use crate::consts::*;
@@ -19,6 +21,7 @@ pub struct Context {
     // pub textures: texture::TextureAtlas,
     pub tileset: Tileset,
     // pub fonts: font::FontAtlas,
+    pub font: Font,
     // pub audio: audio::AudioAtlas,
     // pub render_target: RenderTarget,
     // pub render_target_cam: Camera2D,
@@ -30,12 +33,11 @@ pub struct Context {
 impl Context {
     pub async fn default() -> Self {
 
-        skin::init().await;
-
         Self {
             // gamepads: Gamepads::new(),
             request_quit: false,
             tileset: Tileset::new().await,
+            font: skin::init().await,
             // audio: audio::AudioAtlas::new().await,
             // fonts: font::FontAtlas::new().await,
             // render_target,

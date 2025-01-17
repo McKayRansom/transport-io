@@ -1,3 +1,5 @@
+use macroquad::ui::hash;
+
 use crate::{
     context::Context,
     map::levels::LEVEL_COUNT,
@@ -33,7 +35,7 @@ impl Scene for LevelSelect {
     fn update(&mut self, _ctx: &mut Context) {}
 
     fn draw(&mut self, ctx: &mut Context) {
-        if let Some(selected) = self.menu.draw() {
+        if let Some(selected) = self.menu.draw(hash!()) {
             self.level_selected(selected, ctx);
         }
     }
