@@ -29,9 +29,11 @@ impl<V> Menu<V> {
     }
 
     pub fn draw(&self) -> Option<&V> {
-        let menu_width =
-            measure_text(&self.items[0].label, None, MENU_FONT_SIZE, 1.).width + MENU_MARGIN * 6.;
-        let menu_height = 300.;
+
+        let measure = measure_text(&self.items[0].label, None, MENU_FONT_SIZE, 1.);
+
+        let menu_width = measure.width + MENU_MARGIN * 6.;
+        let menu_height = (measure.height + MENU_MARGIN * 2.) * self.items.len() as f32 + MENU_MARGIN;
 
         let mut selected = None;
 
