@@ -22,7 +22,7 @@ use macroquad::ui::hash;
 // use macroquad::ui::{hash, root_ui, widgets};
 use macroquad::window::{screen_height, screen_width};
 
-const MAIN_MENU_MAP: &'static str = "
+const MAIN_MENU_MAP: &str = "
 __________________
 __________________
 __________________

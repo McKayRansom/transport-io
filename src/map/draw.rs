@@ -76,8 +76,8 @@ pub fn draw_bridges(grid: &Grid, tileset: &Tileset) {
 
 pub fn draw_tile(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
     match tile {
-        Tile::Road(road) => draw_road(&road, pos, tileset, grid),
-        Tile::Ramp(ramp) => draw_ramp(&ramp, pos, tileset),
+        Tile::Road(road) => draw_road(road, pos, tileset, grid),
+        Tile::Ramp(ramp) => draw_ramp(ramp, pos, tileset),
         Tile::Water => tileset.draw_tile(WATER_SPRITE, WHITE, &pos.into(), 0.),
         // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
         _ => {}

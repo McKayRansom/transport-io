@@ -1,5 +1,5 @@
 use macroquad::{
-    color::Color,
+    color::{Color, BLACK},
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
@@ -10,6 +10,8 @@ const TILE_SIZE: u32 = 16;
 
 const MIN_ZOOM: f32 = 0.4;
 const MAX_ZOOM: f32 = 4.;
+
+const SHADOW_OFFSET: f32 = 1.;
 
 #[derive(Clone, Copy)]
 pub struct Sprite {
@@ -126,10 +128,25 @@ impl Tileset {
     pub fn draw_text(&self, text: &str, text_size: f32, color: Color, rect: &Rect) {
         let font_size = (text_size * self.zoom) as u16;
         let text_measured = measure_text(text, None, font_size, 1.0);
+
+        let shadow_x = (rect.x + SHADOW_OFFSET - self.camera.0) * self.zoom - text_measured.width / 2.;
+        let shadow_y = (rect.y + SHADOW_OFFSET - self.camera.1) * self.zoom + text_measured.height / 2.;
         draw_text_ex(
             text,
-            (rect.x - self.camera.0) * self.zoom - text_measured.width / 2.,
-            (rect.y - self.camera.1) * self.zoom + text_measured.height / 2.,
+            shadow_x, shadow_y,
+            TextParams {
+                font_size,
+                font_scale: 1.0,
+                color: BLACK,
+                ..Default::default()
+            },
+        );
+
+        let x = (rect.x - self.camera.0) * self.zoom - text_measured.width / 2.;
+        let y = (rect.y - self.camera.1) * self.zoom + text_measured.height / 2.;
+        draw_text_ex(
+            text,
+            x, y,
             TextParams {
                 font_size,
                 font_scale: 1.0,

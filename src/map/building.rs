@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use super::{Direction, Position};
 
 use crate::{
-    consts::SpawnerColors, hash_map_id::Id, tileset::{Sprite, Tileset}
+    consts::SpawnerColors,
+    hash_map_id::Id,
+    tileset::{Sprite, Tileset},
 };
 
 pub const BUILDING_SIZE: (i8, i8) = (2, 2);
@@ -24,7 +26,6 @@ enum BuildingType {
     Station,
     Spawner,
 }
-
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
@@ -86,7 +87,11 @@ impl Building {
         let (sprite, color): (&Sprite, Color) = match self.building_type {
             BuildingType::House => (&HOUSE_SPRITE, WHITE),
             BuildingType::Station => (&STATION_SPRITE, WHITE),
-            BuildingType::Spawner => (&SPAWNER_SPRITE, self.color.color()),
+            BuildingType::Spawner => (&SPAWNER_SPRITE, {
+                let mut color = self.color.color();
+                color.a *= 0.8;
+                color
+            }),
         };
         tileset.draw_tile(*sprite, color, &self.pos.into(), 0.0);
 

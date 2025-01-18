@@ -4,7 +4,7 @@ use std::fmt;
 
 use super::building::Building;
 use super::tile::{Reservation, Tile, YieldType};
-use super::{BuildingHashMap, Direction, Position};
+use super::{BuildingHashMap, Direction, Position, DEFAULT_CITY_ID};
 use crate::consts::SpawnerColors;
 use crate::hash_map_id::{HashMapId, Id};
 
@@ -172,7 +172,7 @@ impl Grid {
                                     pos,
                                     dir,
                                     SpawnerColors::from_number(station),
-                                    1,
+                                    DEFAULT_CITY_ID,
                                 ),
                             );
                         }
