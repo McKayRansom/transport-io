@@ -32,8 +32,6 @@ const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
 const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 
-const MIN_ZOOM: f32 = 0.4;
-const MAX_ZOOM: f32 = 4.;
 
 #[derive(PartialEq, Eq)]
 pub enum TimeSelect {
@@ -105,7 +103,7 @@ impl UiState {
         }
 
         if new_mouse_wheel.1 != 0. {
-            self.change_zoom(ctx, SCROLL_SENSITIVITY * new_mouse_wheel.1);
+            ctx.tileset.change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
             println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
         }
 
@@ -194,6 +192,9 @@ impl UiState {
             Tile::Ramp(_) => {
                 ui.label(None, "Ramp");
             }
+            Tile::Water => {
+                ui.label(None, "Water");
+            }
             Tile::Building(building) => {
                 if let Some(building) = map.get_building(building) {
                     ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
@@ -232,7 +233,7 @@ impl UiState {
             ),
             vec2(details_width, details_height),
         )
-        .label("Details")
+        // .label("Details")
         .movable(false)
         .ui(&mut root_ui(), |ui| {
             if let Some(pos) = self.last_mouse_pos {
@@ -278,21 +279,6 @@ impl UiState {
         }
     }
 
-    fn change_zoom(&mut self, ctx: &mut Context, amount: f32) {
-        let new_zoom = ctx.tileset.zoom + amount;
-
-        if new_zoom <= MIN_ZOOM || new_zoom >= MAX_ZOOM {
-            return;
-        }
-
-        let old_screen_zoom = 1. / ctx.tileset.zoom;
-        let new_screen_zoom = 1. / new_zoom;
-        ctx.tileset.camera.0 += screen_width() * (old_screen_zoom - new_screen_zoom) / 2.;
-        ctx.tileset.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
-
-        ctx.tileset.zoom += amount;
-        // let self.zoom = self.zoom.round();
-    }
 
     fn key_down_event(&mut self, ctx: &mut Context, ch: char) {
         match ch {

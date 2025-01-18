@@ -1,59 +1,106 @@
-use crate::consts::SpawnerColors;
 
 use super::{
-    build::{BuildAction, BuildActionStation}, building::Building, Direction, Map, Position
+    Map, DEFAULT_CITY_ID,
 };
 
-const LEVEL_MAP_SIZE: (i16, i16) = (2 * 9, 2 * 9);
 
-pub const LEVEL_COUNT: usize = 10;
 // pub const TEST_LEVEL: Option<usize> = Some(1);
 pub const TEST_LEVEL: Option<usize> = None;
 
-pub const LEFT_POS: Position = Position::new(0, LEVEL_MAP_SIZE.1 / 2);
-pub const RIGHT_POS: Position = Position::new(LEVEL_MAP_SIZE.0 - 2, LEVEL_MAP_SIZE.1 / 2);
-pub const TOP_POS: Position = Position::new(LEVEL_MAP_SIZE.0 / 2, 0);
-pub const BOT_POS: Position = Position::new(LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 - 2);
+pub struct Level {
+    pub name: &'static str,
+    pub hint: &'static str,
+    // Unlocks? how do
+    pub grid: &'static str,
+}
 
-impl Map {
-    pub fn new_level(level: usize) -> Self {
-        let mut map = Self::new_blank(LEVEL_MAP_SIZE);
+const LEVELS: &[Level] = &[Level {
+    name: "Connect Road",
+    hint: "Click and drag to connect roads!",
+    grid: "
+            __________________
+            __________________
+            __________________
+            __________________
+            11______________22
+            11______________22
+            __________________
+            __________________
+            __________________
+            __________________
+            ",
+},
+Level {
+    name: "Intersection",
+    hint: "Intersections are created when roads cross",
+    grid: "
+            ________33________
+            ________33________
+            __________________
+            __________________
+            __________________
+            __________________
+            __________________
+            __________________
+            11______________22
+            11______________22
+            __________________
+            __________________
+            __________________
+            __________________
+            __________________
+            __________________
+            ________44________
+            ________44________
+            ",
+},
+Level {
+    name: "Bridges",
+    hint: "Bridges can be build over Rivers or roads",
+    grid: "
+            ________ww________
+            ________ww________
+            ________ww________
+            ________ww________
+            11______ww______22
+            11______ww______22
+            ________ww________
+            ________ww________
+            ________ww________
+            ________ww________
+            ",
+},
+Level {
+    name: "Highway",
+    hint: "You can create one-way roads",
+    grid: "
+            __________________
+            __________________
+            11______________22
+            11______________22
+            11______________22
+            11______________22
+            __________________
+            __________________
+            ",
+}
+];
 
-        map.metadata.is_level = true;
-        map.metadata.level_complete = false;
-        map.metadata.level_number = level;
+pub const LEVEL_COUNT: usize = LEVELS.len();
 
-        let city_id = map.new_city(
-            (LEVEL_MAP_SIZE.0 / 2, LEVEL_MAP_SIZE.1 / 2).into(),
-            format!("level {level}"),
-        );
+pub fn new_level(level_number: usize) -> Map {
+    let level: &Level = &LEVELS[level_number];
 
-        // WOOF
-        map.get_city_mut(city_id).unwrap().grow_rate = u32::MAX;
+    let mut map = Map::new_from_string(&level.grid);
 
-        match level {
-            0 => {
-                map.new_spawner(LEFT_POS, Direction::RIGHT, SpawnerColors::Blue);
-                map.new_spawner(RIGHT_POS, Direction::LEFT, SpawnerColors::Red);
-            }
-            1 => {
-                map.new_spawner(LEFT_POS, Direction::RIGHT, SpawnerColors::Blue);
-                map.new_spawner(RIGHT_POS, Direction::LEFT, SpawnerColors::Red);
-                map.new_spawner(TOP_POS, Direction::DOWN, SpawnerColors::Green);
-                map.new_spawner(BOT_POS, Direction::UP, SpawnerColors::Yellow);
-            }
-            _ => {}
-        }
+    map.metadata.is_level = true;
+    map.metadata.grow_cities = false;
+    map.metadata.level_complete = false;
+    map.metadata.level_number = level_number;
 
-        map
-    }
+    map.get_city_mut(DEFAULT_CITY_ID).unwrap().name = level.name.into();
 
-    pub fn new_spawner(&mut self, pos: Position, dir: Direction, color: SpawnerColors) {
-        let pos = pos.round_to(2);
-        BuildActionStation::new(self, pos, Building::new_spawner(pos, dir, color, 1))
-            .execute(self)
-            .unwrap()
-    }
+    map
 }
 
 #[cfg(test)]

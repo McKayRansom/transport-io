@@ -49,6 +49,7 @@ pub enum Tile {
     Building(Id),
     Road(Road),
     Ramp(Ramp),
+    Water,
 }
 
 impl Tile {
@@ -62,6 +63,10 @@ impl Tile {
             ')' => Tile::Ramp(Ramp { dir: Direction::RIGHT }),
             '(' => Tile::Ramp(Ramp { dir: Direction::LEFT }),
             '_' => Tile::Empty,
+            'w' => Tile::Water,
+            '1'..'9' => {
+                Tile::Road(Road::new_connected(Direction::NONE, Some(ch as Id - '0' as Id)))
+            }
             _ => {
                 if let Some(road) = Road::new_from_char(ch) {
                     Tile::Road(road)
@@ -162,6 +167,7 @@ impl fmt::Debug for Tile {
             Tile::Empty => write!(f, "e"),
             Tile::Road(road) => road.fmt(f),
             Tile::Building(_) => write!(f, "h"),
+            Tile::Water => write!(f, "w"),
             Tile::Ramp(ramp) => ramp.fmt(f),
             // => write!(f, "b")?,
         }

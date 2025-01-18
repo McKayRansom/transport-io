@@ -11,9 +11,9 @@ mod city;
 pub mod grid;
 pub mod tile;
 
+pub mod draw;
 pub mod levels;
 pub mod vehicle;
-pub mod draw;
 
 mod position;
 pub use position::Position;
@@ -30,6 +30,8 @@ use crate::{
 const _CITY_BLOCK_SIZE: i16 = 8;
 const _CITY_BLOCK_COUNT: i16 = 1;
 
+pub const DEFAULT_CITY_ID: Id = 1;
+
 type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
 type CityHashMap = HashMapId<City>;
@@ -37,13 +39,17 @@ type CityHashMap = HashMapId<City>;
 #[derive(Serialize, Deserialize, Default)]
 pub struct MapMetadata {
     pub is_level: bool,
+    pub grow_cities: bool,
     pub level_complete: bool,
     pub level_number: usize,
+    // pub level_name: &'static str,
+    // pub level_hint: &'static str,
 }
 
 impl MapMetadata {
     pub fn new() -> Self {
         Self {
+            grow_cities: true,
             ..Default::default()
         }
     }
@@ -85,14 +91,31 @@ impl Map {
         Ok(())
     }
 
-    #[allow(unused)]
     pub fn new_from_string(string: &str) -> Self {
-        Map {
+        let mut map = Map {
             metadata: MapMetadata::new(),
             grid: Grid::new_from_string(string),
             vehicles: VehicleHashMap::new(),
             cities: CityHashMap::new(),
+        };
+
+        let city_id = map.new_city(
+            (map.grid.size().0 / 2, map.grid.size().1 / 2).into(),
+            "default city".into(),
+        );
+
+        // fixup cities
+        for (id, building) in map.grid.buildings.hash_map.iter_mut() {
+            building.city_id = city_id;
+            map.cities
+                .hash_map
+                .get_mut(&city_id)
+                .unwrap()
+                .houses
+                .push(*id);
         }
+
+        map
     }
 
     pub fn new_city(&mut self, pos: Position, name: String) -> Id {
@@ -221,7 +244,7 @@ impl Map {
                         start_building.spawn_pos(),
                         destination_building.destination_pos(),
                         destination_building.color,
-                        start_building.dir
+                        start_building.dir,
                     )
                     .is_none()
                 {
@@ -271,6 +294,13 @@ impl Map {
         for city in self.cities.values_mut() {
             if let Some(building) = city.update(&mut self.grid) {
                 building_to_add.push(building);
+            }
+        }
+
+        if self.metadata.grow_cities {
+            for building in building_to_add {
+                let id = self.reserve_building_id();
+                self.insert_building(id, building);
             }
         }
 

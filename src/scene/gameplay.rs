@@ -2,6 +2,7 @@ use super::{EScene, GameOptions, Scene};
 // use crate::audio::play_sfx;
 use crate::context::Context;
 use crate::map::draw::draw_map;
+use crate::map::levels::{new_level, LEVEL_COUNT};
 // use crate::input::action_pressed;
 // use crate::input::Action;
 use crate::map::Map;
@@ -11,7 +12,6 @@ use crate::ui::popup::{Popup, PopupResult};
 // use crate::text::draw_text;
 use crate::ui::{TimeSelect, UiState};
 use macroquad::time::get_time;
-use macroquad::window::{screen_height, screen_width};
 
 pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
 
@@ -27,7 +27,7 @@ impl GameOptions {
     pub fn create(&self) -> LoadResult {
         match &self {
             GameOptions::New => Ok(Map::new_generate(DEFAULT_MAP_SIZE)),
-            GameOptions::Level(level) => Ok(Map::new_level(*level)),
+            GameOptions::Level(level) => Ok(new_level(*level)),
             GameOptions::Continue => Map::load(),
         }
     }
@@ -43,13 +43,7 @@ impl Gameplay {
             popup: None,
         };
 
-        // TODO: Camera center function
-        let size = gameplay.map.grid.size_px();
-        ctx.tileset.camera = (
-            size.0 / 2. - screen_width() / 2.,
-            size.1 / 2. - screen_height() / 2.,
-        );
-        ctx.tileset.zoom = 1.;
+        ctx.tileset.reset_camera(gameplay.map.grid.size_px());
 
         gameplay
     }
@@ -92,9 +86,12 @@ impl Scene for Gameplay {
         if let Some(popup) = &self.popup {
             match popup.draw() {
                 Some(PopupResult::Ok) => {
-                    ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(Map::new_level(
-                        self.map.metadata.level_number + 1,
-                    ))))
+                    let level_number = self.map.metadata.level_number + 1;
+                    ctx.switch_scene_to = if level_number < LEVEL_COUNT {
+                        Some(EScene::Gameplay(Box::new(new_level(level_number))))
+                    } else {
+                        Some(EScene::MainMenu)
+                    }
                 }
                 Some(PopupResult::Cancel) => {
                     self.popup = None;

@@ -3,10 +3,13 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
 };
 
 const TILE_SIZE: u32 = 16;
+
+const MIN_ZOOM: f32 = 0.4;
+const MAX_ZOOM: f32 = 4.;
 
 #[derive(Clone, Copy)]
 pub struct Sprite {
@@ -49,6 +52,31 @@ impl Tileset {
                 0., 0.
             ),
         }
+    }
+
+    pub fn reset_camera(&mut self, size: (f32, f32)) {
+        self.camera = (
+            size.0 / 2. - screen_width() / 2.,
+            size.1 / 2. - screen_height() / 2.,
+        );
+        self.zoom = 1.;
+    }
+
+
+    pub fn change_zoom(&mut self, amount: f32) {
+        let new_zoom = self.zoom + amount;
+
+        if new_zoom <= MIN_ZOOM || new_zoom >= MAX_ZOOM {
+            return;
+        }
+
+        let old_screen_zoom = 1. / self.zoom;
+        let new_screen_zoom = 1. / new_zoom;
+        self.camera.0 += screen_width() * (old_screen_zoom - new_screen_zoom) / 2.;
+        self.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
+
+        self.zoom += amount;
+        // let self.zoom = self.zoom.round();
     }
 
     pub fn sprite_rect(&self, sprite: Sprite) -> Rect {

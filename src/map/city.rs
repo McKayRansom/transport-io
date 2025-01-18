@@ -18,7 +18,7 @@ const CITY_GROW_TICKS: u32 = 16 * 10;
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct City {
     pos: Position,
-    name: String,
+    pub name: String,
     // pub rating: f32,
     grow_ticks: u32,
     pub grow_rate: u32,

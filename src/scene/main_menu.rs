@@ -4,6 +4,9 @@ use super::{EScene, Scene};
 // use crate::audio::play_sfx;
 use crate::consts::*;
 use crate::context::Context;
+use crate::map::draw::draw_map;
+use crate::map::grid::GRID_CELL_SIZE;
+use crate::map::{Map, DEFAULT_CITY_ID};
 use crate::ui::{
     menu::{Menu, MenuItem},
     popup::Popup,
@@ -14,9 +17,37 @@ use crate::ui::{
 use macroquad::color::{BLACK, WHITE};
 // use macroquad::math::vec2;
 use macroquad::text::{draw_text, draw_text_ex, measure_text};
+use macroquad::time::get_time;
 use macroquad::ui::hash;
 // use macroquad::ui::{hash, root_ui, widgets};
 use macroquad::window::{screen_height, screen_width};
+
+const MAIN_MENU_MAP: &'static str = "
+__________________
+__________________
+__________________
+__________________
+________11________
+________11________
+____lr<<lr<<lr____
+____LR>>LR>>LR____
+____.^__.^__.^____
+____.^__.^__.^____
+____.^__.^__.^____
+____.^__.^__.^____
+22<<lr<<lr<<lr<<33
+22>>LR>>LR>>LR>>33
+____.^__.^__.^____
+____.^__.^__.^____
+____.^__.^__.^____
+____.^__.^__.^____
+____lr<<lr<<lr____
+____LR>>LR>>LR____
+________.^________
+________.^________
+________44________
+________44________
+";
 
 #[derive(Clone)]
 enum MenuOption {
@@ -34,11 +65,14 @@ pub struct MainMenu {
     // settings_subscene: Settings,
     // credits_subscene: Credits,
     popup: Option<Popup>,
+
+    last_update: f64,
+    map: Map,
 }
 
 impl MainMenu {
     pub async fn new(_ctx: &mut Context) -> Self {
-        Self {
+        let mut main_menu = Self {
             menu: Menu::new(vec![
                 MenuItem::new(MenuOption::Continue, "Continue".to_string()),
                 MenuItem::new(MenuOption::Scenarios, "Scenarios".to_string()),
@@ -49,7 +83,13 @@ impl MainMenu {
             popup: None,
             // settings_subscene: Settings::new(ctx, false),
             // credits_subscene: Credits::new(ctx),
-        }
+            map: Map::new_from_string(MAIN_MENU_MAP),
+            last_update: 0.,
+        };
+
+        main_menu.map.get_city_mut(DEFAULT_CITY_ID).unwrap().name = "Alpha 0.1X - Roads".into();
+
+        main_menu
     }
 
     fn menu_option_selected(&mut self, menu_option: MenuOption, ctx: &mut Context) {
@@ -93,6 +133,13 @@ impl Scene for MainMenu {
         //     self.credits_subscene.update(ctx);
         //     return;
         // }
+        self.map.metadata.grow_cities = false;
+        let speed = 1. / 16.;
+
+        if get_time() - self.last_update > speed {
+            self.last_update = get_time();
+            self.map.update();
+        }
     }
     fn draw(&mut self, ctx: &mut Context) {
         // if self.settings_subscene.active {
@@ -104,6 +151,12 @@ impl Scene for MainMenu {
         //     self.credits_subscene.draw(ctx);
         //     return;
         // }
+
+        ctx.tileset.reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 18.));
+        ctx.tileset.change_zoom(1.5);
+
+        draw_map(&self.map, &ctx.tileset);
+
         let menu_height = 200.;
 
         let font_size: u16 = 120;

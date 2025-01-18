@@ -1,9 +1,11 @@
-use std::fmt;
 use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
+use super::building::Building;
 use super::tile::{Reservation, Tile, YieldType};
 use super::{BuildingHashMap, Direction, Position};
+use crate::consts::SpawnerColors;
 use crate::hash_map_id::{HashMapId, Id};
 
 // const EMPTY_ROAD_COLOR: Color = Color::new(0.3, 0.3, 0.3, 0.5);
@@ -102,7 +104,7 @@ impl fmt::Debug for Grid {
                     self.tiles[y][x].bridge.fmt(f)?;
                 }
             }
-           writeln!(f)?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -132,14 +134,54 @@ impl Grid {
         Position::new(x, y)
     }
 
-    #[allow(dead_code)]
     pub fn new_from_string(string: &str) -> Grid {
-        let tiles: Vec<Vec<GridTile>> = string
-            .split_ascii_whitespace()
-            .map(|line| line.chars().map(GridTile::new_from_char).collect())
-            .collect();
+        let mut grid = Grid {
+            buildings: HashMapId::new(),
+            tiles: string
+                .split_ascii_whitespace()
+                .map(|line| line.chars().map(GridTile::new_from_char).collect())
+                .collect(),
+        };
 
-        Grid { tiles, buildings: HashMapId::new()}
+        let size = grid.size();
+
+        // fixup buildings
+        // Fixup spawners
+        for (y, row) in grid.tiles.iter_mut().enumerate() {
+            for (x, tile) in row.iter_mut().enumerate() {
+                if let Tile::Road(road) = &mut tile.ground {
+                    if let Some(station) = road.station {
+                        // oofy woofy
+                        let pos: Position = (x as i16, y as i16).into();
+                        road.connect(pos.default_connections()[0]);
+                        road.connect(pos.default_connections()[1]);
+
+                        if !grid.buildings.hash_map.contains_key(&station) {
+                            let dir = if x < size.0 as usize / 4 {
+                                Direction::RIGHT
+                            } else if y < size.1 as usize / 4 {
+                                Direction::DOWN
+                            } else if x > (size.0 as usize * 3) / 4 {
+                                Direction::LEFT
+                            } else {
+                                Direction::UP
+                            };
+                            grid.buildings.hash_map.insert(
+                                station,
+                                Building::new_spawner(
+                                    pos,
+                                    dir,
+                                    SpawnerColors::from_number(station),
+                                    1,
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        grid
     }
 
     #[allow(dead_code)]
@@ -147,10 +189,18 @@ impl Grid {
         let tiles: Vec<Vec<GridTile>> = string
             .split_ascii_whitespace()
             .zip(bridge_layer.split_ascii_whitespace())
-            .map(|(line, bridge_line)| line.chars().zip(bridge_line.chars()).map(GridTile::new_from_char_layers).collect())
+            .map(|(line, bridge_line)| {
+                line.chars()
+                    .zip(bridge_line.chars())
+                    .map(GridTile::new_from_char_layers)
+                    .collect()
+            })
             .collect();
 
-        Grid { tiles, buildings: HashMapId::new() }
+        Grid {
+            tiles,
+            buildings: HashMapId::new(),
+        }
     }
 
     pub fn get_tile(&self, pos: &Position) -> Option<&Tile> {

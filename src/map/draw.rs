@@ -23,6 +23,8 @@ const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 const CAR_SPRITE: Sprite = Sprite::new(0, 1);
 const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 
+const WATER_SPRITE: Sprite = Sprite::new(4, 0);
+
 
 pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_grid_tiles(&map.grid, tileset);
@@ -76,6 +78,7 @@ pub fn draw_tile(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
     match tile {
         Tile::Road(road) => draw_road(&road, pos, tileset, grid),
         Tile::Ramp(ramp) => draw_ramp(&ramp, pos, tileset),
+        Tile::Water => tileset.draw_tile(WATER_SPRITE, WHITE, &pos.into(), 0.),
         // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
         _ => {}
     }

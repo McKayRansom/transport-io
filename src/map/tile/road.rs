@@ -94,6 +94,7 @@ impl Road {
             '[' => {
                 road.connect(Direction::LEFT + Direction::LAYER_DOWN);
             }
+
             _ => {
                 return None;
             }
