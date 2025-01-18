@@ -1,6 +1,6 @@
 use crate::{
     context::Context,
-    map::{tile::Tile, vehicle::Vehicle, Map, Position},
+    map::{draw::draw_vehicle_detail, tile::Tile, vehicle::Vehicle, Map, Position},
     tileset::{Sprite, Tileset},
 };
 use macroquad::{
@@ -177,7 +177,7 @@ impl UiState {
 
         ui.label(None, &format!("VL: {:?}", vehicle.trip_late()));
         // self.grades.draw(ui, vehicle.trip_late());
-        vehicle.draw_detail(tileset);
+        draw_vehicle_detail(vehicle, tileset);
     }
 
     fn draw_tile_details(

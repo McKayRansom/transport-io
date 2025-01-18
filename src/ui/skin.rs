@@ -18,11 +18,11 @@ pub const BUTTON_MARGIN: (f32, f32) = (
 );
 
 pub async fn init() -> Font {
-    // let font = load_ttf_font("resources/Micro5-Regular.ttf").await.unwrap();
+    let font = load_ttf_font("resources/MedodicaRegular.otf").await.unwrap();
 
-    let font = load_ttf_font("resources/Jersey10-Regular.ttf")
-        .await
-        .unwrap();
+    // let font = load_ttf_font("resources/editundo.ttf")
+    //     .await
+    //     .unwrap();
 
     let skin2 = {
         let label_style = root_ui()

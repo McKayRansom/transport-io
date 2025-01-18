@@ -7,3 +7,5 @@ saves/
 Cargo.lock
 
 cobertura.xml
+
+.DS_Store

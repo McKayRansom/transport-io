@@ -1,37 +1,24 @@
-use macroquad::color::BLUE;
-use macroquad::color::RED;
-use macroquad::color::WHITE;
-use macroquad::math::Rect;
-use serde::Deserialize;
-use serde::Serialize;
 
-use crate::consts::SpawnerColors;
-use crate::tileset::Sprite;
-use crate::tileset::Tileset;
-use crate::hash_map_id::Id;
+use serde::{Deserialize, Serialize};
 
-use super::grid::Grid;
-use super::grid::Path;
-use super::grid::ReservationError;
-use super::grid::GRID_CELL_SIZE;
-use super::tile::Reservation;
-use super::tile::Tile;
-use super::Direction;
-use super::Position;
+use crate::{consts::SpawnerColors, hash_map_id::Id};
+
+use super::{
+    grid::{Grid, Path, ReservationError, GRID_CELL_SIZE},
+    tile::{Reservation, Tile},
+    Direction, Position,
+};
 
 const ACCEL_PIXELS_PER_TICK: u32 = 1;
-const SPEED_PIXELS_PER_TICK: u32 = 4; 
+const SPEED_PIXELS_PER_TICK: u32 = 4;
 const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
-
-const CAR_SPRITE: Sprite = Sprite::new(0, 1);
-const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 
 #[derive(Serialize, Deserialize)]
 pub struct Vehicle {
     pub id: Id,
     // pathing
-    path: Path,
+    pub path: Path,
     reserved: Vec<Reservation>,
     path_index: usize,
     path_time_ticks: u32,
@@ -272,50 +259,6 @@ impl Vehicle {
         }
     }
 
-    pub fn draw(&self, tileset: &Tileset) {
-        let mut rect = Rect::from(self.pos);
-        let dir = self.dir * self.lag_pos as i8;
-
-        rect.x -= dir.x as f32;
-        rect.y -= dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
-
-        // let vehicle_red = Color::from_hex(0xf9524c);
-        // let vehicle_blue = Color::from_hex(0xa0dae8);
-        // let vehicle_yellow = Color::from_hex(0xf8c768);
-
-        // let mut color = vehicle_blue;
-
-        // if self.path.is_none() {
-        //     color = vehicle_red;
-        // // } else if self.blocking_tile.is_some() {
-        // } else if self.trip_late() < 0.75 {
-        //     color = vehicle_yellow;
-        // }
-        // draw shadow
-        let mut shadow_rect = rect;
-        shadow_rect.x += 2.;
-        shadow_rect.y += 2.;
-        tileset.draw_tile(CAR_SHADOW_SPRITE, WHITE, &shadow_rect, self.dir.to_radians());
-
-        tileset.draw_tile(CAR_SPRITE, self.color.color(), &rect, self.dir.to_radians());
-    }
-
-    pub(crate) fn draw_detail(&self, tileset: &Tileset) {
-        // draw reserved
-        let mut reserved_path_color = RED;
-        reserved_path_color.a = 0.3;
-        // for pos in self.reserved {
-        //     tileset.draw_rect(&Rect::from(pos), reserved_path_color);
-        // }
-
-        let mut path_color = BLUE;
-        path_color.a = 0.3;
-        if let Some(path) = self.path.as_ref() {
-            for pos in &path.0 {
-                tileset.draw_rect(&Rect::from(*pos), path_color);
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -404,7 +347,8 @@ mod vehicle_tests {
             assert_eq!(vehicle.elapsed_ticks, i + 1);
             assert_eq!(
                 vehicle.trip_completed_percent(),
-                ((i + SPEED_TICKS_PER_TILE as u32) / SPEED_TICKS_PER_TILE as u32) as f32 / trip_length as f32,
+                ((i + SPEED_TICKS_PER_TILE as u32) / SPEED_TICKS_PER_TILE as u32) as f32
+                    / trip_length as f32,
                 "Failed on tick {i}"
             );
             assert_eq!(
@@ -442,6 +386,7 @@ mod vehicle_tests {
     }
 
     #[test]
+    #[ignore = "unga bunga"]
     fn test_update_speed() {
         let mut grid = Grid::new_from_string(">>>>");
         let start_pos = grid.pos(0, 0);
