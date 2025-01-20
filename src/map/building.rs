@@ -1,27 +1,20 @@
-use macroquad::{
-    color::{Color, WHITE},
-    prelude::rand,
-};
+use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
-use super::{Direction, Position};
+use super::{grid::Grid, tile::Tile, Direction, Position};
 
 use crate::{
     consts::SpawnerColors,
     hash_map_id::Id,
-    tileset::{Sprite, Tileset},
 };
 
 pub const BUILDING_SIZE: (i8, i8) = (2, 2);
 
-const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
-const STATION_SPRITE: Sprite = Sprite::new_size(6, 2, BUILDING_SIZE);
-const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
 const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
 const SPAWNER_UPDATE_TICKS: i32 = 16;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
-enum BuildingType {
+pub enum BuildingType {
     House,
     Station,
     Spawner,
@@ -37,7 +30,7 @@ pub struct Building {
     pub arrived_count: i32,
     production_tics: i32,
     production_rate: i32,
-    building_type: BuildingType,
+    pub building_type: BuildingType,
 }
 
 impl Building {
@@ -83,40 +76,27 @@ impl Building {
         }
     }
 
-    pub fn draw(&self, tileset: &Tileset) {
-        let (sprite, color): (&Sprite, Color) = match self.building_type {
-            BuildingType::House => (&HOUSE_SPRITE, WHITE),
-            BuildingType::Station => (&STATION_SPRITE, WHITE),
-            BuildingType::Spawner => (&SPAWNER_SPRITE, {
-                let mut color = self.color.color();
-                color.a *= 0.8;
-                color
-            }),
-        };
-        tileset.draw_tile(*sprite, color, &self.pos.into(), 0.0);
-
-        tileset.draw_text(
-            format!("{}", self.arrived_count).as_str(),
-            16.,
-            WHITE,
-            &(self.pos + Direction::DOWN_RIGHT).into(),
-        );
+    pub fn spawn_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
+        for pos in self.pos.iter_area((BUILDING_SIZE.0 as i16, BUILDING_SIZE.1 as i16)) {
+            let dir = pos.default_connections()[1];
+            let pos_adj = pos + dir;
+            if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
+                return Some((pos, dir))
+            }
+        }
+        // should there be a default?
+        None
     }
 
-    pub fn spawn_pos(&self) -> Position {
-        if let Some(dir) = self.dir {
-            self.pos.corner_pos(dir.inverse())
-        } else {
-            self.pos
+    pub fn destination_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
+        for pos in self.pos.iter_area((BUILDING_SIZE.0 as i16, BUILDING_SIZE.1 as i16)) {
+            let dir = pos.default_connections()[0].inverse();
+            let pos_adj = pos + dir;
+            if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
+                return Some((pos, dir))
+            }
         }
-    }
-
-    pub fn destination_pos(&self) -> Position {
-        if let Some(dir) = self.dir {
-            self.pos.corner_pos(dir)
-        } else {
-            self.pos
-        }
+        None
     }
 
     pub fn update_arrived(&mut self, success: bool) {

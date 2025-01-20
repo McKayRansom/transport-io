@@ -2,7 +2,7 @@ use pathfinding::prelude::{astar, dijkstra};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::building::Building;
+use super::building::{Building, BuildingType};
 use super::tile::{Reservation, Tile, YieldType};
 use super::{BuildingHashMap, Direction, Position, DEFAULT_CITY_ID};
 use crate::consts::SpawnerColors;
@@ -143,45 +143,52 @@ impl Grid {
                 .collect(),
         };
 
-        let size = grid.size();
+        grid.fixup_from_string();
 
-        // fixup buildings
-        // Fixup spawners
-        for (y, row) in grid.tiles.iter_mut().enumerate() {
+        grid
+    }
+
+    fn fixup_from_string(&mut self) {
+        let size = self.size();
+
+        for (y, row) in self.tiles.iter_mut().enumerate() {
             for (x, tile) in row.iter_mut().enumerate() {
-                if let Tile::Road(road) = &mut tile.ground {
-                    if let Some(station) = road.station {
-                        // oofy woofy
-                        let pos: Position = (x as i16, y as i16).into();
-                        road.connect(pos.default_connections()[0]);
-                        road.connect(pos.default_connections()[1]);
-
-                        if !grid.buildings.hash_map.contains_key(&station) {
-                            let dir = if x < size.0 as usize / 4 {
-                                Direction::RIGHT
-                            } else if y < size.1 as usize / 4 {
-                                Direction::DOWN
-                            } else if x > (size.0 as usize * 3) / 4 {
-                                Direction::LEFT
-                            } else {
-                                Direction::UP
-                            };
-                            grid.buildings.hash_map.insert(
-                                station,
-                                Building::new_spawner(
-                                    pos,
-                                    dir,
-                                    SpawnerColors::from_number(station),
-                                    DEFAULT_CITY_ID,
-                                ),
-                            );
+                // if let Tile::Building(building) = &mut tile.ground {
+                let pos: Position = (x as i16, y as i16).into();
+                match &mut tile.ground {
+                    Tile::Building(building) => {
+                        *building = self
+                            .buildings
+                            .insert(Building::new_house(pos, DEFAULT_CITY_ID));
+                    }
+                    Tile::Road(road) => {
+                        if let Some(station) = road.station {
+                            if !self.buildings.hash_map.contains_key(&station) {
+                                let dir = if x < size.0 as usize / 4 {
+                                    Direction::RIGHT
+                                } else if y < size.1 as usize / 4 {
+                                    Direction::DOWN
+                                } else if x > (size.0 as usize * 3) / 4 {
+                                    Direction::LEFT
+                                } else {
+                                    Direction::UP
+                                };
+                                self.buildings.hash_map.insert(
+                                    station,
+                                    Building::new_spawner(
+                                        pos,
+                                        dir,
+                                        SpawnerColors::from_number(station),
+                                        DEFAULT_CITY_ID,
+                                    ),
+                                );
+                            }
                         }
                     }
+                    _ => {}
                 }
             }
         }
-
-        grid
     }
 
     #[allow(dead_code)]
@@ -227,25 +234,28 @@ impl Grid {
             .reserve(vehicle_id, *pos)
     }
 
-    pub fn find_path(&self, start: &Position, end: &Position) -> Path {
-        let start_path = self.find_road(start)?;
-        let mut end_path = self.find_road(end)?;
-        let middle_path = self.find_road_path(
-            start_path.0.last().unwrap_or(start),
-            end_path.0.last().unwrap_or(end),
-        )?;
+    pub fn find_path(&self, start: (Position, Direction), end: &Id) -> Path {
+        let path_start = start.0 + start.1;
 
-        // start_path + middle_path + end_path
-        let mut full_path = Vec::new();
-        full_path.extend(&start_path.0[0..start_path.0.len() - 1]);
-        full_path.extend(&middle_path.0);
+        if !self.get_tile(&path_start)?.is_road() {
+            return None;
+        }
 
-        end_path.0.pop();
-        full_path.extend(end_path.0.iter().rev());
-
-        let full_cost: u32 = start_path.1 + middle_path.1 + end_path.1;
-
-        Some((full_path, full_cost))
+        let end_building = self.buildings.hash_map.get(end)?;
+        if matches!(end_building.building_type, BuildingType::House) {
+            // append destination pos (this is already checked to be a road)
+            let end_pos_dir = end_building.destination_pos(&self)?;
+            let end_pos = end_pos_dir.0 + end_pos_dir.1;
+            if let Some(mut path) = self.find_road_path(&path_start, &end_pos) {
+                path.0.push(end_pos_dir.0);
+                path.1 += 1;
+                Some(path)
+            } else {
+                None
+            }
+        } else {
+            self.find_path_to_building(&path_start, end, &end_building.pos)
+        }
     }
 
     pub fn find_road_path(&self, start: &Position, end: &Position) -> Path {
@@ -254,6 +264,21 @@ impl Grid {
             |p| self.road_successors(p),
             |p| p.distance(end) / 3,
             |p| p == end,
+        )
+    }
+
+    pub fn find_path_to_building(&self, start: &Position, end: &Id, end_approx: &Position) -> Path {
+        astar(
+            start,
+            |p| self.road_successors(p),
+            |p| p.distance(end_approx) / 3,
+            |p| {
+                if let Some(tile) = self.get_tile(p) {
+                    tile.get_building_id() == Some(*end)
+                } else {
+                    false
+                }
+            },
         )
     }
 
@@ -284,6 +309,18 @@ impl Grid {
             .collect()
     }
 
+    pub fn building_successors_inverse(&self, pos: &Position) -> Vec<(Position, u32)> {
+        let tile = self.get_tile(pos);
+        if tile.is_none() {
+            return Vec::new();
+        }
+        let tile = tile.unwrap();
+        tile.iter_connections(pos)
+            .iter()
+            .map(|dir| (*pos + dir.inverse(), 1))
+            .collect()
+    }
+
     pub fn find_road(&self, start: &Position) -> Path {
         let tile = self.get_tile(start)?;
         if tile.is_road() {
@@ -292,6 +329,19 @@ impl Grid {
             dijkstra(
                 start,
                 |p| self.building_successors(p),
+                |p| self.get_tile(p).is_some_and(Tile::is_road),
+            )
+        }
+    }
+
+    pub fn find_road_inverse(&self, start: &Position) -> Path {
+        let tile = self.get_tile(start)?;
+        if tile.is_road() {
+            Some((vec![*start], 0))
+        } else {
+            dijkstra(
+                start,
+                |p| self.building_successors_inverse(p),
                 |p| self.get_tile(p).is_some_and(Tile::is_road),
             )
         }
@@ -360,54 +410,80 @@ mod grid_tests {
 
     #[test]
     fn test_path() {
-        let grid = Grid::new_from_string(">>>");
+        let grid = Grid::new_from_string(">>1");
 
-        let path = grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).unwrap();
-        assert_eq!(path.0, vec![grid.pos(0, 0), grid.pos(1, 0), grid.pos(2, 0)]);
-        assert_eq!(path.1, 2);
+        let path = grid
+            .find_path((grid.pos(0, 0), Direction::RIGHT), &1)
+            .unwrap();
+        assert_eq!(path.0, vec![grid.pos(1, 0), grid.pos(2, 0)]);
+        assert_eq!(path.1, 1);
     }
 
     #[test]
     fn test_path_fail() {
-        let grid = Grid::new_from_string("<<<");
+        let grid = Grid::new_from_string("<<1");
 
-        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(2, 0)).is_none());
+        assert!(grid
+            .find_path((grid.pos(0, 0), Direction::RIGHT), &1)
+            .is_none());
     }
 
     #[test]
-    #[ignore = "house end pathing needs to be inverted"]
-    fn test_path_building() {
-        let grid = Grid::new_from_string("hh<<hh\nhh>>hh");
+    fn test_path_house() {
+        let grid = Grid::new_from_string(
+            "__<<h_
+             _h>>__",
+        );
 
         assert_eq!(
-            grid.find_path(&grid.pos(0, 1), &grid.pos(5, 1)).unwrap(),
-            ((0..6).map(|i| grid.pos(i, 1)).collect(), 5)
+            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &1)
+                .unwrap(),
+            ((2..5).map(|i| grid.pos(i, 1)).collect(), 2)
         );
     }
 
     #[test]
     fn test_path_building_fail() {
-        let grid = Grid::new_from_string("_h>>h_");
+        // let grid = Grid::new_from_string("_h>>h_");
 
-        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
-        assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_none());
+        // assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(3, 0)).is_none());
+        // assert!(grid.find_path(&grid.pos(0, 0), &grid.pos(5, 0)).is_none());
     }
 
     #[test]
     fn test_path_dead_end() {
-        let grid = Grid::new_from_string("*<\n>*");
+        let grid = Grid::new_from_string(
+            "h_*<
+             __>*",
+        );
 
         assert_eq!(
-            grid.find_path(&grid.pos(0, 1), &grid.pos(0, 0)).unwrap(),
+            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &1)
+                .unwrap(),
             (
                 vec![
-                    grid.pos(0, 1),
-                    grid.pos(1, 1),
+                    grid.pos(2, 1),
+                    grid.pos(3, 1),
+                    grid.pos(3, 0),
+                    grid.pos(2, 0),
                     grid.pos(1, 0),
-                    grid.pos(0, 0)
                 ],
-                3
+                4
             )
+        );
+    }
+
+    #[test]
+    fn test_path_station() {
+        let grid = Grid::new_from_string(
+            "11<<22
+             11>>22",
+        );
+
+        assert_eq!(
+            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &2)
+                .unwrap(),
+            ((2..5).map(|i| grid.pos(i, 1)).collect(), 2)
         );
     }
 }

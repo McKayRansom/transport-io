@@ -19,7 +19,6 @@ mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
-use tile::Tile;
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -170,15 +169,13 @@ impl Map {
 
     pub fn add_vehicle(
         &mut self,
-        start_pos: Position,
-        end_pos: Position,
+        start: Option<(Position, Direction)>,
+        end: Id,
         color: SpawnerColors,
-        dir: Option<Direction>,
     ) -> Option<Id> {
         let id = self.vehicles.id;
-        if let Ok(mut vehicle) = Vehicle::new(start_pos, id, end_pos, &mut self.grid) {
+        if let Ok(mut vehicle) = Vehicle::new(id, start?, end, &mut self.grid) {
             vehicle.color = color;
-            vehicle.dir = dir.unwrap_or(Direction::UP);
             Some(self.vehicles.insert(vehicle))
         } else {
             None
@@ -241,10 +238,9 @@ impl Map {
             if let Some(destination_building) = self.grid.buildings.hash_map.get(&end_building_id) {
                 if self
                     .add_vehicle(
-                        start_building.spawn_pos(),
-                        destination_building.destination_pos(),
+                        start_building.spawn_pos(&self.grid),
+                        end_building_id,
                         destination_building.color,
-                        start_building.dir,
                     )
                     .is_none()
                 {
@@ -273,15 +269,9 @@ impl Map {
         }
         for (id, status) in to_remove {
             let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
-            if let Some(Some(building_id)) = self
-                .grid
-                .get_tile(&vehicle.destination)
-                .map(Tile::get_building_id)
-            {
-                // let building_id = tile.get_building_id()
-                if let Some(building) = self.grid.buildings.hash_map.get_mut(&building_id) {
-                    building.update_arrived(status == Status::ReachedDestination);
-                }
+            // let building_id = tile.get_building_id()
+            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.destination) {
+                building.update_arrived(status == Status::ReachedDestination);
             }
             self.vehicles.hash_map.remove(&id);
 
@@ -299,8 +289,7 @@ impl Map {
 
         if self.metadata.grow_cities {
             for building in building_to_add {
-                let id = self.reserve_building_id();
-                self.insert_building(id, building);
+                let _ = BuildActionBuilding::new(self, building).execute(self);
             }
         }
 

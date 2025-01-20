@@ -1,6 +1,8 @@
 use crate::{
     context::Context,
-    map::{draw::draw_vehicle_detail, tile::Tile, vehicle::Vehicle, Map, Position},
+    map::{
+        draw::draw_vehicle_detail, levels::new_level, tile::Tile, vehicle::Vehicle, Map, Position,
+    },
     tileset::{Sprite, Tileset},
 };
 use macroquad::{
@@ -21,17 +23,16 @@ use menu::{Menu, MenuItem};
 use toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 use view_build::ViewBuild;
 
+mod build_history;
 pub mod menu;
 pub mod popup;
 pub mod skin;
 mod toolbar;
 mod view_build;
-mod build_history;
 
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
 const PLUS_MINUS_SENSITVITY: f32 = 0.8;
-
 
 #[derive(PartialEq, Eq)]
 pub enum TimeSelect {
@@ -48,6 +49,7 @@ enum PauseMenuSelect {
     Continue,
     Save,
     Quit,
+    Restart,
 }
 
 pub struct UiState {
@@ -73,8 +75,13 @@ impl UiState {
                 vec![
                     ToolbarItem::new(TimeSelect::Pause, "Pause game", ' ', Sprite::new(10, 0)),
                     // ToolbarItem::new(TimeSelect::Play, "Play game", ' ', Sprite::new(10, 1)),
-                    ToolbarItem::new(TimeSelect::FastForward, "Fast Forward game", ' ', Sprite::new(10, 2)),
-                ]
+                    ToolbarItem::new(
+                        TimeSelect::FastForward,
+                        "Fast Forward game",
+                        ' ',
+                        Sprite::new(10, 2),
+                    ),
+                ],
             ),
             view_toolbar: Toolbar::new(
                 ToolbarType::Veritcal,
@@ -89,12 +96,12 @@ impl UiState {
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
                 MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
                 MenuItem::new(PauseMenuSelect::Quit, "Menu".to_string()),
+                MenuItem::new(PauseMenuSelect::Restart, "Restart".to_string()),
             ]),
         }
     }
 
     fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) {
-
         let new_mouse_wheel = mouse_wheel();
         let new_mouse_pos = mouse_position();
 
@@ -103,7 +110,8 @@ impl UiState {
         }
 
         if new_mouse_wheel.1 != 0. {
-            ctx.tileset.change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
+            ctx.tileset
+                .change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
             println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
         }
 
@@ -167,10 +175,7 @@ impl UiState {
     }
 
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
-        ui.label(
-            None,
-            &format!("VT: {:?}", vehicle.trip_completed_percent()),
-        );
+        ui.label(None, &format!("VT: {:?}", vehicle.trip_completed_percent()));
         // self.grades.draw(ui, vehicle.trip_completed_percent());
 
         ui.label(None, &format!("VL: {:?}", vehicle.trip_late()));
@@ -245,7 +250,6 @@ impl UiState {
     pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
         self.draw_details(map, ctx);
 
-
         // profiler
         if self.draw_profiler {
             macroquad_profiler::profiler(ProfilerParams {
@@ -253,12 +257,14 @@ impl UiState {
             });
         }
 
-        self.time_select.items[0].sprite = if self.time_select.get_selected() == Some(&TimeSelect::Pause) {
-            Sprite::new(10, 1)
-        } else {
-            Sprite::new(10, 0)
-        };
-        self.time_select.draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
+        self.time_select.items[0].sprite =
+            if self.time_select.get_selected() == Some(&TimeSelect::Pause) {
+                Sprite::new(10, 1)
+            } else {
+                Sprite::new(10, 0)
+            };
+        self.time_select
+            .draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
         self.view_build.draw(map, ctx);
         self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
 
@@ -274,11 +280,15 @@ impl UiState {
                     PauseMenuSelect::Quit => {
                         ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)
                     }
+                    PauseMenuSelect::Restart => {
+                        ctx.switch_scene_to = Some(crate::EScene::Gameplay(Box::new(new_level(
+                            map.metadata.level_number,
+                        ))))
+                    }
                 }
             }
         }
     }
-
 
     fn key_down_event(&mut self, ctx: &mut Context, ch: char) {
         match ch {
@@ -292,10 +302,10 @@ impl UiState {
             // TODO: This doesn't work on browser??
             '\u{1b}' => {
                 self.pause_menu_open = !self.pause_menu_open;
-            },
+            }
             'm' => {
                 self.pause_menu_open = !self.pause_menu_open;
-            },
+            }
 
             _ => {
                 self.time_select.key_down(ch);

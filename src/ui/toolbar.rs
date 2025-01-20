@@ -81,7 +81,11 @@ impl<V> Toolbar<V> {
             self.rect.y = y;
         }
 
-        let window_color = Color::from_hex(0x585858);
+        // Old color: Factorio type grey
+        // let window_color = Color::from_hex(0x585858);
+        // New color: Darker Mindustry grey
+        let mut window_color = Color::from_hex(0x181818);
+        window_color.a = 0.8;
         let mouse_down = is_mouse_button_down(macroquad::input::MouseButton::Left);
 
         if !mouse_down {

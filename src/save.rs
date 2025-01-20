@@ -124,6 +124,8 @@ impl Map {
 #[cfg(test)]
 mod save_tests {
 
+    use crate::map::Direction;
+
     use super::*;
 
     #[test]
@@ -132,10 +134,9 @@ mod save_tests {
         let mut map = Map::new_blank((4, 4));
 
         map.add_vehicle(
-            map.grid.pos(0, 0),
-            map.grid.pos(1, 0),
+            Some((map.grid.pos(0, 0), Direction::RIGHT)),
+            1,
             crate::consts::SpawnerColors::Blue,
-            None,
         );
 
         map.save().unwrap();

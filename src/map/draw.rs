@@ -6,7 +6,7 @@ use macroquad::{
 use crate::tileset::{Sprite, Tileset};
 
 use super::{
-    grid::{Grid, GRID_Z_OFFSET}, tile::{Ramp, Road, Tile}, vehicle::Vehicle, Direction, Map, Position
+    building::{Building, BuildingType, BUILDING_SIZE}, grid::{Grid, GRID_Z_OFFSET}, tile::{Ramp, Road, Tile}, vehicle::Vehicle, Direction, Map, Position
 };
 
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
@@ -25,12 +25,16 @@ const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 
 const WATER_SPRITE: Sprite = Sprite::new(4, 0);
 
+const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
+const DRIVEWAY_SPRITE: Sprite = Sprite::new(4, 4);
+const STATION_SPRITE: Sprite = Sprite::new_size(6, 2, BUILDING_SIZE);
+const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
 
 pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_grid_tiles(&map.grid, tileset);
 
     for b in map.grid.buildings.hash_map.values() {
-        b.draw(tileset);
+        draw_building(b, tileset, &map.grid);
     }
 
     for s in map.vehicles.hash_map.iter() {
@@ -161,6 +165,37 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &G
     }
 }
 
+pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
+    let (sprite, color): (&Sprite, Color) = match building.building_type {
+        BuildingType::House => (&HOUSE_SPRITE, WHITE),
+        BuildingType::Station => (&STATION_SPRITE, WHITE),
+        BuildingType::Spawner => (&SPAWNER_SPRITE, {
+            let mut color = building.color.color();
+            color.a *= 0.8;
+            color
+        }),
+    };
+
+    // draw connecting roads...
+    if let Some((pos, dir)) = building.spawn_pos(grid) {
+        tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
+    } else {
+        // TODO: Draw some kind of Not-connected indicator
+    }
+    // draw connecting roads...
+    if let Some((pos, dir)) = building.destination_pos(grid) {
+        tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
+    }
+
+    tileset.draw_tile(*sprite, color, &building.pos.into(), 0.0);
+
+    tileset.draw_text(
+        format!("{}", building.arrived_count).as_str(),
+        16.,
+        WHITE,
+        &(building.pos + Direction::DOWN_RIGHT).into(),
+    );
+}
 
 pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
     let mut rect = Rect::from(vehicle.pos);
@@ -192,7 +227,12 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
         vehicle.dir.to_radians(),
     );
 
-    tileset.draw_tile(CAR_SPRITE, vehicle.color.color(), &rect, vehicle.dir.to_radians());
+    tileset.draw_tile(
+        CAR_SPRITE,
+        vehicle.color.color(),
+        &rect,
+        vehicle.dir.to_radians(),
+    );
 }
 
 pub fn draw_vehicle_detail(vehicle: &Vehicle, tileset: &Tileset) {
