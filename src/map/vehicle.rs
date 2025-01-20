@@ -391,7 +391,6 @@ mod vehicle_tests {
         let mut grid = Grid::new_from_string(">>>1");
 
         let start_pos = grid.pos(0, 0);
-        let end_pos = grid.pos(3, 0);
 
         let mut vehicle = Vehicle::new(0, (start_pos, Direction::RIGHT), 1, &mut grid).unwrap();
 

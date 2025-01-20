@@ -52,7 +52,8 @@ ________44________
 #[derive(Clone)]
 enum MenuOption {
     Continue,
-    Scenarios,
+    Start,
+    Levels,
     Freeplay,
     // Settings,
     // Credits,
@@ -74,8 +75,12 @@ impl MainMenu {
     pub async fn new(_ctx: &mut Context) -> Self {
         let mut main_menu = Self {
             menu: Menu::new(vec![
-                MenuItem::new(MenuOption::Continue, "Continue".to_string()),
-                MenuItem::new(MenuOption::Scenarios, "Scenarios".to_string()),
+                if Map::save_exists() {
+                    MenuItem::new(MenuOption::Continue, "Continue".to_string())
+                } else {
+                    MenuItem::new(MenuOption::Start, "Start".to_string())
+                },
+                MenuItem::new(MenuOption::Levels, "Levels".to_string()),
                 MenuItem::new(MenuOption::Freeplay, "Freeplay".to_string()),
                 #[cfg(not(target_family = "wasm"))]
                 MenuItem::new(MenuOption::Quit, "Quit".to_string()),
@@ -98,7 +103,14 @@ impl MainMenu {
                 Ok(map) => ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(map))),
                 Err(_) => self.popup = Some(Popup::new("Error loading save".into())),
             },
-            MenuOption::Scenarios => {
+            MenuOption::Start => {
+                ctx.switch_scene_to = Some(EScene::Gameplay(Box::new(
+                    super::GameOptions::Level(0)
+                        .create()
+                        .expect("Error loading level"),
+                )))
+            }
+            MenuOption::Levels => {
                 ctx.switch_scene_to = Some(EScene::LevelSelect);
             }
             MenuOption::Freeplay => {
@@ -152,7 +164,8 @@ impl Scene for MainMenu {
         //     return;
         // }
 
-        ctx.tileset.reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 18.));
+        ctx.tileset
+            .reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 18.));
         ctx.tileset.change_zoom(1.5);
 
         draw_map(&self.map, &ctx.tileset);

@@ -14,7 +14,11 @@ use directories::ProjectDirs;
 /// returns the ProjectDirs struct from the directories crate with the proper identifier for the
 /// game
 pub fn project_dirs() -> ProjectDirs {
-    ProjectDirs::from("com", "yourname", "yourgame").unwrap()
+    #[cfg(test)]
+    let foo = ProjectDirs::from("com", "TilesRUs", "transportIO-test").unwrap();
+    #[cfg(not(test))]
+    let foo = ProjectDirs::from("com", "TilesRUs", "transportIO").unwrap();
+    foo
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -55,6 +59,16 @@ pub type LoadResult = Result<Map, SaveError>;
 type SaveResult = Result<(), SaveError>;
 
 impl Map {
+    #[cfg(not(target_family = "wasm"))]
+    pub fn save_exists() -> bool {
+        std::fs::exists(Self::determine_save_path()).unwrap()
+    }
+
+    #[cfg(target_family = "wasm")]
+    pub fn save_exists() -> bool {
+        quad_storage::STORAGE.lock().unwrap().len() > 0
+    }
+
     pub fn load() -> LoadResult {
         #[cfg(not(target_family = "wasm"))]
         let mut map = Self::load_desktop();
@@ -129,8 +143,11 @@ mod save_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Overwrites current save game..."]
     fn test_map_serialize() {
+        let _ = std::fs::remove_file(Map::determine_save_path());
+
+        assert_eq!(Map::save_exists(), false);
+
         let mut map = Map::new_blank((4, 4));
 
         map.add_vehicle(
@@ -140,6 +157,8 @@ mod save_tests {
         );
 
         map.save().unwrap();
+
+        assert_eq!(Map::save_exists(), true);
 
         let mut deserialized: Map = Map::load().unwrap();
 
