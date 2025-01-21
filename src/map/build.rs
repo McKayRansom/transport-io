@@ -137,13 +137,13 @@ impl BuildAction for BuildRoad {
 
 pub struct BuildActionClearArea {
     pos: Position,
-    area: (i16, i16),
+    area: Direction,
     old_tiles: Vec<(Position, Tile)>,
     old_buildings: Vec<(Id, Building)>,
 }
 
 impl BuildActionClearArea {
-    pub fn new(pos: Position, area: (i16, i16)) -> Self {
+    pub fn new(pos: Position, area: Direction) -> Self {
         Self {
             pos,
             area,
@@ -176,7 +176,6 @@ impl BuildActionClearArea {
         }
 
         println!("Clearing bridge at {:?} in dir {:?}", pos, dir);
-
 
         while let Some(Tile::Road(road)) = map.grid.get_tile_mut(&bridge_pos) {
             let contains = road.is_connected(dir) || road.is_connected(dir.inverse());
@@ -539,9 +538,9 @@ impl Grid {
         }
     }
 
-    pub fn is_area_clear(&self, pos: &Position, size: (i8, i8)) -> BuildResult {
-        for x in 0..size.0 {
-            for y in 0..size.1 {
+    pub fn is_area_clear(&self, pos: &Position, size: Direction) -> BuildResult {
+        for x in 0..size.x {
+            for y in 0..size.y {
                 self.is_pos_clear(&(*pos + (x, y).into()))?;
             }
         }
@@ -577,7 +576,7 @@ mod grid_build_tests {
         action.execute(map).unwrap();
         assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
 
-        let mut clear_action = BuildActionClearArea::new(pos, (1, 1));
+        let mut clear_action = BuildActionClearArea::new(pos, (1, 1).into());
         clear_action.execute(map).unwrap();
         assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
 
@@ -592,7 +591,7 @@ mod grid_build_tests {
     fn test_clear_area() {
         let map = &mut Map::new_from_string(">>\n>>");
 
-        let mut clear_action = BuildActionClearArea::new((0, 0).into(), (2, 2));
+        let mut clear_action = BuildActionClearArea::new((0, 0).into(), (2, 2).into());
 
         clear_action.execute(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("ee\nee"));
@@ -749,7 +748,7 @@ mod grid_build_tests {
         );
 
         // destroy the bridge!
-        BuildActionClearArea::new((2, 0).into(), (2, 2))
+        BuildActionClearArea::new((2, 0).into(), (2, 2).into())
             .execute(&mut map)
             .unwrap();
         assert_eq!(
@@ -796,7 +795,7 @@ mod grid_build_tests {
         }
 
         // Clear
-        let mut clear_action = BuildActionClearArea::new((0, 0).into(), (2, 2));
+        let mut clear_action = BuildActionClearArea::new((0, 0).into(), (2, 2).into());
 
         clear_action.execute(&mut map).unwrap();
 

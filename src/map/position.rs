@@ -85,7 +85,7 @@ impl Position {
         )
     }
 
-    pub fn iter_area(&self, area: (i16, i16)) -> PositionAreaIterator {
+    pub fn iter_area(&self, area: Direction) -> PositionAreaIterator {
         PositionAreaIterator {
             current: *self,
             start: *self,
@@ -209,7 +209,7 @@ impl Iterator for PositionIterator {
 pub struct PositionAreaIterator {
     start: Position,
     current: Position,
-    size: (i16, i16),
+    size: Direction,
     finished: bool,
 }
 
@@ -222,11 +222,11 @@ impl Iterator for PositionAreaIterator {
         }
         let current = self.current;
         self.current.x += 1;
-        if self.current.x >= self.start.x + self.size.0 {
+        if self.current.x >= self.start.x + self.size.x as i16 {
             self.current.y += 1;
             self.current.x = self.start.x;
         }
-        if self.current.y >= self.start.y + self.size.1 {
+        if self.current.y >= self.start.y + self.size.y as i16 {
             self.finished = true;
         }
         Some(current)
@@ -301,17 +301,17 @@ mod position_tests {
     fn test_iter_area() {
         let start_pos: Position = pos(2, 2);
         assert_eq!(
-            start_pos.iter_area((1, 1)).collect::<Vec<Position>>(),
+            start_pos.iter_area((1, 1).into()).collect::<Vec<Position>>(),
             vec![pos(2, 2)]
         );
 
         assert_eq!(
-            start_pos.iter_area((2, 2)).collect::<Vec<Position>>(),
+            start_pos.iter_area((2, 2).into()).collect::<Vec<Position>>(),
             vec![pos(2, 2), pos(3, 2), pos(2, 3), pos(3, 3)]
         );
 
         assert_eq!(
-            Position::new(0, 0).iter_area((2, 2)).collect::<Vec<Position>>(),
+            Position::new(0, 0).iter_area((2, 2).into()).collect::<Vec<Position>>(),
             vec![pos(0, 0), pos(1, 0), pos(0, 1), pos(1, 1)]
         );
     }

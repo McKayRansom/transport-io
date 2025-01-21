@@ -13,8 +13,7 @@ pub struct Direction {
 impl Direction {
     // use super::{Direction};
 
-    // NOT PUB
-    const fn new(x: i8, y: i8, z: i8) -> Self {
+    pub const fn new(x: i8, y: i8, z: i8) -> Self {
         Direction { x, y, z }
     }
 

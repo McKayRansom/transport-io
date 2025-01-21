@@ -5,7 +5,7 @@ use crate::map::{
     Map,
 };
 
-const BUILD_HISTORY_MAX: usize = 16;
+const BUILD_HISTORY_MAX: usize = 32;
 
 pub struct BuildHistory {
     queue: VecDeque<Box<dyn BuildAction>>,

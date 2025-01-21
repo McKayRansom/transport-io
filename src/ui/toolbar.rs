@@ -123,21 +123,21 @@ impl<V> Toolbar<V> {
 
             if self.selected == Some(i) {
                 draw_rectangle(
-                    item_rect.x,
-                    item_rect.y,
-                    item_rect.w,
-                    item_rect.h,
-                    Color::new(0.0, 0.0, 0.0, 0.1),
+                    item_rect.x - 5.,
+                    item_rect.y - 5.,
+                    item_rect.w + 10.,
+                    item_rect.h + 10.,
+                    Color::new(1.0, 1.0, 1.0, 0.2),
                 );
             }
 
             if item_rect.contains(mouse_position().into()) {
                 draw_rectangle(
-                    item_rect.x,
-                    item_rect.y,
-                    item_rect.w,
-                    item_rect.h,
-                    Color::new(0.0, 0.0, 0.0, 0.1),
+                    item_rect.x - 5.,
+                    item_rect.y - 5.,
+                    item_rect.w + 10.,
+                    item_rect.h + 10.,
+                    Color::new(1.0, 1.0, 1.0, 0.1),
                 );
 
                 if mouse_down && self.mouse_down.is_none() {

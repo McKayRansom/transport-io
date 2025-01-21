@@ -6,6 +6,8 @@ use macroquad::{
     texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
 };
 
+use crate::map::Direction;
+
 const TILE_SIZE: u32 = 16;
 
 const MIN_ZOOM: f32 = 0.4;
@@ -17,7 +19,7 @@ const SHADOW_OFFSET: f32 = 1.;
 pub struct Sprite {
     pub row: u8,
     pub col: u8,
-    pub size: (i8, i8),
+    pub size: Direction,
 }
 
 impl Sprite {
@@ -25,11 +27,11 @@ impl Sprite {
         Sprite {
             row,
             col,
-            size: (1, 1),
+            size: Direction::new(1, 1, 0),
         }
     }
 
-    pub const fn new_size(row: u8, col: u8, size: (i8, i8)) -> Self {
+    pub const fn new_size(row: u8, col: u8, size: Direction) -> Self {
         Sprite { row, col, size }
     }
 }
@@ -88,15 +90,15 @@ impl Tileset {
             // See: https://github.com/not-fl3/macroquad/blob/master/tiled/src/lib.rs#L80
             x: (sprite.col as u32 * TILE_SIZE) as f32 + 0.1,
             y: (sprite.row as u32 * TILE_SIZE) as f32 + 0.1,
-            w: (TILE_SIZE * sprite.size.0 as u32) as f32 - 0.2,
-            h: (TILE_SIZE * sprite.size.1 as u32) as f32 - 0.2,
+            w: (TILE_SIZE * sprite.size.x as u32) as f32 - 0.2,
+            h: (TILE_SIZE * sprite.size.y as u32) as f32 - 0.2,
         }
     }
 
     pub fn draw_tile(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32) {
         let dest_size = vec2(
-            dest.w * sprite.size.0 as f32 * self.zoom,
-            dest.h * sprite.size.1 as f32 * self.zoom,
+            dest.w * sprite.size.x as f32 * self.zoom,
+            dest.h * sprite.size.y as f32 * self.zoom,
         );
         let spr_rect = self.sprite_rect(sprite);
 

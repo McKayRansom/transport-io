@@ -8,7 +8,7 @@ use crate::{
     hash_map_id::Id,
 };
 
-pub const BUILDING_SIZE: (i8, i8) = (2, 2);
+pub const BUILDING_SIZE: Direction = Direction::new(2, 2, 0);
 
 const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
 const SPAWNER_UPDATE_TICKS: i32 = 16;
@@ -77,7 +77,7 @@ impl Building {
     }
 
     pub fn spawn_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
-        for pos in self.pos.iter_area((BUILDING_SIZE.0 as i16, BUILDING_SIZE.1 as i16)) {
+        for pos in self.pos.iter_area(BUILDING_SIZE) {
             let dir = pos.default_connections()[1];
             let pos_adj = pos + dir;
             if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
@@ -89,7 +89,7 @@ impl Building {
     }
 
     pub fn destination_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
-        for pos in self.pos.iter_area((BUILDING_SIZE.0 as i16, BUILDING_SIZE.1 as i16)) {
+        for pos in self.pos.iter_area(BUILDING_SIZE) {
             let dir = pos.default_connections()[0].inverse();
             let pos_adj = pos + dir;
             if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {

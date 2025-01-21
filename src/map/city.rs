@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     build::BuildError,
-    building::Building,
+    building::{Building, BUILDING_SIZE},
     grid::Grid,
     Direction, Position,
 };
@@ -48,7 +48,7 @@ impl City {
             loop {
                 let pos = building_pos + dir;
                 building_pos = pos;
-                match grid.is_area_clear(&pos, (2, 2)) {
+                match grid.is_area_clear(&pos, BUILDING_SIZE) {
                     Ok(_) => return Some(Building::new_house(pos, self.id)),
                     Err(BuildError::OccupiedTile) => continue,
                     Err(BuildError::InvalidTile) => break,

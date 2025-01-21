@@ -117,7 +117,7 @@ impl UiState {
 
         self.view_build.update(map);
 
-        if self.view_build.is_mouse_over(new_mouse_pos) {
+        if self.view_build.is_mouse_over(new_mouse_pos) || self.time_select.is_mouse_over(new_mouse_pos) {
             return;
         }
 
@@ -133,11 +133,12 @@ impl UiState {
             if is_mouse_button_down(MouseButton::Left) {
                 // macroquad::ui::
                 if !self.mouse_pressed {
-                    self.view_build.mouse_button_down_event(pos, map)
+                    self.view_build.mouse_button_down_event(pos, map);
+                    self.mouse_pressed = true;
                 }
-                self.mouse_pressed = true;
-            } else {
+            } else if self.mouse_pressed {
                 self.mouse_pressed = false;
+                self.view_build.mouse_button_up_event(pos, map);
             }
 
             if self
