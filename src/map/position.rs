@@ -3,11 +3,14 @@ use std::ops::{Add, AddAssign, Div, Sub};
 use macroquad::math::Rect;
 use serde::*;
 
-use super::{Direction, grid::GRID_CELL_SIZE};
+use super::Direction;
 
 // pub const Z_TUNNEL = 0
 pub const Z_GROUND: i16 = 0;
 // pub const Z_BRIDGE: i16 = 1;
+
+// Now we define the pixel size of each tile, which we make 32x32 pixels.
+pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
 
 const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
 const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];

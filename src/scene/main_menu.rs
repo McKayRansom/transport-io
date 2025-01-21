@@ -5,7 +5,7 @@ use super::{EScene, Scene};
 use crate::consts::*;
 use crate::context::Context;
 use crate::map::draw::draw_map;
-use crate::map::grid::GRID_CELL_SIZE;
+use crate::map::position::GRID_CELL_SIZE;
 use crate::map::{Map, DEFAULT_CITY_ID};
 use crate::ui::{
     menu::{Menu, MenuItem},

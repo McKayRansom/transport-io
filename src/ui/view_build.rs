@@ -6,12 +6,7 @@ use macroquad::{
 use crate::{
     context::Context,
     map::{
-        build::{
-            action_build_road, action_one_way_road, action_two_way_road, BuildAction,
-            BuildActionBuilding, BuildActionClearArea, BuildError, BuildResult, RoadBuildOption,
-            TWO_WAY_ROAD_LANES,
-        },
-        building::Building,
+        build::*,
         Direction, Map, Position,
     },
     tileset::{Sprite, Tileset},
@@ -172,7 +167,7 @@ impl ViewBuild {
         }
     }
 
-    pub fn mouse_button_down_event(&mut self, mouse_pos: Position, map: &mut Map) {
+    pub fn mouse_button_down_event(&mut self, mouse_pos: Position, _map: &mut Map) {
         self.mouse_down_pos = Some(mouse_pos);
     }
 
@@ -186,7 +181,7 @@ impl ViewBuild {
         self.mouse_down_pos = None;
     }
 
-    pub fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
+    pub fn mouse_motion_event(&mut self, pos: Position, _map: &mut Map) {
         self.mouse_pos = pos;
     }
 

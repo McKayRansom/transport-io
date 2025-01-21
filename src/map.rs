@@ -9,13 +9,14 @@ pub mod build;
 pub mod building;
 mod city;
 pub mod grid;
+pub mod path;
 pub mod tile;
 
 pub mod draw;
 pub mod levels;
 pub mod vehicle;
 
-mod position;
+pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;

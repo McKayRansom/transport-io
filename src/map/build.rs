@@ -529,6 +529,23 @@ impl BuildAction for BuildActionBuilding {
     }
 }
 
+// pub struct Clipboard {
+//     grid: Grid,
+// }
+
+// impl Clipboard {
+//     pub fn new(grid_from: Grid, pos: Position, area: Direction) -> Self {
+//         Self {
+//             // grid: grid_from.slice(pos, area)
+//             grid: Grid::new((3, 3))
+//         }
+//     }
+
+//     pub fn action(&self, pos: Position) -> BuildActionList {
+//         BuildActionList::new()
+//     }
+// }
+
 impl Grid {
     pub fn is_pos_clear(&self, pos: &Position) -> BuildResult {
         if self.get_tile(pos).ok_or(BuildError::InvalidTile)? == &Tile::Empty {

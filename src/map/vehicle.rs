@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{consts::SpawnerColors, hash_map_id::Id};
 
 use super::{
-    grid::{Grid, Path, ReservationError, GRID_CELL_SIZE},
-    tile::{Reservation, Tile},
-    Direction, Position,
+    grid::{Grid, ReservationError}, path::Path, position::GRID_CELL_SIZE, tile::{Reservation, Tile}, Direction, Position
 };
 
 const ACCEL_PIXELS_PER_TICK: u32 = 1;

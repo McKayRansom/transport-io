@@ -6,7 +6,11 @@ use macroquad::{
 use crate::tileset::{Sprite, Tileset};
 
 use super::{
-    building::{Building, BuildingType, BUILDING_SIZE}, grid::{Grid, GRID_Z_OFFSET}, tile::{Ramp, Road, Tile}, vehicle::Vehicle, Direction, Map, Position
+    building::{Building, BuildingType, BUILDING_SIZE},
+    grid::Grid,
+    tile::{Ramp, Road, Tile},
+    vehicle::Vehicle,
+    Direction, Map, Position,
 };
 
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
@@ -29,6 +33,9 @@ const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 const DRIVEWAY_SPRITE: Sprite = Sprite::new(4, 4);
 const STATION_SPRITE: Sprite = Sprite::new_size(6, 2, BUILDING_SIZE);
 const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
+
+// Shadow offset
+pub const GRID_Z_OFFSET: f32 = 10.;
 
 pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_grid_tiles(&map.grid, tileset);
