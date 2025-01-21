@@ -45,7 +45,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 
     for s in map.vehicles.hash_map.iter() {
-        if s.1.pos.z == 0 {
+        if s.1.pos.grid_pos.z == 0 {
             draw_vehicle(s.1, tileset);
         }
     }
@@ -53,7 +53,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_bridges(&map.grid, tileset);
 
     for s in map.vehicles.hash_map.iter() {
-        if s.1.pos.z == 1 {
+        if s.1.pos.grid_pos.z == 1 {
             draw_vehicle(s.1, tileset);
         }
     }
@@ -205,8 +205,8 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
 }
 
 pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
-    let mut rect = Rect::from(vehicle.pos);
-    let dir = vehicle.dir * vehicle.lag_pos as i8;
+    let mut rect = Rect::from(vehicle.pos.grid_pos);
+    let dir = vehicle.pos.dir * vehicle.pos.lag_pos as i8;
 
     rect.x -= dir.x as f32;
     rect.y -= dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
@@ -231,14 +231,14 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
         CAR_SHADOW_SPRITE,
         WHITE,
         &shadow_rect,
-        vehicle.dir.to_radians(),
+        vehicle.pos.dir.to_radians(),
     );
 
     tileset.draw_tile(
         CAR_SPRITE,
         vehicle.color.color(),
         &rect,
-        vehicle.dir.to_radians(),
+        vehicle.pos.dir.to_radians(),
     );
 }
 
@@ -252,7 +252,7 @@ pub fn draw_vehicle_detail(vehicle: &Vehicle, tileset: &Tileset) {
 
     let mut path_color = BLUE;
     path_color.a = 0.3;
-    if let Some(path) = vehicle.path.as_ref() {
+    if let Some(path) = vehicle.path.grid_path.as_ref() {
         for pos in &path.0 {
             tileset.draw_rect(&Rect::from(*pos), path_color);
         }

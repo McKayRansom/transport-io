@@ -271,7 +271,7 @@ impl Map {
         for (id, status) in to_remove {
             let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
             // let building_id = tile.get_building_id()
-            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.destination) {
+            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.path.destination) {
                 building.update_arrived(status == Status::ReachedDestination);
             }
             self.vehicles.hash_map.remove(&id);

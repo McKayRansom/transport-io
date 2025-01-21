@@ -176,10 +176,10 @@ impl UiState {
     }
 
     fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
-        ui.label(None, &format!("VT: {:?}", vehicle.trip_completed_percent()));
+        ui.label(None, &format!("VT: {:?}", vehicle.path.trip_completed_percent()));
         // self.grades.draw(ui, vehicle.trip_completed_percent());
 
-        ui.label(None, &format!("VL: {:?}", vehicle.trip_late()));
+        ui.label(None, &format!("VL: {:?}", vehicle.path.trip_late()));
         // self.grades.draw(ui, vehicle.trip_late());
         draw_vehicle_detail(vehicle, tileset);
     }
