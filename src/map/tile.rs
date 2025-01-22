@@ -44,6 +44,11 @@ impl fmt::Debug for Ramp {
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BuildingTile {
+
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
     Empty,
     Building(Id),

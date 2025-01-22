@@ -138,10 +138,13 @@ pub struct VehiclePath {
     pub blocking_tile: Option<Position>,
 }
 
-
-
 impl VehiclePath {
-    pub fn new(id: Id, grid: &mut Grid, start: (Position, Direction), destination: Id) -> Result<Self, ReservationError> {
+    pub fn new(
+        id: Id,
+        grid: &mut Grid,
+        start: (Position, Direction),
+        destination: Id,
+    ) -> Result<Self, ReservationError> {
         let reservation = grid
             .get_tile_mut(&start.0)
             .ok_or(ReservationError::TileInvalid)?
@@ -166,19 +169,12 @@ impl VehiclePath {
         Ok(())
     }
 
-
-    fn reserve(
+    fn reserve_path(
         &mut self,
-        path_grid: &mut Grid,
-        vehicle_id: Id,
-        position: Position
-    ) -> Result<(), ReservationError> {
-        let reservation = path_grid.reserve(&position, vehicle_id)?;
-        self.reserved.push(reservation);
-        Ok(())
-    }
-
-    fn reserve_path(&mut self, id: Id, current_pos: Position, grid: &mut Grid) -> Result<Vec<Reservation>, ReservePathError> {
+        id: Id,
+        current_pos: Position,
+        grid: &mut Grid,
+    ) -> Result<Vec<Reservation>, ReservePathError> {
         // TODO: Move to grid
 
         let should_yield = grid
@@ -193,7 +189,14 @@ impl VehiclePath {
         let mut reserved = Vec::<Reservation>::new();
 
         // for pos in &path[self.path_index + 1..] {
-        if let Some(pos) = self.grid_path.as_ref().unwrap().0.get(self.path_index).cloned() {
+        if let Some(pos) = self
+            .grid_path
+            .as_ref()
+            .unwrap()
+            .0
+            .get(self.path_index)
+            .cloned()
+        {
             // TODO Make function
             match grid.reserve(&pos, id) {
                 Ok(reservation) => {
@@ -217,7 +220,6 @@ impl VehiclePath {
         Ok(reserved)
     }
 
-
     pub fn find_path(&mut self, grid: &mut Grid, start: (Position, Direction)) -> bool {
         self.grid_path = grid.find_path(start, &self.destination);
 
@@ -228,30 +230,24 @@ impl VehiclePath {
         self.grid_path.is_some()
     }
 
-
-    pub fn get_next_pos(&mut self, id: Id, grid: &mut Grid, start: (Position, Direction)) -> Option<Position> {
+    pub fn get_next_pos(
+        &mut self,
+        id: Id,
+        grid: &mut Grid,
+        start: (Position, Direction),
+    ) -> Option<Position> {
         match self.reserve_path(id, start.0, grid) {
             Ok(reserved) => {
                 self.reserved = reserved;
-                if let Some(path) = self.grid_path.as_ref() {
-                    let pos = path.0[self.path_index];
-                    self.path_index += 1;
-                    Some(pos)
-                } else {
-                    None
-                }
+                self.path_index += 1;
+                self.reserved.first().map(|reservation| reservation.pos)
             }
             Err(ReservePathError::InvalidPath) => {
                 self.find_path(grid, start);
-                // we're pretty well screwed if this happens so maybe don't do this??
-                // TODO: Don't do this, just unreserve when we find a path!
-                let _ = self.reserve(grid, id, start.0);
                 None
             }
             Err(ReservePathError::Blocking(blocking_pos)) => {
                 self.blocking_tile = Some(blocking_pos);
-                let _ = self.reserve(grid, id, start.0);
-                // grid.reserve_position(&self.pos, self.id);
                 None
             }
         }
@@ -292,7 +288,6 @@ impl VehiclePath {
             1.
         }
     }
-
 }
 
 #[cfg(test)]
@@ -388,7 +383,6 @@ mod path_tests {
             ((2..5).map(|i| grid.pos(i, 1)).collect(), 2)
         );
     }
-
 
     #[test]
     fn test_reserved() {

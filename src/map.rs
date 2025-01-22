@@ -36,6 +36,10 @@ type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
 type CityHashMap = HashMapId<City>;
 
+// pub struct VehicleId(Id);
+// pub struct BuildingId(Id);
+// pub struct CityId(Id);
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct MapMetadata {
     pub is_level: bool,

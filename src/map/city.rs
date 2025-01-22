@@ -1,4 +1,4 @@
-use macroquad::{color::WHITE, prelude::rand};
+use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -8,16 +8,13 @@ use super::{
     Direction, Position,
 };
 
-use crate::{
-    hash_map_id::Id,
-    tileset::Tileset,
-};
+use crate::hash_map_id::Id;
 
 const CITY_GROW_TICKS: u32 = 16 * 10;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct City {
-    pos: Position,
+    pub pos: Position,
     pub name: String,
     // pub rating: f32,
     grow_ticks: u32,
@@ -39,7 +36,6 @@ impl City {
         }
     }
 
-
     pub fn grow_building(&self, grid: &Grid) -> Option<Building> {
         let start_house_id = self.random_house();
         if let Some(building) = grid.buildings.hash_map.get(&start_house_id) {
@@ -59,9 +55,6 @@ impl City {
         None
     }
 
-    pub fn draw(&self, tileset: &Tileset) {
-        tileset.draw_text(self.name.as_str(), 32., WHITE, &self.pos.into());
-    }
 
     pub fn update(&mut self, grid: &mut Grid) -> Option<Building> {
         self.grow_ticks += 1;

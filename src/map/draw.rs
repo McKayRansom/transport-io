@@ -1,5 +1,5 @@
 use macroquad::{
-    color::{Color, BLUE, RED, WHITE},
+    color::{colors, Color, BLUE, RED, WHITE},
     math::Rect,
 };
 
@@ -7,6 +7,7 @@ use crate::tileset::{Sprite, Tileset};
 
 use super::{
     building::{Building, BuildingType, BUILDING_SIZE},
+    city::City,
     grid::Grid,
     tile::{Ramp, Road, Tile},
     vehicle::Vehicle,
@@ -59,8 +60,15 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 
     for c in map.cities.hash_map.values() {
-        c.draw(tileset);
+        draw_city(c, tileset);
     }
+}
+
+pub fn draw_city(city: &City, tileset: &Tileset) {
+    let mut rect: Rect = city.pos.round_to(2).into();
+    rect.w *= 2.;
+    rect.h *= 2.;
+    tileset.draw_text(city.name.as_str(), 32., WHITE, &rect);
 }
 
 pub fn draw_grid_tiles(grid: &Grid, tileset: &Tileset) {
@@ -194,13 +202,18 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
         tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
     }
 
-    tileset.draw_tile(*sprite, color, &building.pos.into(), 0.0);
+    let mut rect = building.pos.into();
+
+    tileset.draw_tile(*sprite, color, &rect, 0.0);
+
+    rect.w *= BUILDING_SIZE.x as f32;
+    rect.h *= BUILDING_SIZE.y as f32;
 
     tileset.draw_text(
         format!("{}", building.arrived_count).as_str(),
         16.,
         WHITE,
-        &(building.pos + Direction::DOWN_RIGHT).into(),
+        &rect,
     );
 }
 
@@ -217,29 +230,20 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
 
     // let mut color = vehicle_blue;
 
-    // if self.path.is_none() {
-    //     color = vehicle_red;
-    // // } else if self.blocking_tile.is_some() {
-    // } else if self.trip_late() < 0.75 {
-    //     color = vehicle_yellow;
-    // }
     // draw shadow
     let mut shadow_rect = rect;
     shadow_rect.x += 2.;
     shadow_rect.y += 2.;
-    tileset.draw_tile(
-        CAR_SHADOW_SPRITE,
-        WHITE,
-        &shadow_rect,
-        vehicle.pos.dir.to_radians(),
-    );
+    let rotation = vehicle.pos.dir.to_radians();
+    tileset.draw_tile(CAR_SHADOW_SPRITE, WHITE, &shadow_rect, rotation);
 
-    tileset.draw_tile(
-        CAR_SPRITE,
-        vehicle.color.color(),
-        &rect,
-        vehicle.pos.dir.to_radians(),
-    );
+    tileset.draw_tile(CAR_SPRITE, vehicle.color.color(), &rect, rotation);
+
+    if vehicle.path.grid_path.is_none() {
+        tileset.draw_text("?", 32., colors::ORANGE, &rect);
+    } else if vehicle.path.trip_late() < 0.75 {
+        tileset.draw_text("!", 32., colors::RED, &rect);
+    }
 }
 
 pub fn draw_vehicle_detail(vehicle: &Vehicle, tileset: &Tileset) {

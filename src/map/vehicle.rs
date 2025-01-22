@@ -116,8 +116,6 @@ impl Vehicle {
             }
         }
 
-        self.path.reserved.clear();
-
         self.pos.update_next_pos(self.path.get_next_pos(self.id, path_grid, (self.pos.grid_pos, self.pos.dir)));
 
         Status::EnRoute
@@ -125,6 +123,7 @@ impl Vehicle {
 
 
     pub fn update(&mut self, path_grid: &mut Grid) -> Status {
+        self.path.update_trip();
         if self.path.trip_late() < HOPELESSLY_LATE_PERCENT {
             Status::HopelesslyLate
         } else if self.pos.lag_pos != 0 {

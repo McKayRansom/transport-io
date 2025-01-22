@@ -3,7 +3,8 @@ use macroquad::{
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D}, window::{screen_height, screen_width},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
+    window::{screen_height, screen_width},
 };
 
 use crate::map::Direction;
@@ -45,16 +46,13 @@ pub struct Tileset {
 // TODO: Rename to TextureAtlas
 impl Tileset {
     pub async fn new() -> Self {
-
         let texture = load_texture("resources/tileset.png").await.unwrap();
         texture.set_filter(FilterMode::Nearest);
 
         Tileset {
             texture,
             zoom: 1.,
-            camera: (
-                0., 0.
-            ),
+            camera: (0., 0.),
         }
     }
 
@@ -65,7 +63,6 @@ impl Tileset {
         );
         self.zoom = 1.;
     }
-
 
     pub fn change_zoom(&mut self, amount: f32) {
         let new_zoom = self.zoom + amount;
@@ -131,11 +128,16 @@ impl Tileset {
         let font_size = (text_size * self.zoom) as u16;
         let text_measured = measure_text(text, None, font_size, 1.0);
 
-        let shadow_x = (rect.x + SHADOW_OFFSET - self.camera.0) * self.zoom - text_measured.width / 2.;
-        let shadow_y = (rect.y + SHADOW_OFFSET - self.camera.1) * self.zoom + text_measured.height / 2.;
+        let rect: Rect = Rect::new(rect.x + rect.w / 2., rect.y + rect.h / 2., 0., 0.);
+
+        let shadow_x =
+            (rect.x + SHADOW_OFFSET - self.camera.0) * self.zoom - text_measured.width / 2.;
+        let shadow_y =
+            (rect.y + SHADOW_OFFSET - self.camera.1) * self.zoom + text_measured.height / 2.;
         draw_text_ex(
             text,
-            shadow_x, shadow_y,
+            shadow_x,
+            shadow_y,
             TextParams {
                 font_size,
                 font_scale: 1.0,
@@ -148,7 +150,8 @@ impl Tileset {
         let y = (rect.y - self.camera.1) * self.zoom + text_measured.height / 2.;
         draw_text_ex(
             text,
-            x, y,
+            x,
+            y,
             TextParams {
                 font_size,
                 font_scale: 1.0,
