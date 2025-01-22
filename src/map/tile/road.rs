@@ -122,7 +122,7 @@ impl Road {
         self.connections.len() as u32
     }
 
-    pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
+    pub fn get_connections(&self, pos: &Position) -> &[Direction] {
         if !self.connections.is_empty() {
             self.connections.as_slice()
         } else {
@@ -204,7 +204,7 @@ mod road_tests {
         road.connect(Direction::RIGHT);
         road.connect(Direction::LEFT);
         assert_eq!(
-            road.iter_connections(&Position::new(0, 0)),
+            road.get_connections(&Position::new(0, 0)),
             vec![Direction::RIGHT, Direction::LEFT].as_slice()
         );
     }

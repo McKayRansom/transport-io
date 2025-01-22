@@ -82,16 +82,6 @@ impl Tile {
         }
     }
 
-    pub fn iter_connections(&self, pos: &Position) -> &[Direction] {
-        match self {
-            Tile::Road(road) => road.iter_connections(pos),
-            // we gotta fix this
-            Tile::Building(_) => pos.default_connections(),
-            _ => [].as_slice(),
-        }
-    }
-
-
     pub fn reserve(&mut self, id: Id, pos: Position) -> Result<Reservation, ReservationError> {
         match self {
             Tile::Road(road) => road

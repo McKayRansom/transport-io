@@ -13,8 +13,6 @@ use macroquad::{
     math::vec2,
     ui::{
         hash, root_ui,
-        widgets::{self},
-        Ui,
     },
     window::{screen_height, screen_width},
 };
@@ -229,36 +227,16 @@ impl UiState {
         Some(())
     }
 
-    fn draw_details(&self, map: &Map, ctx: &Context) {
-        let details_height = 200.;
-        let details_width = 200.;
-        widgets::Window::new(
-            hash!(),
-            vec2(
-                screen_width() - details_width,
-                screen_height() - details_height,
-            ),
-            vec2(details_width, details_height),
-        )
-        // .label("Details")
-        .movable(false)
-        .ui(&mut root_ui(), |ui| {
-            if let Some(pos) = self.last_mouse_pos {
-                self.draw_tile_details(pos, map, ctx);
-            }
-        });
-    }
-
     pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
 
         // profiler
         if self.draw_profiler {
-            self.draw_details(map, ctx);
             macroquad_profiler::profiler(ProfilerParams {
                 fps_counter_pos: vec2(0., 0.),
             });
             self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
-        } else if let Some(pos) = self.last_mouse_pos {
+        } 
+        if let Some(pos) = self.last_mouse_pos {
             self.draw_tile_details(pos, map, ctx);
         }
 

@@ -9,7 +9,7 @@ use super::{
     building::{Building, BuildingType, BUILDING_SIZE},
     city::City,
     grid::Grid,
-    position::{GRID_CELL_SIZE, PIXEL_SIZE},
+    position::PIXEL_SIZE,
     tile::{Ramp, Road, Tile},
     vehicle::Vehicle,
     Direction, Map, Position,
@@ -137,11 +137,11 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
     } else if connection_count != 1 {
         // draw intersection
         tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
-        for dir in road.iter_connections(&pos) {
+        for dir in road.get_connections(&pos) {
             tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
         }
     } else {
-        let dir = road.iter_connections(&pos).first().unwrap().flatten();
+        let dir = road.get_connections(&pos).first().unwrap().flatten();
 
         let connected_to: bool = match grid.get_tile(&(pos + dir.inverse())) {
             Some(Tile::Road(road)) => road.is_connected(dir),
@@ -174,7 +174,7 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &G
     }
 
     let rect = Rect::from(*pos);
-    for dir in road.iter_connections(pos) {
+    for dir in road.get_connections(pos) {
         if ramp_below {
             //     if dir.z != 0 {
             //         let dir = dir.inverse();

@@ -48,7 +48,7 @@ impl Building {
         }
     }
 
-    pub fn new_station(pos: Position, city_id: Id) -> Self {
+    pub fn _new_station(pos: Position, city_id: Id) -> Self {
         Building {
             pos,
             dir: None,

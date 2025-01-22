@@ -23,7 +23,7 @@ enum BuildMode {
     TwoWayRoad,
     OneWayRoad,
     Bridge,
-    Station,
+    // Station,
     Clear,
 }
 
@@ -160,14 +160,6 @@ impl ViewBuild {
                 }
             }
             BuildMode::Bridge => Some(Box::new(action_build_road(
-                self.mouse_down_pos?,
-                pos,
-                RoadBuildOption {
-                    height: crate::map::build::BuildRoadHeight::Bridge,
-                    lanes: TWO_WAY_ROAD_LANES,
-                },
-            ))),
-            BuildMode::Station => Some(Box::new(action_build_road(
                 self.mouse_down_pos?,
                 pos,
                 RoadBuildOption {

@@ -68,16 +68,6 @@ impl BuildRoad {
             station: None,
         }
     }
-
-    pub fn new_station(pos: Position, dir: Direction, station: Option<Id>) -> Self {
-        Self {
-            pos,
-            dir,
-            was_empty: false,
-            was_already: false,
-            station,
-        }
-    }
 }
 
 impl BuildAction for BuildRoad {
@@ -165,7 +155,7 @@ impl BuildActionClearArea {
         // let's find out the bridge direction
         if let Tile::Road(road) = map.grid.get_tile_build(&bridge_pos)? {
             if road
-                .iter_connections(&bridge_pos)
+                .get_connections(&bridge_pos)
                 .first()
                 .ok_or(BuildError::InvalidTile)?
                 != &dir
@@ -250,10 +240,6 @@ pub struct BuildActionList {
 impl BuildActionList {
     pub fn new() -> Self {
         Self { list: Vec::new() }
-    }
-
-    pub fn new_from_vec(vec: Vec<Box<dyn BuildAction>>) -> Self {
-        Self { list: vec }
     }
 
     pub fn append(&mut self, item: Box<dyn BuildAction>) {
@@ -448,49 +434,49 @@ pub fn action_one_way_road(pos: Position, end_pos: Position) -> BuildActionList 
     action_build_road(pos, end_pos, options)
 }
 
-pub struct BuildActionStation {
-    road_actions: BuildActionList,
-    building: Building,
-    building_id: Id,
-}
+// pub struct BuildActionStation {
+//     road_actions: BuildActionList,
+//     building: Building,
+//     building_id: Id,
+// }
 
-impl BuildActionStation {
-    pub fn new(map: &mut Map, pos: Position, building: Building) -> Self {
-        let pos = pos.round_to(2);
-        let building_id = map.reserve_building_id();
-        Self {
-            road_actions: BuildActionList::new_from_vec(
-                Direction::SQUARE
-                    .iter()
-                    .map(|dir| -> Box<dyn BuildAction> {
-                        Box::new(BuildRoad::new_station(
-                            pos + *dir,
-                            Direction::NONE,
-                            Some(building_id),
-                        ))
-                    })
-                    .collect(),
-            ),
-            building,
-            building_id,
-        }
-    }
-}
+// impl BuildActionStation {
+//     pub fn new(map: &mut Map, pos: Position, building: Building) -> Self {
+//         let pos = pos.round_to(2);
+//         let building_id = map.reserve_building_id();
+//         Self {
+//             road_actions: BuildActionList::new_from_vec(
+//                 Direction::SQUARE
+//                     .iter()
+//                     .map(|dir| -> Box<dyn BuildAction> {
+//                         Box::new(BuildRoad::new_station(
+//                             pos + *dir,
+//                             Direction::NONE,
+//                             Some(building_id),
+//                         ))
+//                     })
+//                     .collect(),
+//             ),
+//             building,
+//             building_id,
+//         }
+//     }
+// }
 
-impl BuildAction for BuildActionStation {
-    fn execute(&mut self, map: &mut Map) -> BuildResult {
-        map.insert_building(self.building_id, self.building);
+// impl BuildAction for BuildActionStation {
+//     fn execute(&mut self, map: &mut Map) -> BuildResult {
+//         map.insert_building(self.building_id, self.building);
 
-        // hack for spawners
+//         // hack for spawners
 
-        self.road_actions.execute(map)
-    }
+//         self.road_actions.execute(map)
+//     }
 
-    fn undo(&mut self, map: &mut Map) -> BuildResult {
-        map.remove_building(&self.building_id);
-        self.road_actions.undo(map)
-    }
-}
+//     fn undo(&mut self, map: &mut Map) -> BuildResult {
+//         map.remove_building(&self.building_id);
+//         self.road_actions.undo(map)
+//     }
+// }
 
 pub struct BuildActionBuilding {
     building: Building,
