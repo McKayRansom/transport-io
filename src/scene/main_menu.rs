@@ -165,8 +165,8 @@ impl Scene for MainMenu {
         // }
 
         ctx.tileset
-            .reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 18.));
-        ctx.tileset.change_zoom(1.5);
+            .reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 20.));
+        ctx.tileset.change_zoom(1.2);
 
         draw_map(&self.map, &ctx.tileset);
 

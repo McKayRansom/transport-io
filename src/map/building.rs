@@ -77,6 +77,10 @@ impl Building {
     }
 
     pub fn spawn_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
+        if let Some(dir) = self.dir {
+            let dir = dir.inverse();
+            return Some((self.pos.corner_pos(dir), dir.inverse()))
+        }
         for pos in self.pos.iter_area(BUILDING_SIZE) {
             let dir = pos.default_connections()[1];
             let pos_adj = pos + dir;
@@ -89,6 +93,9 @@ impl Building {
     }
 
     pub fn destination_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
+        if let Some(dir) = self.dir {
+            return Some((self.pos.corner_pos(dir), dir.inverse()))
+        }
         for pos in self.pos.iter_area(BUILDING_SIZE) {
             let dir = pos.default_connections()[0].inverse();
             let pos_adj = pos + dir;
@@ -101,10 +108,16 @@ impl Building {
 
     pub fn update_arrived(&mut self, success: bool) {
         if success {
-            self.arrived_count += 1;
+            if self.arrived_count < 10 {
+                self.arrived_count += 1;
+            }
         } else if self.arrived_count > 0 {
             self.arrived_count -= 1;
         }
+    }
+
+    pub fn arrived_goal_met(&self) -> bool {
+        self.arrived_count >= 10
     }
 
     pub fn update(&mut self) -> bool {

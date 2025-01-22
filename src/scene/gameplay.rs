@@ -35,9 +35,10 @@ impl GameOptions {
 
 impl Gameplay {
     pub async fn new(ctx: &mut Context, map: Box<Map>) -> Self {
+        let unlocked = map.metadata.unlocks;
         let gameplay = Gameplay {
             map,
-            ui: UiState::new().await,
+            ui: UiState::new(unlocked).await,
             last_ui_update: get_time(),
             last_map_update: get_time(),
             popup: None,

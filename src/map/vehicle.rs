@@ -11,7 +11,7 @@ use super::{
 };
 
 const ACCEL_PIXELS_PER_TICK: u32 = 1;
-const SPEED_PIXELS_PER_TICK: u32 = 4;
+const SPEED_PIXELS_PER_TICK: u32 = 6;
 pub const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
 
@@ -70,7 +70,7 @@ pub struct Vehicle {
 pub enum Status {
     EnRoute,
     ReachedDestination,
-    HopelesslyLate,
+    // HopelesslyLate,
 }
 
 impl Vehicle {
@@ -124,9 +124,10 @@ impl Vehicle {
 
     pub fn update(&mut self, path_grid: &mut Grid) -> Status {
         self.path.update_trip();
-        if self.path.trip_late() < HOPELESSLY_LATE_PERCENT {
-            Status::HopelesslyLate
-        } else if self.pos.lag_pos != 0 {
+        // if self.path.trip_late() < HOPELESSLY_LATE_PERCENT {
+            // Status::HopelesslyLate
+        // } else 
+        if self.pos.lag_pos != 0 {
             self.pos.update_speed();
             Status::EnRoute
         } else {

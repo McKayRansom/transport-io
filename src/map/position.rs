@@ -11,6 +11,7 @@ pub const Z_GROUND: i16 = 0;
 
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
 pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
+pub const PIXEL_SIZE: f32 = 32. / 16.;
 
 const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
 const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];

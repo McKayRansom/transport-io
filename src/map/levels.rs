@@ -1,4 +1,4 @@
-use super::{Map, DEFAULT_CITY_ID};
+use super::{Map, Unlocked, DEFAULT_CITY_ID};
 
 // pub const TEST_LEVEL: Option<usize> = Some(1);
 pub const TEST_LEVEL: Option<usize> = None;
@@ -6,7 +6,7 @@ pub const TEST_LEVEL: Option<usize> = None;
 pub struct Level {
     pub name: &'static str,
     pub hint: &'static str,
-    // Unlocks? how do
+    pub unlocked: Unlocked,
     pub grid: &'static str,
 }
 
@@ -14,6 +14,7 @@ const LEVELS: &[Level] = &[
     Level {
         name: "Connect Road",
         hint: "Click and drag to connect roads!",
+        unlocked: Unlocked::Roads,
         grid: "
             __________________
             __________________
@@ -30,30 +31,28 @@ const LEVELS: &[Level] = &[
     Level {
         name: "Intersection",
         hint: "Intersections are created when roads cross",
+        unlocked: Unlocked::Roads,
         grid: "
-            ________33________
-            ________33________
+            ________22________
+            ________22________
             __________________
             __________________
             __________________
             __________________
             __________________
             __________________
-            11______________22
-            11______________22
+            11______________33
+            11______________33
             __________________
             __________________
             __________________
             __________________
-            __________________
-            __________________
-            ________44________
-            ________44________
             ",
     },
     Level {
         name: "Bridges",
         hint: "Bridges can be build over Rivers or roads",
+        unlocked: Unlocked::Bridges,
         grid: "
             ________ww________
             ________ww________
@@ -70,6 +69,7 @@ const LEVELS: &[Level] = &[
     Level {
         name: "Highway",
         hint: "You can create one-way roads",
+        unlocked: Unlocked::OneWayRoads,
         grid: "
             __________________
             __________________
@@ -94,6 +94,8 @@ pub fn new_level(level_number: usize) -> Map {
     map.metadata.grow_cities = false;
     map.metadata.level_complete = false;
     map.metadata.level_number = level_number;
+    map.metadata.unlocks = level.unlocked;
+    map.metadata.level_hint = Some(level.hint.into());
 
     map.get_city_mut(DEFAULT_CITY_ID).unwrap().name = level.name.into();
 

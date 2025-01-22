@@ -1,5 +1,5 @@
 use building::BuildingType;
-use pathfinding::prelude::astar;
+use pathfinding::prelude::{astar, bfs_reach};
 use tile::{Reservation, Tile, YieldType};
 use vehicle::SPEED_TICKS_PER_TILE;
 
@@ -116,6 +116,19 @@ impl Grid {
         }
 
         None
+    }
+
+    pub fn iter_reachable<FN>(&self, pos: Position, func: FN)
+    where
+        FN: Fn(Position),
+    {
+        for pos in bfs_reach(pos, |pos| {
+            self.road_successors(pos)
+                .into_iter()
+                .map(|(pos, _cost)| pos)
+        }) {
+            func(pos);
+        }
     }
 }
 

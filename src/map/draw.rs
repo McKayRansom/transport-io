@@ -9,6 +9,7 @@ use super::{
     building::{Building, BuildingType, BUILDING_SIZE},
     city::City,
     grid::Grid,
+    position::{GRID_CELL_SIZE, PIXEL_SIZE},
     tile::{Ramp, Road, Tile},
     vehicle::Vehicle,
     Direction, Map, Position,
@@ -27,6 +28,7 @@ const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 
 const CAR_SPRITE: Sprite = Sprite::new(0, 1);
 const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
+const CAR_NO_PATH_SPRITE: Sprite = Sprite::new(12, 0);
 
 const WATER_SPRITE: Sprite = Sprite::new(4, 0);
 
@@ -34,6 +36,8 @@ const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 const DRIVEWAY_SPRITE: Sprite = Sprite::new(4, 4);
 const STATION_SPRITE: Sprite = Sprite::new_size(6, 2, BUILDING_SIZE);
 const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
+const PROGRESS_BOX: Sprite = Sprite::new_size(6, 6, BUILDING_SIZE);
+// const PROGRESS_BAR: Sprite = Sprite::new_size(6, 8, BUILDING_SIZE);
 
 // Shadow offset
 pub const GRID_Z_OFFSET: f32 = 10.;
@@ -61,6 +65,10 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
 
     for c in map.cities.hash_map.values() {
         draw_city(c, tileset);
+    }
+    if let Some(hint) = &map.metadata.level_hint {
+        let pos: Position = (map.grid.size().0 / 2, map.grid.size().1 / 2 + 2).into();
+        tileset.draw_text(hint.as_str(), 16., WHITE, &pos.into());
     }
 }
 
@@ -202,19 +210,34 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
         tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
     }
 
-    let mut rect = building.pos.into();
+    let rect = building.pos.into();
 
-    tileset.draw_tile(*sprite, color, &rect, 0.0);
+    if building.building_type == BuildingType::House {
+        tileset.draw_tile(*sprite, color, &rect, 0.0);
+    } else {
+        tileset.draw_tile(PROGRESS_BOX, color, &rect, 0.0);
 
-    rect.w *= BUILDING_SIZE.x as f32;
-    rect.h *= BUILDING_SIZE.y as f32;
+        let rect = Rect::new(
+            rect.x + PIXEL_SIZE * 6. - 0.1,
+            rect.y + PIXEL_SIZE * 8. - 0.1,
+            PIXEL_SIZE * 2. * building.arrived_count.min(10) as f32 + 0.2,
+            PIXEL_SIZE * 16. + 0.2,
+        );
 
-    tileset.draw_text(
-        format!("{}", building.arrived_count).as_str(),
-        16.,
-        WHITE,
-        &rect,
-    );
+        tileset.draw_rect(&rect, color);
+    }
+
+    // for _ in 0..building.arrived_count.min(8) {
+    //     // let progress_rect = rect * (GRID_CELL_SIZE.0 / 8. * i as f32);
+    //     tileset.draw_tile(PROGRESS_BAR, WHITE, &rect, 0.0);
+    //     rect.x += GRID_CELL_SIZE.0 as f32 / 6.;
+    // }
+    // // tileset.draw_text(
+    //     format!("{}", building.arrived_count).as_str(),
+    //     16.,
+    //     WHITE,
+    //     &rect,
+    // );
 }
 
 pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
@@ -240,13 +263,24 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
     tileset.draw_tile(CAR_SPRITE, vehicle.color.color(), &rect, rotation);
 
     if vehicle.path.grid_path.is_none() {
-        tileset.draw_text("?", 32., colors::ORANGE, &rect);
-    } else if vehicle.path.trip_late() < 0.75 {
-        tileset.draw_text("!", 32., colors::RED, &rect);
+        // tileset.draw_text("?", 32., colors::ORANGE, &rect);
+        rect.w -= 16.;
+        rect.h -= 16.;
+        rect.x += 8.;
+        rect.y += 8.;
+        let mut shadow_rect = rect;
+        shadow_rect.x += 1.;
+        shadow_rect.y += 1.;
+        tileset.draw_tile(CAR_NO_PATH_SPRITE, colors::BLACK, &shadow_rect, rotation);
+
+        tileset.draw_tile(CAR_NO_PATH_SPRITE, colors::WHITE, &rect, rotation);
     }
+    // else if vehicle.path.trip_late() < 0.75 {
+    //     tileset.draw_text("!", 32., colors::RED, &rect);
+    // }
 }
 
-pub fn draw_vehicle_detail(vehicle: &Vehicle, tileset: &Tileset) {
+pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
     // draw reserved
     let mut reserved_path_color = RED;
     reserved_path_color.a = 0.3;
@@ -259,6 +293,17 @@ pub fn draw_vehicle_detail(vehicle: &Vehicle, tileset: &Tileset) {
     if let Some(path) = vehicle.path.grid_path.as_ref() {
         for pos in &path.0 {
             tileset.draw_rect(&Rect::from(*pos), path_color);
+        }
+    } else {
+        let start_pos = vehicle.pos.grid_pos + vehicle.pos.dir;
+        map.grid
+            .iter_reachable(start_pos, |pos| tileset.draw_rect(&pos.into(), path_color));
+
+        if let Some(building) = map.get_building(&vehicle.path.destination) {
+            if let Some(end_pos) = building.destination_pos(&map.grid) {
+                map.grid.iter_reachable(end_pos.0, |pos| tileset.draw_rect(&pos.into(), reserved_path_color));
+            }
+
         }
     }
 }

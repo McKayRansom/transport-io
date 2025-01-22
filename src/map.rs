@@ -39,6 +39,14 @@ type CityHashMap = HashMapId<City>;
 // pub struct VehicleId(Id);
 // pub struct BuildingId(Id);
 // pub struct CityId(Id);
+#[derive(Serialize, Deserialize, Default, PartialEq, Eq, Copy, Clone)]
+pub enum Unlocked {
+    #[default]
+    All,
+    Roads,
+    OneWayRoads,
+    Bridges,
+}
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct MapMetadata {
@@ -46,8 +54,9 @@ pub struct MapMetadata {
     pub grow_cities: bool,
     pub level_complete: bool,
     pub level_number: usize,
+    pub unlocks: Unlocked,
     // pub level_name: &'static str,
-    // pub level_hint: &'static str,
+    pub level_hint: Option<String>,
 }
 
 impl MapMetadata {
@@ -225,7 +234,7 @@ impl Map {
                 vehicles_to_add.push(*id);
             }
 
-            if building.arrived_count < 10 {
+            if !building.arrived_goal_met() {
                 all_goals_met = false;
             }
         }

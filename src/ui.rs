@@ -1,7 +1,7 @@
 use crate::{
     context::Context,
     map::{
-        draw::draw_vehicle_detail, levels::new_level, tile::Tile, vehicle::Vehicle, Map, Position,
+        draw::draw_vehicle_detail, levels::new_level, tile::Tile, vehicle::Vehicle, Map, Position, Unlocked,
     },
     tileset::{Sprite, Tileset},
 };
@@ -64,7 +64,7 @@ pub struct UiState {
 }
 
 impl UiState {
-    pub async fn new() -> Self {
+    pub async fn new(unlocked: Unlocked) -> Self {
         UiState {
             draw_profiler: false,
 
@@ -90,7 +90,7 @@ impl UiState {
                     ToolbarItem::new(ViewMode::Route, "Route stuff", 'r', Sprite::new(9, 1)),
                 ],
             ),
-            view_build: ViewBuild::new(),
+            view_build: ViewBuild::new(unlocked),
             pause_menu_open: false,
             pause_menu: Menu::new(vec![
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
@@ -175,53 +175,54 @@ impl UiState {
         self.update_mouse(ctx, map);
     }
 
-    fn draw_vehicle_details(&self, ui: &mut Ui, tileset: &Tileset, vehicle: &Vehicle) {
-        ui.label(None, &format!("VT: {:?}", vehicle.path.trip_completed_percent()));
+    fn draw_vehicle_details(&self, map: &Map, tileset: &Tileset, vehicle: &Vehicle) {
+        // ui.label(None, &format!("VT: {:?}", vehicle.path.trip_completed_percent()));
         // self.grades.draw(ui, vehicle.trip_completed_percent());
 
-        ui.label(None, &format!("VL: {:?}", vehicle.path.trip_late()));
+        // ui.label(None, &format!("VL: {:?}", vehicle.path.trip_late()));
         // self.grades.draw(ui, vehicle.trip_late());
-        draw_vehicle_detail(vehicle, tileset);
+        draw_vehicle_detail(map, vehicle, tileset);
     }
 
     fn draw_tile_details(
         &self,
         pos: Position,
-        ui: &mut Ui,
+        // ui: &mut Ui,
         map: &Map,
         ctx: &Context,
     ) -> Option<()> {
         match map.grid.get_tile(&pos)? {
             Tile::Empty => {
-                ui.label(None, "Empty");
+                // ui.label(None, "Empty");
             }
             Tile::Ramp(_) => {
-                ui.label(None, "Ramp");
+                // ui.label(None, "Ramp");
             }
             Tile::Water => {
-                ui.label(None, "Water");
+                // ui.label(None, "Water");
             }
             Tile::Building(building) => {
                 if let Some(building) = map.get_building(building) {
-                    ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
+                    // ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
                     if let Some(vehicle_id) = building.vehicle_on_the_way {
                         if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                             // vehicle.draw_detail(tileset);
-                            self.draw_vehicle_details(ui, &ctx.tileset, vehicle);
+                            self.draw_vehicle_details(map, &ctx.tileset, vehicle);
                         }
                     }
                 }
             }
             Tile::Road(road) => {
-                ui.label(None, &format!("Road {:?}", road));
+                // ui.label(None, &format!("Road {:?}", road));
                 if let Some(vehicle_id) = road.reserved.get_reserved_id() {
                     if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
-                        self.draw_vehicle_details(ui, &ctx.tileset, vehicle);
+                        self.draw_vehicle_details(map, &ctx.tileset, vehicle);
                     }
                 }
-                if let Some(station_id) = road.station {
-                    ui.label(None, &format!("S {:?}", station_id));
-                }
+                // if let Some(station_id) = road.station {
+                    // ui.label(None, &format!("S {:?}", station_id));
+                    // println!("Station")
+                // }
             }
         }
 
@@ -243,19 +244,22 @@ impl UiState {
         .movable(false)
         .ui(&mut root_ui(), |ui| {
             if let Some(pos) = self.last_mouse_pos {
-                self.draw_tile_details(pos, ui, map, ctx);
+                self.draw_tile_details(pos, map, ctx);
             }
         });
     }
 
     pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
-        self.draw_details(map, ctx);
 
         // profiler
         if self.draw_profiler {
+            self.draw_details(map, ctx);
             macroquad_profiler::profiler(ProfilerParams {
                 fps_counter_pos: vec2(0., 0.),
             });
+            self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
+        } else if let Some(pos) = self.last_mouse_pos {
+            self.draw_tile_details(pos, map, ctx);
         }
 
         self.time_select.items[0].sprite =
@@ -267,7 +271,6 @@ impl UiState {
         self.time_select
             .draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
         self.view_build.draw(map, ctx);
-        self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
 
         if self.pause_menu_open {
             if let Some(selected) = self.pause_menu.draw(hash!()) {

@@ -5,10 +5,7 @@ use macroquad::{
 
 use crate::{
     context::Context,
-    map::{
-        build::*,
-        Direction, Map, Position,
-    },
+    map::{build::*, Direction, Map, Position, Unlocked},
     tileset::{Sprite, Tileset},
 };
 
@@ -56,30 +53,44 @@ pub struct ViewBuild {
 }
 
 impl ViewBuild {
-    pub fn new() -> Self {
+    pub fn new(unlocked: Unlocked) -> Self {
+        let mut build_toolbar: Vec<ToolbarItem<BuildMode>> = Vec::new();
+        build_toolbar.push(ToolbarItem::new(
+            BuildMode::TwoWayRoad,
+            "Build a road",
+            '1',
+            Sprite::new(8, 0),
+        ));
+        if unlocked == Unlocked::OneWayRoads || unlocked == Unlocked::All {
+            build_toolbar.push(ToolbarItem::new(
+                BuildMode::OneWayRoad,
+                "Build a one way road",
+                '2',
+                Sprite::new(8, 1),
+            ))
+        }
+
+        if unlocked != Unlocked::Roads {
+            build_toolbar.push(ToolbarItem::new(
+                BuildMode::Bridge,
+                "Build a bridge",
+                '3',
+                Sprite::new(8, 2),
+            ))
+        }
+        // ToolbarItem::new(BuildMode::Station, "Station", '4', Sprite::new(8, 4)),
+
+        build_toolbar.push(ToolbarItem::new(
+            BuildMode::Clear,
+            "Delete",
+            '5',
+            Sprite::new(8, 3),
+        ));
+
         Self {
             mouse_pos: Position::new(0, 0),
             mouse_down_pos: None,
-            build_toolbar: Toolbar::new(
-                ToolbarType::Horizontal,
-                vec![
-                    ToolbarItem::new(
-                        BuildMode::TwoWayRoad,
-                        "Build a road",
-                        '1',
-                        Sprite::new(8, 0),
-                    ),
-                    ToolbarItem::new(
-                        BuildMode::OneWayRoad,
-                        "Build a one way road",
-                        '2',
-                        Sprite::new(8, 1),
-                    ),
-                    ToolbarItem::new(BuildMode::Bridge, "Build a bridge", '3', Sprite::new(8, 2)),
-                    ToolbarItem::new(BuildMode::Station, "Station", '4', Sprite::new(8, 4)),
-                    ToolbarItem::new(BuildMode::Clear, "Delete", '5', Sprite::new(8, 3)),
-                ],
-            ),
+            build_toolbar: Toolbar::new(ToolbarType::Horizontal, build_toolbar),
             edit_action_bar: Toolbar::new(
                 ToolbarType::Horizontal,
                 vec![

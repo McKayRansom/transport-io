@@ -58,10 +58,12 @@ impl Tileset {
 
     pub fn reset_camera(&mut self, size: (f32, f32)) {
         self.camera = (
-            size.0 / 2. - screen_width() / 2.,
-            size.1 / 2. - screen_height() / 2.,
+            -(screen_width() - size.0) / 2.,
+            -(screen_height() - size.1) / 2.,
         );
         self.zoom = 1.;
+        let zoom = (screen_height() / size.1).min(screen_width() / size.0);
+        self.change_zoom(zoom - self.zoom);
     }
 
     pub fn change_zoom(&mut self, amount: f32) {
