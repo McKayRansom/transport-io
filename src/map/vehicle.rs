@@ -11,7 +11,7 @@ use super::{
 };
 
 const ACCEL_PIXELS_PER_TICK: u32 = 1;
-const SPEED_PIXELS_PER_TICK: u32 = 6;
+const SPEED_PIXELS_PER_TICK: u32 = 16;
 pub const SPEED_TICKS_PER_TILE: i16 = GRID_CELL_SIZE.0 as i16 / SPEED_PIXELS_PER_TICK as i16;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
 
@@ -36,7 +36,7 @@ impl VehiclePosition {
 
     fn update_speed(&mut self) {
         if self.lag_pos > 0 {
-            self.lag_pos -= self.lag_speed.min(self.lag_pos);
+            self.lag_pos -= (self.lag_speed / 4).min(self.lag_pos);
         }
         if self.lag_speed < SPEED_PIXELS_PER_TICK {
             self.lag_speed += ACCEL_PIXELS_PER_TICK;

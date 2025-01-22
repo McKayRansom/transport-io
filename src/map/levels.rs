@@ -13,7 +13,7 @@ pub struct Level {
 const LEVELS: &[Level] = &[
     Level {
         name: "Connect Road",
-        hint: "Click and drag to connect roads!",
+        hint: "Select Build Road, then click and drag to connect the colors",
         unlocked: Unlocked::Roads,
         grid: "
             __________________
