@@ -301,7 +301,7 @@ impl VehiclePath {
     // 0.5 = 50% late
     // 1 = on time exactly
     // 1.5 = 50% early
-    pub fn _trip_late(&self) -> f32 {
+    pub fn trip_late(&self) -> f32 {
         if let Some(path) = &self.grid_path {
             let tiles_elapsed =
                 (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS_PER_TILE as u32) + 1;
@@ -309,7 +309,7 @@ impl VehiclePath {
 
             let elapsed_percent = tiles_elapsed as f32 / tiles_expected as f32;
 
-            let completed_percent = self._trip_completed_percent();
+            let completed_percent = self.trip_completed_percent();
             // println!("elapsed: {tiles_elapsed}, expected: {} percent: {completed_percent}", tiles_expected);
 
             if completed_percent > 0. {
@@ -322,7 +322,7 @@ impl VehiclePath {
         }
     }
 
-    pub fn _trip_completed_percent(&self) -> f32 {
+    pub fn trip_completed_percent(&self) -> f32 {
         if let Some(path) = &self.grid_path {
             self.path_index.max(0) as f32 / (path.0.len() - 1).max(1) as f32
         } else {

@@ -1,5 +1,5 @@
 use macroquad::{
-    color::{colors, Color, BLUE, RED, WHITE},
+    color::{Color, BLUE, RED, WHITE},
     math::Rect,
 };
 
@@ -29,6 +29,7 @@ const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 const CAR_SPRITE: Sprite = Sprite::new(0, 1);
 const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
 const CAR_NO_PATH_SPRITE: Sprite = Sprite::new(12, 0);
+const CAR_VERY_LATE_SPRITE: Sprite = Sprite::new(12, 1);
 
 const WATER_SPRITE: Sprite = Sprite::new(4, 0);
 
@@ -263,21 +264,12 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset) {
     tileset.draw_tile(CAR_SPRITE, vehicle.color.color(), &rect, rotation);
 
     if vehicle.path.grid_path.is_none() {
-        // tileset.draw_text("?", 32., colors::ORANGE, &rect);
-        rect.w -= 16.;
-        rect.h -= 16.;
-        rect.x += 8.;
-        rect.y += 8.;
-        let mut shadow_rect = rect;
-        shadow_rect.x += 1.;
-        shadow_rect.y += 1.;
-        tileset.draw_tile(CAR_NO_PATH_SPRITE, colors::BLACK, &shadow_rect, rotation);
-
-        tileset.draw_tile(CAR_NO_PATH_SPRITE, colors::WHITE, &rect, rotation);
+        tileset.draw_icon(CAR_NO_PATH_SPRITE, &rect, rotation);
     }
-    // else if vehicle.path.trip_late() < 0.75 {
-    //     tileset.draw_text("!", 32., colors::RED, &rect);
-    // }
+    else if vehicle.path.trip_late() < 0.75 {
+        tileset.draw_icon(CAR_VERY_LATE_SPRITE, &rect, rotation);
+        // tileset.draw_text("!", 32., colors::RED, &rect);
+    }
 }
 
 pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {

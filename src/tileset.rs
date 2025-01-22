@@ -1,5 +1,5 @@
 use macroquad::{
-    color::{Color, BLACK},
+    color::{colors, Color, BLACK},
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::{draw_text_ex, measure_text, TextParams},
@@ -161,5 +161,19 @@ impl Tileset {
                 ..Default::default()
             },
         );
+    }
+
+    pub fn draw_icon(&self, sprite: Sprite, rect: &Rect, rotation: f32) {
+        let mut rect = *rect;
+        rect.w -= 16.;
+        rect.h -= 16.;
+        rect.x += 8.;
+        rect.y += 8.;
+        let mut shadow_rect = rect;
+        shadow_rect.x += 1.;
+        shadow_rect.y += 1.;
+        // self.draw_tile(sprite, colors::BLACK, &shadow_rect, rotation);
+
+        self.draw_tile(sprite, colors::WHITE, &rect, rotation);
     }
 }
