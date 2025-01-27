@@ -59,7 +59,7 @@ impl Road {
                 road.connect(Direction::DOWN);
             }
             'y' => {
-                road.connect(Direction::RIGHT);
+                road.connect(Direction::UP);
                 road.should_yield = true;
             }
             // Roundabouts - top left

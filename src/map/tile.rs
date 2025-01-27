@@ -99,8 +99,10 @@ impl Tile {
             Tile::Road(road) => {
                 if road.connection_count() > 1 {
                     YieldType::Never
-                } else {
+                } else if road.should_yield {
                     YieldType::IfAtIntersection
+                } else {
+                    YieldType::Never
                 }
             }
 
@@ -110,9 +112,9 @@ impl Tile {
         }
     }
 
-    pub fn should_be_yielded_to(&self, should_yield: YieldType, dir_from: Direction) -> bool {
+    pub fn should_be_yielded_to(&self, should_yield: YieldType, dir_from: Direction, id: Id) -> bool {
         if let Tile::Road(road) = self {
-            if road.reserved.is_reserved() && road.is_connected(dir_from.inverse()) {
+            if (road.reserved.is_reserved() && road.reserved.get_reserved_id() != Some(id)) && road.is_connected(dir_from.inverse()) {
                 should_yield == YieldType::Always || road.connection_count() > 1
             } else {
                 false

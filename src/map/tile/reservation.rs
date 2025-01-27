@@ -25,16 +25,26 @@ impl Reserved {
     }
 
     pub fn try_reserve(&mut self, id: Id, pos: Position) -> Option<Reservation> {
-        if !self.is_reserved() {
+        match self.get_reserved_id() {
+        None => {
             let rc = Rc::new(id);
             self.weak_id = Rc::<u64>::downgrade(&rc);
             Some(Reservation {
                 _strong_id: rc,
                 pos,
             })
-        } else {
+
+        } 
+        Some(reserved_id) if id == reserved_id => {
+            Some(Reservation {
+                _strong_id: Weak::<u64>::upgrade(&self.weak_id).clone()?,
+                pos,
+            })
+        }
+        Some(_) => {
             None
         }
+    }
     }
 }
 
