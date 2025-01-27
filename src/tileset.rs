@@ -95,6 +95,14 @@ impl Tileset {
     }
 
     pub fn draw_tile(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32) {
+        self.draw_tile_ex(sprite, color, dest, rotation, false);
+    }
+
+    pub fn draw_tile_flip(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32) {
+        self.draw_tile_ex(sprite, color, dest, rotation, true);
+    }
+
+    pub fn draw_tile_ex(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32, flip: bool) {
         let dest_size = vec2(
             dest.w * sprite.size.x as f32 * self.zoom,
             dest.h * sprite.size.y as f32 * self.zoom,
@@ -110,6 +118,7 @@ impl Tileset {
                 dest_size: Some(dest_size),
                 source: Some(spr_rect),
                 rotation,
+                flip_x: flip,
                 ..Default::default()
             },
         );
