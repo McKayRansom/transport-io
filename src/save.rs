@@ -154,6 +154,7 @@ mod save_tests {
             Some((map.grid.pos(0, 0), Direction::RIGHT)),
             1,
             crate::consts::SpawnerColors::Blue,
+            0,
         );
 
         map.save().unwrap();
@@ -173,7 +174,7 @@ mod save_tests {
             .grid
             .get_tile_mut(&pos)
             .unwrap()
-            .reserve(1234, pos)
+            .reserve(1234, pos, 0, 0, 1)
             .is_err())
     }
 }

@@ -12,15 +12,7 @@ use crate::hash_map_id::Id;
 use super::{grid::ReservationError, Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
-const OCCUPIED_COST: u32 = 2;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum YieldType {
-    Always,
-    IfAtIntersection,
-    Never,
-}
-
+const _OCCUPIED_COST: u32 = 2;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ramp {
@@ -82,56 +74,26 @@ impl Tile {
         }
     }
 
-    pub fn reserve(&mut self, id: Id, pos: Position) -> Result<Reservation, ReservationError> {
+    pub fn reserve(&mut self, id: Id, pos: Position, current: Tick, start: Tick, end: Tick) -> Result<PlanReservation, ReservationError> {
         match self {
             Tile::Road(road) => road
                 .reserved
-                .try_reserve(id, pos)
+                .try_reserve(id, pos, current, start, end)
                 .ok_or(ReservationError::TileReserved),
 
-            Tile::Building(_) => Ok(Reservation::new_for_building(pos)),
+            Tile::Building(_) => Ok(PlanReservation::new_for_building(pos, start, end)),
             _ => Err(ReservationError::TileInvalid),
-        }
-    }
-
-    pub fn should_yield(&self) -> YieldType {
-        match self {
-            Tile::Road(road) => {
-                if road.connection_count() > 1 {
-                    YieldType::Never
-                } else if road.should_yield {
-                    YieldType::IfAtIntersection
-                } else {
-                    YieldType::Never
-                }
-            }
-
-            // alway yield from a building
-            // if we are somehow in a weird state, I guess yield?
-            _ => YieldType::Always,
-        }
-    }
-
-    pub fn should_be_yielded_to(&self, should_yield: YieldType, dir_from: Direction, id: Id) -> bool {
-        if let Tile::Road(road) = self {
-            if (road.reserved.is_reserved() && road.reserved.get_reserved_id() != Some(id)) && road.is_connected(dir_from.inverse()) {
-                should_yield == YieldType::Always || road.connection_count() > 1
-            } else {
-                false
-            }
-        } else {
-            false
         }
     }
 
     pub fn cost(&self) -> u32 {
         match self {
-            Tile::Road(road) => {
-                if road.reserved.is_reserved() {
-                    OCCUPIED_COST
-                } else {
+            Tile::Road(_road) => {
+                // if road.reserved.is_reserved() {
+                    // OCCUPIED_COST
+                // } else {
                     DEFAULT_COST
-                }
+                // }
             }
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around

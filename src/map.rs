@@ -20,6 +20,7 @@ pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
+use tile::Tick;
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -71,6 +72,7 @@ impl MapMetadata {
 #[derive(Serialize, Deserialize)]
 pub struct Map {
     pub metadata: MapMetadata,
+    pub tick: Tick,
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
     cities: CityHashMap,
@@ -81,6 +83,7 @@ impl Map {
         srand(1234);
         Map {
             metadata: MapMetadata::new(),
+            tick: 0,
             grid: Grid::new(size),
             vehicles: VehicleHashMap::new(),
             cities: CityHashMap::new(),
@@ -106,6 +109,7 @@ impl Map {
 
     pub fn new_from_string(string: &str) -> Self {
         let mut map = Map {
+            tick: 0,
             metadata: MapMetadata::new(),
             grid: Grid::new_from_string(string),
             vehicles: VehicleHashMap::new(),
@@ -186,9 +190,10 @@ impl Map {
         start: Option<(Position, Direction)>,
         end: Id,
         color: SpawnerColors,
+        tick: Tick
     ) -> Option<Id> {
         let id = self.vehicles.id;
-        if let Ok(mut vehicle) = Vehicle::new(id, start?, end, &mut self.grid) {
+        if let Ok(mut vehicle) = Vehicle::new(id, start?, end, &mut self.grid, tick) {
             vehicle.color = color;
             Some(self.vehicles.insert(vehicle))
         } else {
@@ -255,6 +260,7 @@ impl Map {
                         start_building.spawn_pos(&self.grid),
                         end_building_id,
                         destination_building.color,
+                        self.tick,
                     )
                     .is_none()
                 {
@@ -276,7 +282,7 @@ impl Map {
     pub fn update(&mut self) -> bool {
         let mut to_remove: Vec<(Id, Status)> = Vec::new();
         for s in self.vehicles.hash_map.iter_mut() {
-            let status = s.1.update(&mut self.grid);
+            let status = s.1.update(&mut self.grid, self.tick);
             if status != Status::EnRoute {
                 to_remove.push((*s.0, status));
             }

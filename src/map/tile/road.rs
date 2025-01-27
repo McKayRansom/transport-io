@@ -4,15 +4,13 @@ use crate::{
     hash_map_id::Id, map::{Direction, Position}
 };
 
-use super::Reserved;
+use super::PlanReservedList;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
     pub station: Option<Id>,
-
-    #[serde(skip_serializing, skip_deserializing)]
-    pub reserved: Reserved,
+    pub reserved: PlanReservedList,
     connections: Vec<Direction>,
 }
 
@@ -22,7 +20,7 @@ impl Road {
         Road {
             station,
             should_yield: false,
-            reserved: Reserved::new(),
+            reserved: PlanReservedList::new(),
             connections: if dir != Direction::NONE {
                 vec![dir]
             } else {
@@ -35,7 +33,7 @@ impl Road {
         Road {
             station: None,
             should_yield: false,
-            reserved: Reserved::new(),
+            reserved: PlanReservedList::new(),
             connections: Vec::new(),
         }
     }
@@ -134,7 +132,7 @@ impl Road {
 
 impl std::fmt::Debug for Road {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.reserved.is_reserved() {
+        if self.reserved.is_reserved(0) {
             write!(f, "o")
         } else if self.is_connected(Direction::UP) && self.is_connected(Direction::LEFT) {
             write!(f, "r")

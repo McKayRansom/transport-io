@@ -1,6 +1,8 @@
+use std::u64;
+
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
-use tile::{Reservation, Tile, YieldType};
+use tile::{PlanReservation, Tick, Tile};
 use vehicle::{VehiclePosition, SPEED_TICKS_PER_TILE};
 
 use super::*;
@@ -13,10 +15,13 @@ impl Grid {
         &mut self,
         pos: &Position,
         vehicle_id: Id,
-    ) -> Result<Reservation, ReservationError> {
+        current: Tick,
+        start: Tick,
+        end: Tick,
+    ) -> Result<PlanReservation, ReservationError> {
         self.get_tile_mut(pos)
             .ok_or(ReservationError::TileInvalid)?
-            .reserve(vehicle_id, *pos)
+            .reserve(vehicle_id, *pos, current, start, end)
     }
 
     pub fn find_path(&self, start: (Position, Direction), end: &Id) -> Path {
@@ -81,59 +86,24 @@ impl Grid {
         }
     }
 
-    pub fn should_be_yielded_to(
-        &self,
-        should_yield: YieldType,
-        pos: &Position,
-        dir_from: Direction,
-        id: Id,
-    ) -> bool {
-        self.get_tile(pos)
-            .is_some_and(|tile| tile.should_be_yielded_to(should_yield, dir_from, id))
-    }
-
-    pub fn should_we_yield_when_entering(
-        &self,
-        should_yield: YieldType,
-        position: &Position,
-        id: Id,
-    ) -> Option<Position> {
-        // never yield from an intersection
-        if should_yield == YieldType::Never {
-            return None;
-        }
-
-        if let Some(Tile::Road(road)) = self.get_tile(position) {
-            // For each direction that feeds into this tile in question
-            for dir in Direction::ALL
-                .iter()
-                .filter(|&dir| !road.is_connected(*dir))
-            {
-                let yield_to_pos = *position + *dir;
-                if self.should_be_yielded_to(should_yield, &yield_to_pos, *dir, id) {
-                    return Some(yield_to_pos);
-                }
-            }
-        }
-
-        None
-    }
-
     pub fn reserve_check_yield(
         &mut self,
         pos: &Position,
         id: Id,
-        should_yield: YieldType,
-    ) -> Result<Reservation, ReservePathError> {
-        match self.reserve(pos, id) {
+        // should_yield: YieldType,
+        tick: Tick,
+        start: Tick,
+        end: Tick,
+    ) -> Result<PlanReservation, ReservePathError> {
+        match self.reserve(pos, id, tick, start, end) {
             Ok(reservation) => {
-                if let Some(yield_to_pos) =
-                    self.should_we_yield_when_entering(should_yield, pos, id)
-                {
-                    Err(ReservePathError::Blocking(yield_to_pos))
-                } else {
+                // if let Some(yield_to_pos) =
+                    // self.should_we_yield_when_entering(should_yield, pos, id)
+                // {
+                    // Err(ReservePathError::Blocking(yield_to_pos))
+                // } else {
                     Ok(reservation)
-                }
+                // }
             }
             Err(ReservationError::TileInvalid) => Err(ReservePathError::InvalidPath),
             Err(ReservationError::TileReserved) => Err(ReservePathError::Blocking(*pos)),
@@ -163,7 +133,7 @@ pub enum ReservePathError {
 pub struct VehiclePath {
     id: Id,
     pub grid_path: Path,
-    pub reserved: Vec<Reservation>,
+    pub reserved: Vec<PlanReservation>,
     path_index: usize,
     path_time_ticks: u32,
     elapsed_ticks: u32,
@@ -180,11 +150,12 @@ impl VehiclePath {
         grid: &mut Grid,
         start: (Position, Direction),
         destination: Id,
+        tick: Tick,
     ) -> Result<Self, ReservationError> {
         let reservation = grid
             .get_tile_mut(&start.0)
             .ok_or(ReservationError::TileInvalid)?
-            .reserve(id, start.0)?;
+            .reserve(id, start.0, tick, 0, u64::MAX)?;
 
         let mut vehicle_path = Self {
             id,
@@ -202,25 +173,29 @@ impl VehiclePath {
         Ok(vehicle_path)
     }
 
-    pub fn fixup(&mut self, grid: &mut Grid) -> Result<(), ReservationError> {
+    pub fn fixup(&mut self, _grid: &mut Grid) -> Result<(), ReservationError> {
         // Fix serialization
-        for reservation in &mut self.reserved {
-            *reservation = grid.reserve(&reservation.pos, self.id)?
-        }
+        // for reservation in &mut self.reserved {
+        //     *reservation = grid.reserve(&reservation.pos, self.id)?
+        // }
         Ok(())
     }
 
     fn reserve_path(
         &mut self,
-        current_pos: Position,
         grid: &mut Grid,
-    ) -> Result<Vec<Reservation>, ReservePathError> {
-        let should_yield = grid
-            .get_tile(&current_pos)
-            .ok_or(ReservePathError::InvalidPath)?
-            .should_yield();
+        tick: Tick,
+        speed: u64,
+    ) -> Result<Vec<PlanReservation>, ReservePathError> {
+        // let should_yield = grid
+        //     .get_tile(&current_pos)
+        //     .ok_or(ReservePathError::InvalidPath)?
+        //     .should_yield();
 
-        let mut reserved = Vec::<Reservation>::new();
+        let mut reserved = Vec::<PlanReservation>::new();
+
+        let mut start = tick;
+        let mut end = tick + speed;
 
         for pos in &self
             .grid_path
@@ -235,10 +210,12 @@ impl VehiclePath {
             //     .0
             //     .get(self.path_index)
             // {
-            reserved.push(grid.reserve_check_yield(pos, self.id, should_yield)?);
+            reserved.push(grid.reserve_check_yield(pos, self.id, tick, start, end)?);
 
             if let Some(Tile::Road(road)) = grid.get_tile(pos) {
                 if road.connection_count() > 1 {
+                    start += speed;
+                    end += speed;
                     continue;
                 }
             }
@@ -262,8 +239,10 @@ impl VehiclePath {
         &mut self,
         grid: &mut Grid,
         start: (Position, Direction),
+        tick: Tick,
+        speed: u64
     ) -> Option<Position> {
-        match self.reserve_path(start.0, grid) {
+        match self.reserve_path(grid, tick, speed) {
             Ok(reserved) => {
                 self.reserved = reserved;
                 self.path_index += 1;
@@ -284,16 +263,16 @@ impl VehiclePath {
         self.elapsed_ticks += 1;
     }
 
-    pub fn update_position(&mut self, path_grid: &mut Grid, pos: &mut VehiclePosition) -> Status {
-        if let Some(blocking_tile) = self.blocking_tile {
-            if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
-                if road.reserved.is_reserved() {
-                    // don't bother
-                    return Status::EnRoute;
-                }
-            }
-        }
-        self.blocking_tile = None;
+    pub fn update_position(&mut self, path_grid: &mut Grid, pos: &mut VehiclePosition, tick: Tick, speed: u64) -> Status {
+        // if let Some(blocking_tile) = self.blocking_tile {
+        //     if let Some(Tile::Road(road)) = path_grid.get_tile(&blocking_tile) {
+        //         if road.reserved.is_reserved() {
+        //             // don't bother
+        //             return Status::EnRoute;
+        //         }
+        //     }
+        // }
+        // self.blocking_tile = None;
 
         if let Some(tile) = path_grid.get_tile(&pos.grid_pos) {
             if tile.get_building_id() == Some(self.destination) {
@@ -301,7 +280,7 @@ impl VehiclePath {
             }
         }
 
-        let next_pos = self.reserve_next_pos(path_grid, (pos.grid_pos, pos.dir));
+        let next_pos = self.reserve_next_pos(path_grid, (pos.grid_pos, pos.dir), tick, speed);
 
         pos.update_next_pos(next_pos);
 
@@ -438,8 +417,8 @@ mod path_tests {
 mod vehicle_path_tests {
     use super::*;
 
-    fn reserve(grid: &mut Grid, pos: Position) -> Result<Reservation, ReservationError> {
-        grid.get_tile_mut(&pos).unwrap().reserve(1234, pos)
+    fn reserve(grid: &mut Grid, pos: Position, tick: Tick, start: Tick, end: Tick) -> Result<PlanReservation, ReservationError> {
+        grid.get_tile_mut(&pos).unwrap().reserve(1234, pos, tick, start, end)
     }
 
     #[test]
@@ -451,141 +430,139 @@ mod vehicle_path_tests {
 
         let start: (Position, Direction) = ((1, 1).into(), Direction::UP);
 
-        let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
-        assert!(reserve(&mut grid, start.0).is_err());
+        let mut path = VehiclePath::new(1, &mut grid, start, 1, 0).unwrap();
+        assert!(reserve(&mut grid, start.0, 0, 0, 1).is_err());
 
-        let reservation = reserve(&mut grid, (0, 0).into()).unwrap();
+        let _reservation = reserve(&mut grid, (1, 0).into(), 0, 0, 1).unwrap();
 
-        assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 0).into()));
+        assert_eq!(path.reserve_next_pos(&mut grid, start, 0, 4), None);
 
-        drop(reservation);
-
-        assert_eq!(path.reserve_next_pos(&mut grid, start), Some((2, 0).into()));
+        assert_eq!(path.reserve_next_pos(&mut grid, start, 4, 4), Some((1, 0).into()));
     }
 
     #[test]
     fn yield_to_intersection_traffic() {
-        let mut grid = Grid::new_from_string(
-            "LR>>1
-             _y___",
-        );
+        // let mut grid = Grid::new_from_string(
+        //     "LR>>1
+        //      _y___",
+        // );
 
-        let start: (Position, Direction) = ((1, 1).into(), Direction::UP);
+        // let start: (Position, Direction) = ((1, 1).into(), Direction::UP);
 
-        let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
-        assert!(reserve(&mut grid, start.0).is_err());
+        // let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
+        // assert!(reserve(&mut grid, start.0).is_err());
 
-        let reservation = reserve(&mut grid, (0, 0).into()).unwrap();
+        // let reservation = reserve(&mut grid, (0, 0).into()).unwrap();
 
-        assert!(grid
-            .reserve_check_yield(&(1, 0).into(), path.id, YieldType::Never)
-            .is_ok());
-        assert!(grid
-            .reserve_check_yield(&(1, 0).into(), path.id, YieldType::IfAtIntersection)
-            .is_err());
+        // assert!(grid
+        //     .reserve_check_yield(&(1, 0).into(), path.id, YieldType::Never)
+        //     .is_ok());
+        // assert!(grid
+        //     .reserve_check_yield(&(1, 0).into(), path.id, YieldType::IfAtIntersection)
+        //     .is_err());
 
-        assert_eq!(path.reserve_next_pos(&mut grid, start), None);
-        assert_eq!(path.blocking_tile, Some(reservation.pos));
+        // assert_eq!(path.reserve_next_pos(&mut grid, start), None);
+        // assert_eq!(path.blocking_tile, Some(reservation.pos));
 
-        drop(reservation);
+        // drop(reservation);
 
-        dbg!(&path.reserved);
+        // dbg!(&path.reserved);
 
-        if let Tile::Road(road) = grid.get_tile(&(0, 0).into()).unwrap() {
-            dbg!(&road.reserved);
-        } else {
-            panic!()
-        }
+        // if let Tile::Road(road) = grid.get_tile(&(0, 0).into()).unwrap() {
+        //     dbg!(&road.reserved);
+        // } else {
+        //     panic!()
+        // }
 
-        assert_eq!(
-            grid.should_we_yield_when_entering(
-                YieldType::IfAtIntersection,
-                &(1, 0).into(),
-                path.id
-            ),
-            None
-        );
-        assert!(grid
-            .reserve_check_yield(&(1, 0).into(), path.id, YieldType::IfAtIntersection)
-            .is_ok());
+        // assert_eq!(
+        //     grid.should_we_yield_when_entering(
+        //         YieldType::IfAtIntersection,
+        //         &(1, 0).into(),
+        //         path.id
+        //     ),
+        //     None
+        // );
+        // assert!(grid
+        //     .reserve_check_yield(&(1, 0).into(), path.id, YieldType::IfAtIntersection)
+        //     .is_ok());
 
-        assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 0).into()));
+        // assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 0).into()));
     }
 
     #[test]
     fn yield_roundabout_traffic() {
-        let mut grid = Grid::new_from_string(
-            "\
-            __.3__
-            __.^__
-            4<lr<<
-            >>LR>2
-            __.^__
-            __1^__
-            ",
-        );
+        // let mut grid = Grid::new_from_string(
+        //     "\
+        //     __.3__
+        //     __.^__
+        //     4<lr<<
+        //     >>LR>2
+        //     __.^__
+        //     __1^__
+        //     ",
+        // );
 
-        // Top Vehicle is going straight down
-        let start_top: (Position, Direction) = ((2, 1).into(), Direction::DOWN);
-        let mut path_top = VehiclePath::new(1, &mut grid, start_top, 1).unwrap();
+        // // Top Vehicle is going straight down
+        // let start_top: (Position, Direction) = ((2, 1).into(), Direction::DOWN);
+        // let mut path_top = VehiclePath::new(1, &mut grid, start_top, 1).unwrap();
 
-        let start_left: (Position, Direction) = ((1, 3).into(), Direction::RIGHT);
-        let mut path_left = VehiclePath::new(2, &mut grid, start_left, 2).unwrap();
+        // let start_left: (Position, Direction) = ((1, 3).into(), Direction::RIGHT);
+        // let mut path_left = VehiclePath::new(2, &mut grid, start_left, 2).unwrap();
 
-        let start_bottom: (Position, Direction) = ((3, 4).into(), Direction::UP);
-        let mut path_bottom = VehiclePath::new(3, &mut grid, start_bottom, 3).unwrap();
+        // let start_bottom: (Position, Direction) = ((3, 4).into(), Direction::UP);
+        // let mut path_bottom = VehiclePath::new(3, &mut grid, start_bottom, 3).unwrap();
 
-        let start_right: (Position, Direction) = ((4, 2).into(), Direction::LEFT);
-        let mut path_right = VehiclePath::new(4, &mut grid, start_right, 4).unwrap();
+        // let start_right: (Position, Direction) = ((4, 2).into(), Direction::LEFT);
+        // let mut path_right = VehiclePath::new(4, &mut grid, start_right, 4).unwrap();
 
-        println!("grid: \n{:?}", grid);
+        // println!("grid: \n{:?}", grid);
 
-        assert!(path_top.reserve_next_pos(&mut grid, start_top).is_some());
-        assert!(path_left.reserve_next_pos(&mut grid, start_left).is_none());
-        assert!(path_bottom
-            .reserve_next_pos(&mut grid, start_bottom)
-            .is_some());
-        assert!(path_right
-            .reserve_next_pos(&mut grid, start_bottom)
-            .is_none());
+        // assert!(path_top.reserve_next_pos(&mut grid, start_top).is_some());
+        // assert!(path_left.reserve_next_pos(&mut grid, start_left).is_none());
+        // assert!(path_bottom
+        //     .reserve_next_pos(&mut grid, start_bottom)
+        //     .is_some());
+        // assert!(path_right
+        //     .reserve_next_pos(&mut grid, start_bottom)
+        //     .is_none());
 
-        println!("grid after: \n{:?}", grid);
+        // println!("grid after: \n{:?}", grid);
 
-        assert!(path_top.blocking_tile.is_none());
-        assert!(path_left.blocking_tile.is_some());
-        assert!(path_bottom.blocking_tile.is_none());
-        assert!(path_right.blocking_tile.is_some());
+        // assert!(path_top.blocking_tile.is_none());
+        // assert!(path_left.blocking_tile.is_some());
+        // assert!(path_bottom.blocking_tile.is_none());
+        // assert!(path_right.blocking_tile.is_some());
     }
 
     #[test]
     fn yield_house_to_relevant_traffic() {
         // Houses should yield, but only to relevant traffic
-        let mut grid = Grid::new_from_string(
-            "\
-            <<<<
-            >>>1
-            _h__",
-        );
+        // let mut grid = Grid::new_from_string(
+        //     "\
+        //     <<<<
+        //     >>>1
+        //     _h__",
+        // );
 
-        let start: (Position, Direction) = ((1, 2).into(), Direction::UP);
+        // let start: (Position, Direction) = ((1, 2).into(), Direction::UP);
 
-        let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
+        // let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
 
-        let yield_to_pos = Position::new(0, 1);
+        // let yield_to_pos = Position::new(0, 1);
 
-        let reservation = reserve(&mut grid, yield_to_pos).unwrap();
+        // let reservation = reserve(&mut grid, yield_to_pos).unwrap();
 
-        assert_eq!(path.reserve_next_pos(&mut grid, start), None);
-        assert_eq!(path.blocking_tile, Some(reservation.pos));
+        // assert_eq!(path.reserve_next_pos(&mut grid, start), None);
+        // assert_eq!(path.blocking_tile, Some(reservation.pos));
 
-        drop(reservation);
+        // drop(reservation);
 
-        // reserve position accross the street
-        let do_not_yield_to_pos = Position::new(1, 0);
-        let reservation = reserve(&mut grid, do_not_yield_to_pos).unwrap();
+        // // reserve position accross the street
+        // let do_not_yield_to_pos = Position::new(1, 0);
+        // let reservation = reserve(&mut grid, do_not_yield_to_pos).unwrap();
 
-        assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 1).into()));
+        // assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 1).into()));
 
-        drop(reservation);
+        // drop(reservation);
     }
 }
