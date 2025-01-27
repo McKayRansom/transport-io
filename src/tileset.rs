@@ -98,9 +98,9 @@ impl Tileset {
         self.draw_tile_ex(sprite, color, dest, rotation, false);
     }
 
-    pub fn draw_tile_flip(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32) {
-        self.draw_tile_ex(sprite, color, dest, rotation, true);
-    }
+    // pub fn draw_tile_flip(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32) {
+    //     self.draw_tile_ex(sprite, color, dest, rotation, true);
+    // }
 
     pub fn draw_tile_ex(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32, flip: bool) {
         let dest_size = vec2(

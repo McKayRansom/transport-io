@@ -433,7 +433,7 @@ mod vehicle_path_tests {
     }
 
     #[test]
-    fn test_yield() {
+    fn yield_to_intersection_traffic() {
         let mut grid = Grid::new_from_string(
             "LR>>1
              _^___",
@@ -442,14 +442,12 @@ mod vehicle_path_tests {
         let start: (Position, Direction) = ((1, 1).into(), Direction::UP);
 
         let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
-
         assert!(reserve(&mut grid, start.0).is_err());
 
         let reservation = reserve(&mut grid, (0, 0).into()).unwrap();
 
         assert_eq!(path.reserve_next_pos(&mut grid, start), None);
-
-        assert_eq!(path.blocking_tile, Some((0, 0).into()));
+        assert_eq!(path.blocking_tile, Some(reservation.pos));
 
         drop(reservation);
 
@@ -457,81 +455,80 @@ mod vehicle_path_tests {
     }
 
     #[test]
-    fn test_yield_roundabout() {
-        // let mut grid = Grid::new_from_string(
-        //     "\
-        //     __.^__
-        //     __.^__
-        //     <<lr<<
-        //     >>LR>>
-        //     __.^__
-        //     __.^__
-        //     ",
-        // );
+    fn yield_roundabout_traffic() {
+        let mut grid = Grid::new_from_string(
+            "\
+            __.3__
+            __.^__
+            4<lr<<
+            >>LR>2
+            __.^__
+            __1^__
+            ",
+        );
 
-        // let mut vehicle_top = Vehicle::new(0, grid.pos(2, 1), 0, grid.pos(2, 4), &mut grid).unwrap();
 
-        // let mut vehicle_left = Vehicle::new(1, grid.pos(1, 3), 1, grid.pos(5, 3), &mut grid).unwrap();
+        // Top Vehicle is going straight down
+        let start_top: (Position, Direction) = ((2, 1).into(), Direction::DOWN);
+        let mut path_top =
+            VehiclePath::new(1, &mut grid, start_top, 1).unwrap();
 
-        // let mut vehicle_bottom =
-        //     Vehicle::new(2, grid.pos(3, 4), 2, grid.pos(3, 0), &mut grid).unwrap();
+        let start_left: (Position, Direction) = ((1, 3).into(), Direction::RIGHT);
+        let mut path_left =
+            VehiclePath::new(2, &mut grid, start_left, 2).unwrap();
 
-        // let mut vehicle_right = Vehicle::new(3, grid.pos(4, 2), 3, grid.pos(0, 2), &mut grid).unwrap();
+        let start_bottom: (Position, Direction) = ((3, 4).into(), Direction::UP);
+        let mut path_bottom =
+            VehiclePath::new(3, &mut grid, start_bottom, 3).unwrap();
 
-        // assert!(vehicle_top.path.is_some());
-        // assert!(vehicle_left.path.is_some());
-        // assert!(vehicle_bottom.path.is_some());
-        // assert!(vehicle_right.path.is_some());
+        let start_right: (Position, Direction) = ((4, 2).into(), Direction::LEFT);
+        let mut path_right =
+            VehiclePath::new(4, &mut grid, start_right, 4).unwrap();
 
-        // println!("grid: \n{:?}", grid);
+        println!("grid: \n{:?}", grid);
 
-        // vehicle_top.update(&mut grid);
-        // vehicle_left.update(&mut grid);
-        // vehicle_bottom.update(&mut grid);
-        // vehicle_right.update(&mut grid);
+        assert!(path_top.reserve_next_pos(&mut grid, start_top).is_some());
+        assert!(path_left.reserve_next_pos(&mut grid, start_left).is_none());
+        assert!(path_bottom.reserve_next_pos(&mut grid, start_bottom).is_some());
+        assert!(path_right.reserve_next_pos(&mut grid, start_bottom).is_none());
 
-        // println!("grid after: \n{:?}", grid);
+        println!("grid after: \n{:?}", grid);
 
-        // assert!(vehicle_top.blocking_tile.is_none());
-        // assert!(vehicle_left.blocking_tile.is_some());
-        // assert!(vehicle_bottom.blocking_tile.is_none());
-        // assert!(vehicle_right.blocking_tile.is_some());
+        assert!(path_top.blocking_tile.is_none());
+        assert!(path_left.blocking_tile.is_some());
+        assert!(path_bottom.blocking_tile.is_none());
+        assert!(path_right.blocking_tile.is_some());
     }
 
     #[test]
-    fn test_yield_building() {
+    fn yield_house_to_relevant_traffic() {
         // Houses should yield, but only to relevant traffic
-        // let mut grid = Grid::new_from_string(
-        //     "\
-        //     <<<<
-        //     >>>>
-        //     _h__",
-        // );
+        let mut grid = Grid::new_from_string(
+            "\
+            <<<<
+            >>>1
+            _h__",
+        );
 
-        // let mut vehicle = Vehicle::new(grid.pos(1, 2), 0, grid.pos(3, 1), &mut grid).unwrap();
+        let start: (Position, Direction) = ((1, 2).into(), Direction::UP);
 
-        // let yield_to_pos = grid.pos(0, 1);
+        let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
 
-        // assert!(vehicle.path.is_some());
+        let yield_to_pos = Position::new(0, 1);
 
-        // // reserve position we should yield to
-        // let reservation = reserve(&mut grid, yield_to_pos).unwrap();
+        let reservation = reserve(&mut grid, yield_to_pos).unwrap();
 
-        // vehicle.update(&mut grid);
+        assert_eq!(path.reserve_next_pos(&mut grid, start), None);
+        assert_eq!(path.blocking_tile, Some(reservation.pos));
 
-        // assert_eq!(vehicle.blocking_tile.unwrap(), yield_to_pos);
+        drop(reservation);
 
-        // // grid.unreserve_position(&yield_to_pos);
-        // drop(reservation);
+        // reserve position accross the street
+        let do_not_yield_to_pos = Position::new(1, 0);
+        let reservation = reserve(&mut grid, do_not_yield_to_pos).unwrap();
 
-        // // reserve position accross the street
-        // let do_not_yield_to_pos = grid.pos(1, 0);
-        // let reservation = reserve(&mut grid, do_not_yield_to_pos).unwrap();
+        assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 1).into()));
 
-        // vehicle.update(&mut grid);
-
-        // assert_eq!(vehicle.blocking_tile, None);
-
-        // drop(reservation);
+        drop(reservation);
     }
 }

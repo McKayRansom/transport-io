@@ -17,7 +17,7 @@ use super::{
 
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
 const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
-const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
+// const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
 // const ROAD_TURN_SPRITE: Sprite = Sprite::new(3, 3);
 // const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
 pub const ROAD_RAMP_SPRITE: Sprite = Sprite::new(3, 7);
