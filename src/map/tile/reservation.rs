@@ -5,7 +5,7 @@ use crate::{hash_map_id::Id, map::Position};
 // #[derive(Clone, Debug, Default)]
 pub type Tick = u64;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlanReservation {
     pub start: Tick,
     pub end: Tick,
@@ -13,51 +13,47 @@ pub struct PlanReservation {
 }
 
 impl PlanReservation {
-    pub fn new_for_building(pos: Position, start: Tick, end: Tick) -> Self {
-        Self {start, end, pos}
+    pub fn new(pos: Position, start: Tick, end: Tick) -> Self {
+        Self { start, end, pos }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlanReserved {
     id: Id,
-    start_tick: Tick,
-    end_tick: Tick,
+    start: Tick,
+    end: Tick,
 }
 
 impl PlanReserved {
     pub fn create(id: Id, pos: Position, start: Tick, end: Tick) -> (Self, PlanReservation) {
-        let reservation = PlanReservation {
-            start,
-            end,
-            pos,
-        };
+        let reservation = PlanReservation { start, end, pos };
         (
             Self {
                 id,
-                start_tick: start,
-                end_tick: end,
+                start,
+                end,
             },
             reservation,
         )
+    }
+
+    pub fn new(id: Id, start: Tick, end: Tick) -> Self {
+        Self { id, start, end }
     }
 
     pub fn get_reserved_id(&self) -> Id {
         self.id
     }
 
-    pub fn is_reserved(&self, tick: Tick) -> bool {
-        self.start_tick <= tick && self.end_tick >= tick
-    }
-
-    pub fn is_reserved_duration(&self, start: Tick, end: Tick) -> bool {
-        (self.start_tick <= start && self.end_tick >= start) || (self.start_tick <= end && self.end_tick >= end) || (
-            start < self.start_tick && end > self.end_tick
-        )
+    pub fn is_reserved(&self, start: Tick, end: Tick) -> bool {
+        (self.start <= start && self.end >= start)
+            || (self.start <= end && self.end >= end)
+            || (start < self.start && end > self.end)
     }
 
     pub fn is_expired(&self, tick: Tick) -> bool {
-        self.end_tick < tick
+        self.end < tick || self.id == 0
     }
 }
 
@@ -71,17 +67,20 @@ impl PlanReservedList {
         Self { list: Vec::new() }
     }
 
-    pub fn get_reserved_id(&self, tick: Tick) -> Option<Id> {
+    pub fn get_reserved_id(&self, start: Tick, end: Tick) -> Option<Id> {
         for reserved in self.list.iter() {
-            if reserved.is_reserved(tick) {
+            if reserved.is_reserved(start, end) {
                 return Some(reserved.get_reserved_id());
             }
         }
         None
     }
 
-    pub fn is_reserved(&self, tick: Tick) -> bool {
-        self.get_reserved_id(tick).is_some()
+    pub fn is_reserved(&self, res_id: Id, start: Tick, end: Tick) -> bool {
+        match self.get_reserved_id(start, end) {
+            Some(id) => res_id != id,
+            None => false,
+        }
     }
 
     pub fn try_reserve(
@@ -97,7 +96,11 @@ impl PlanReservedList {
             if reserved.is_expired(cur) {
                 to_remove = Some(i);
             }
-            if reserved.is_reserved_duration(start, end) {
+            if reserved.is_reserved(start, end) {
+                if reserved.id == id {
+                    to_remove = Some(i);
+                    break;
+                }
                 return None;
             }
         }
@@ -110,8 +113,24 @@ impl PlanReservedList {
         }
         return Some(reservation);
     }
+
+    pub fn unreserve(&mut self, id: Id) {
+        for res in self.list.iter_mut() {
+            if res.id == id {
+                // mark to be reused later
+                res.start = 0;
+                res.end = 0;
+                res.id = 0;
+            }
+        }
+    }
 }
 
+impl From<&[PlanReserved]> for PlanReservedList {
+    fn from(value: &[PlanReserved]) -> Self {
+        Self { list: value.into() }
+    }
+}
 
 #[cfg(test)]
 mod reservation_tests {
@@ -120,19 +139,17 @@ mod reservation_tests {
     #[test]
     fn test_new() {
         let mut reserved = PlanReservedList::new();
-        assert!(!reserved.is_reserved(0));
+        assert!(!reserved.is_reserved(0, 0, 1));
 
         let pos = Position::new(0, 0);
 
         let reservation = reserved.try_reserve(1234, pos, 0, 1, 4).unwrap();
         assert_eq!(reservation.pos, pos);
 
-        assert_eq!(reserved.is_reserved(0), false);
-        assert_eq!(reserved.is_reserved(1), true);
-        assert_eq!(reserved.is_reserved(2), true);
-        assert_eq!(reserved.is_reserved(3), true);
-        assert_eq!(reserved.is_reserved(4), true);
-        assert_eq!(reserved.is_reserved(5), false);
+        assert_eq!(reserved.is_reserved(0, 0, 0), false);
+        assert_eq!(reserved.is_reserved(0, 0, 11), true);
+        assert_eq!(reserved.is_reserved(0, 3, 4), true);
+        assert_eq!(reserved.is_reserved(0, 5, 5), false);
 
         // overlaps start
         assert!(reserved.try_reserve(56, pos, 0, 0, 1).is_none());
@@ -146,7 +163,7 @@ mod reservation_tests {
         let _reservation_later = reserved.try_reserve(1234, pos, 5, 5, 6).unwrap();
 
         // assume it is dropped
-        assert_eq!(reserved.is_reserved(1), false);
+        assert_eq!(reserved.is_reserved(0, 0, 1), false);
         assert_eq!(reserved.list.len(), 1);
     }
 }

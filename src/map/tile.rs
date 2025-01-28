@@ -81,7 +81,31 @@ impl Tile {
                 .try_reserve(id, pos, current, start, end)
                 .ok_or(ReservationError::TileReserved),
 
-            Tile::Building(_) => Ok(PlanReservation::new_for_building(pos, start, end)),
+            Tile::Building(_) => Ok(PlanReservation::new(pos, start, end)),
+            _ => Err(ReservationError::TileInvalid),
+        }
+    }
+
+    pub fn unreserve(&mut self, id: Id) {
+        match self {
+            Tile::Road(road) => road
+                .reserved
+                .unreserve(id),
+
+            _ => {},
+        }
+    }
+
+    pub fn is_reserved(&self, id: Id, start: Tick, end: Tick) -> Result<(), ReservationError> {
+        match self {
+            Tile::Road(road) => if road
+                .reserved
+                .is_reserved(id, start, end) {
+                    Err(ReservationError::TileReserved)
+                } else {
+                    Ok(())
+                },
+            // T
             _ => Err(ReservationError::TileInvalid),
         }
     }

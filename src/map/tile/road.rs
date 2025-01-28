@@ -132,7 +132,7 @@ impl Road {
 
 impl std::fmt::Debug for Road {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.reserved.is_reserved(0) {
+        if self.reserved.is_reserved(0, 0, u64::MAX) {
             write!(f, "o")
         } else if self.is_connected(Direction::UP) && self.is_connected(Direction::LEFT) {
             write!(f, "r")

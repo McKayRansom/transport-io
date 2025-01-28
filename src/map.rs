@@ -100,9 +100,9 @@ impl Map {
 
     pub fn fixup(&mut self) -> Result<(), ReservationError> {
         // Any way to not allow this to be called twice?
-        for vehicle in &mut self.vehicles.values_mut() {
-            vehicle.fixup(&mut self.grid)?
-        }
+        // for vehicle in &mut self.vehicles.values_mut() {
+        //     vehicle.fixup(&mut self.grid)?
+        // }
 
         Ok(())
     }
@@ -280,6 +280,8 @@ impl Map {
     }
 
     pub fn update(&mut self) -> bool {
+        self.tick += 1;
+
         let mut to_remove: Vec<(Id, Status)> = Vec::new();
         for s in self.vehicles.hash_map.iter_mut() {
             let status = s.1.update(&mut self.grid, self.tick);
@@ -290,7 +292,7 @@ impl Map {
         for (id, status) in to_remove {
             let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
             // let building_id = tile.get_building_id()
-            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.path.destination) {
+            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.destination) {
                 building.update_arrived(status == Status::ReachedDestination);
             }
             self.vehicles.hash_map.remove(&id);

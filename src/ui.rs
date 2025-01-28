@@ -212,7 +212,7 @@ impl UiState {
             }
             Tile::Road(road) => {
                 // ui.label(None, &format!("Road {:?}", road));
-                if let Some(vehicle_id) = road.reserved.get_reserved_id(map.tick) {
+                if let Some(vehicle_id) = road.reserved.get_reserved_id(map.tick, map.tick + 1) {
                     if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                         self.draw_vehicle_details(map, &ctx.tileset, vehicle);
                     }
