@@ -146,7 +146,7 @@ impl Scene for MainMenu {
         //     return;
         // }
         self.map.metadata.grow_cities = false;
-        let speed = 1. / 16.;
+        let speed = 1. / 4.;
 
         if get_time() - self.last_update > speed {
             self.last_update = get_time();

@@ -334,10 +334,10 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
 
 pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, tick: Tick) {
     let mut rect = Rect::from(vehicle.pos);
-    let dir = vehicle.dir * vehicle.lag_pos(tick) as i8;
+    let dir = vehicle.dir * vehicle.lead_pos(tick) as i8;
 
-    rect.x -= dir.x as f32;
-    rect.y -= dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
+    rect.x += dir.x as f32;
+    rect.y += dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
 
     // let vehicle_red = Color::from_hex(0xf9524c);
     // let vehicle_blue = Color::from_hex(0xa0dae8);
@@ -367,8 +367,10 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
     let mut reserved_path_color = RED;
     reserved_path_color.a = 0.3;
     
-    for res in vehicle.reserved.iter() {
-        tileset.draw_text(format!("{}..{}", res.start, res.end).as_str(), 24., WHITE, &res.pos.into())
+    for (i, res ) in vehicle.reserved.iter().enumerate() {
+        let start = res.start.checked_sub(map.tick).unwrap_or(0);
+        let end: String = if res.end != u64::MAX { format!("{}", res.end.saturating_sub(map.tick)) } else {"M".into()};
+        tileset.draw_text(format!("{i}:{start}-{end}").as_str(), 18., WHITE, &res.pos.into())
     }
 
     let mut path_color = BLUE;

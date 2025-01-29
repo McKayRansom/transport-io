@@ -63,7 +63,7 @@ impl Scene for Gameplay {
         let map_speed = if time_select == Some(&TimeSelect::FastForward) {
             1. / 60.
         } else {
-            1. / 16.
+            1. / 4.
         };
 
         if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open)
