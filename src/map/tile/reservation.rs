@@ -38,6 +38,7 @@ impl PlanReserved {
         )
     }
 
+    #[allow(unused)]
     pub fn new(id: Id, start: Tick, end: Tick) -> Self {
         Self { id, start, end }
     }
@@ -111,7 +112,8 @@ impl PlanReservedList {
         } else {
             self.list.push(reserved);
         }
-        return Some(reservation);
+
+        Some(reservation)
     }
 
     pub fn unreserve(&mut self, id: Id) {
@@ -146,10 +148,10 @@ mod reservation_tests {
         let reservation = reserved.try_reserve(1234, pos, 0, 1, 4).unwrap();
         assert_eq!(reservation.pos, pos);
 
-        assert_eq!(reserved.is_reserved(0, 0, 0), false);
-        assert_eq!(reserved.is_reserved(0, 0, 11), true);
-        assert_eq!(reserved.is_reserved(0, 3, 4), true);
-        assert_eq!(reserved.is_reserved(0, 5, 5), false);
+        assert!(!reserved.is_reserved(0, 0, 0));
+        assert!(reserved.is_reserved(0, 0, 11));
+        assert!(reserved.is_reserved(0, 3, 4));
+        assert!(!reserved.is_reserved(0, 5, 5));
 
         // overlaps start
         assert!(reserved.try_reserve(56, pos, 0, 0, 1).is_none());
@@ -163,7 +165,7 @@ mod reservation_tests {
         let _reservation_later = reserved.try_reserve(1234, pos, 5, 5, 6).unwrap();
 
         // assume it is dropped
-        assert_eq!(reserved.is_reserved(0, 0, 1), false);
+        assert!(!reserved.is_reserved(0, 0, 1));
         assert_eq!(reserved.list.len(), 1);
     }
 }

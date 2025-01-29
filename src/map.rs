@@ -1,8 +1,9 @@
 use build::{BuildAction, BuildActionBuilding, BuildResult};
 use building::Building;
 use city::City;
-use grid::{Grid, ReservationError};
+use grid::Grid;
 use macroquad::rand::srand;
+use path::ReservationError;
 use serde::{Deserialize, Serialize};
 
 pub mod build;

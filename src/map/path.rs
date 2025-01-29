@@ -9,10 +9,12 @@ type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
 
-pub enum ReservePathError {
-    InvalidPath,
-    Blocking(Position),
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ReservationError {
+    TileInvalid,
+    TileReserved,
 }
+
 
 
 impl Grid {
@@ -51,7 +53,7 @@ impl Grid {
         let end_building = self.buildings.hash_map.get(end)?;
         if matches!(end_building.building_type, BuildingType::House) {
             // append destination pos (this is already checked to be a road)
-            let end_pos_dir = end_building.destination_pos(&self)?;
+            let end_pos_dir = end_building.destination_pos(self)?;
             let end_pos = end_pos_dir.0 + end_pos_dir.1;
             if let Some(mut path) = self.find_road_path(&path_start, &end_pos) {
                 path.0.push(end_pos_dir.0);

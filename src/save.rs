@@ -15,10 +15,10 @@ use directories::ProjectDirs;
 /// game
 pub fn project_dirs() -> ProjectDirs {
     #[cfg(test)]
-    let foo = ProjectDirs::from("com", "TilesRUs", "transportIO-test").unwrap();
+    let dirs = ProjectDirs::from("com", "TilesRUs", "transportIO-test").unwrap();
     #[cfg(not(test))]
-    let foo = ProjectDirs::from("com", "TilesRUs", "transportIO").unwrap();
-    foo
+    let dirs = ProjectDirs::from("com", "TilesRUs", "transportIO").unwrap();
+    dirs
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -146,7 +146,7 @@ mod save_tests {
     fn test_map_serialize() {
         let _ = std::fs::remove_file(Map::determine_save_path());
 
-        assert_eq!(Map::save_exists(), false);
+        assert!(!Map::save_exists());
 
         let mut map = Map::new_blank((4, 4));
 
@@ -159,7 +159,7 @@ mod save_tests {
 
         map.save().unwrap();
 
-        assert_eq!(Map::save_exists(), true);
+        assert!(Map::save_exists());
 
         let mut deserialized: Map = Map::load().unwrap();
 

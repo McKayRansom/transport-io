@@ -138,15 +138,17 @@ enum RoadAdjacentType {
 fn get_road_adj_type(grid: &Grid, pos: Position, dir: Direction) -> RoadAdjacentType {
     if let Some(Tile::Road(road)) = grid.get_tile(&pos) {
         if road.connection_count() > 1 {
-            return RoadAdjacentType::Empty;
-        }
-        if road.is_connected(dir) {
-            return RoadAdjacentType::SameDir;
+            RoadAdjacentType::Empty
+        } else if road.is_connected(dir) {
+            RoadAdjacentType::SameDir
         } else if road.is_connected(dir.inverse()) {
-            return RoadAdjacentType::OpDir;
+            RoadAdjacentType::OpDir
+        } else {
+            RoadAdjacentType::Empty
         }
+    } else {
+        RoadAdjacentType::Empty
     }
-    return RoadAdjacentType::Empty;
 }
 
 fn draw_road_adjacent(
@@ -366,11 +368,20 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
     // draw reserved
     let mut reserved_path_color = RED;
     reserved_path_color.a = 0.3;
-    
-    for (i, res ) in vehicle.reserved.iter().enumerate() {
-        let start = res.start.checked_sub(map.tick).unwrap_or(0);
-        let end: String = if res.end != u64::MAX { format!("{}", res.end.saturating_sub(map.tick)) } else {"M".into()};
-        tileset.draw_text(format!("{i}:{start}-{end}").as_str(), 18., WHITE, &res.pos.into())
+
+    for (i, res) in vehicle.reserved.iter().enumerate() {
+        let start = res.start.saturating_sub(map.tick);
+        let end: String = if res.end != u64::MAX {
+            format!("{}", res.end.saturating_sub(map.tick))
+        } else {
+            "M".into()
+        };
+        tileset.draw_text(
+            format!("{i}:{start}-{end}").as_str(),
+            12.,
+            WHITE,
+            &res.pos.into(),
+        )
     }
 
     let mut path_color = BLUE;

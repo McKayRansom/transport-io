@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::hash_map_id::Id;
 
-use super::{grid::ReservationError, Direction, Position};
+use super::{path::ReservationError, Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
@@ -28,7 +28,7 @@ impl Ramp {
 impl fmt::Debug for Ramp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.dir {
-            Direction::RIGHT  => write!(f, ")"),
+            Direction::RIGHT => write!(f, ")"),
             Direction::LEFT => write!(f, "("),
             _ => write!(f, "r?"),
         }
@@ -36,9 +36,7 @@ impl fmt::Debug for Ramp {
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BuildingTile {
-
-}
+pub struct BuildingTile {}
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
@@ -57,13 +55,18 @@ impl Tile {
     pub fn new_from_char(ch: char) -> Self {
         match ch {
             'h' => Tile::Building(0),
-            ')' => Tile::Ramp(Ramp { dir: Direction::RIGHT }),
-            '(' => Tile::Ramp(Ramp { dir: Direction::LEFT }),
+            ')' => Tile::Ramp(Ramp {
+                dir: Direction::RIGHT,
+            }),
+            '(' => Tile::Ramp(Ramp {
+                dir: Direction::LEFT,
+            }),
             '_' => Tile::Empty,
             'w' => Tile::Water,
-            '1'..'9' => {
-                Tile::Road(Road::new_connected(Direction::NONE, Some(ch as Id - '0' as Id)))
-            }
+            '1'..'9' => Tile::Road(Road::new_connected(
+                Direction::NONE,
+                Some(ch as Id - '0' as Id),
+            )),
             _ => {
                 if let Some(road) = Road::new_from_char(ch) {
                     Tile::Road(road)
@@ -74,7 +77,14 @@ impl Tile {
         }
     }
 
-    pub fn reserve(&mut self, id: Id, pos: Position, current: Tick, start: Tick, end: Tick) -> Result<PlanReservation, ReservationError> {
+    pub fn reserve(
+        &mut self,
+        id: Id,
+        pos: Position,
+        current: Tick,
+        start: Tick,
+        end: Tick,
+    ) -> Result<PlanReservation, ReservationError> {
         match self {
             Tile::Road(road) => road
                 .reserved
@@ -86,25 +96,24 @@ impl Tile {
         }
     }
 
+    #[allow(clippy::single_match)]
     pub fn unreserve(&mut self, id: Id) {
         match self {
-            Tile::Road(road) => road
-                .reserved
-                .unreserve(id),
+            Tile::Road(road) => road.reserved.unreserve(id),
 
-            _ => {},
+            _ => {}
         }
     }
 
     pub fn is_reserved(&self, id: Id, start: Tick, end: Tick) -> Result<(), ReservationError> {
         match self {
-            Tile::Road(road) => if road
-                .reserved
-                .is_reserved(id, start, end) {
+            Tile::Road(road) => {
+                if road.reserved.is_reserved(id, start, end) {
                     Err(ReservationError::TileReserved)
                 } else {
                     Ok(())
-                },
+                }
+            }
             // T
             _ => Err(ReservationError::TileInvalid),
         }
@@ -114,9 +123,9 @@ impl Tile {
         match self {
             Tile::Road(_road) => {
                 // if road.reserved.is_reserved() {
-                    // OCCUPIED_COST
+                // OCCUPIED_COST
                 // } else {
-                    DEFAULT_COST
+                DEFAULT_COST
                 // }
             }
             Tile::Building(_) => DEFAULT_COST * 2,
@@ -131,15 +140,9 @@ impl Tile {
 
     pub fn get_building_id(&self) -> Option<Id> {
         match self {
-            Tile::Building(building_id) => {
-                Some(*building_id)
-            }
-            Tile::Road(road) => {
-                road.station
-            }
-            _ => {
-                None
-            }
+            Tile::Building(building_id) => Some(*building_id),
+            Tile::Road(road) => road.station,
+            _ => None,
         }
     }
 }
