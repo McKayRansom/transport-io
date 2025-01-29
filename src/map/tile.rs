@@ -84,14 +84,14 @@ impl Tile {
         current: Tick,
         start: Tick,
         end: Tick,
-    ) -> Result<PlanReservation, ReservationError> {
+    ) -> Result<Reservation, ReservationError> {
         match self {
             Tile::Road(road) => road
                 .reserved
                 .try_reserve(id, pos, current, start, end)
                 .ok_or(ReservationError::TileReserved),
 
-            Tile::Building(_) => Ok(PlanReservation::new(pos, start, end)),
+            Tile::Building(_) => Ok(Reservation::new(pos, start, end)),
             _ => Err(ReservationError::TileInvalid),
         }
     }

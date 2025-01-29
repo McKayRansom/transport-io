@@ -4,13 +4,13 @@ use crate::{
     hash_map_id::Id, map::{Direction, Position}
 };
 
-use super::PlanReservedList;
+use super::ReservedList;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
     pub station: Option<Id>,
-    pub reserved: PlanReservedList,
+    pub reserved: ReservedList,
     connections: Vec<Direction>,
 }
 
@@ -20,7 +20,7 @@ impl Road {
         Road {
             station,
             should_yield: false,
-            reserved: PlanReservedList::new(),
+            reserved: ReservedList::new(),
             connections: if dir != Direction::NONE {
                 vec![dir]
             } else {
@@ -33,7 +33,7 @@ impl Road {
         Road {
             station: None,
             should_yield: false,
-            reserved: PlanReservedList::new(),
+            reserved: ReservedList::new(),
             connections: Vec::new(),
         }
     }

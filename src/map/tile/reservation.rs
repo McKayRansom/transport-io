@@ -6,28 +6,28 @@ use crate::{hash_map_id::Id, map::Position};
 pub type Tick = u64;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PlanReservation {
+pub struct Reservation {
     pub start: Tick,
     pub end: Tick,
     pub pos: Position,
 }
 
-impl PlanReservation {
+impl Reservation {
     pub fn new(pos: Position, start: Tick, end: Tick) -> Self {
         Self { start, end, pos }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlanReserved {
+pub struct Reserved {
     id: Id,
     start: Tick,
     end: Tick,
 }
 
-impl PlanReserved {
-    pub fn create(id: Id, pos: Position, start: Tick, end: Tick) -> (Self, PlanReservation) {
-        let reservation = PlanReservation { start, end, pos };
+impl Reserved {
+    pub fn create(id: Id, pos: Position, start: Tick, end: Tick) -> (Self, Reservation) {
+        let reservation = Reservation { start, end, pos };
         (
             Self {
                 id,
@@ -59,11 +59,11 @@ impl PlanReserved {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlanReservedList {
-    list: Vec<PlanReserved>,
+pub struct ReservedList {
+    list: Vec<Reserved>,
 }
 
-impl PlanReservedList {
+impl ReservedList {
     pub fn new() -> Self {
         Self { list: Vec::new() }
     }
@@ -91,7 +91,7 @@ impl PlanReservedList {
         cur: Tick,
         start: Tick,
         end: Tick,
-    ) -> Option<PlanReservation> {
+    ) -> Option<Reservation> {
         let mut to_remove: Option<usize> = None;
         for (i, reserved) in self.list.iter().enumerate() {
             if reserved.is_expired(cur) {
@@ -106,7 +106,7 @@ impl PlanReservedList {
             }
         }
 
-        let (reserved, reservation) = PlanReserved::create(id, pos, start, end);
+        let (reserved, reservation) = Reserved::create(id, pos, start, end);
         if let Some(i) = to_remove {
             *self.list.get_mut(i).unwrap() = reserved;
         } else {
@@ -128,8 +128,8 @@ impl PlanReservedList {
     }
 }
 
-impl From<&[PlanReserved]> for PlanReservedList {
-    fn from(value: &[PlanReserved]) -> Self {
+impl From<&[Reserved]> for ReservedList {
+    fn from(value: &[Reserved]) -> Self {
         Self { list: value.into() }
     }
 }
@@ -140,7 +140,7 @@ mod reservation_tests {
 
     #[test]
     fn test_new() {
-        let mut reserved = PlanReservedList::new();
+        let mut reserved = ReservedList::new();
         assert!(!reserved.is_reserved(0, 0, 1));
 
         let pos = Position::new(0, 0);

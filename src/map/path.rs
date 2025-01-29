@@ -1,7 +1,7 @@
 
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
-use tile::{PlanReservation, Tick, Tile};
+use tile::{Reservation, Tick, Tile};
 
 use super::*;
 
@@ -15,8 +15,6 @@ pub enum ReservationError {
     TileReserved,
 }
 
-
-
 impl Grid {
     pub fn reserve(
         &mut self,
@@ -25,7 +23,7 @@ impl Grid {
         current: Tick,
         start: Tick,
         end: Tick,
-    ) -> Result<PlanReservation, ReservationError> {
+    ) -> Result<Reservation, ReservationError> {
         self.get_tile_mut(pos)
             .ok_or(ReservationError::TileInvalid)?
             .reserve(vehicle_id, *pos, current, start, end)

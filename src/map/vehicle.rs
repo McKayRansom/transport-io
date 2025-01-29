@@ -8,7 +8,7 @@ use super::{
     grid::Grid,
     path::{Path, ReservationError},
     position::GRID_CELL_SIZE,
-    tile::{PlanReservation, Tick, Tile},
+    tile::{Reservation, Tick, Tile},
     Direction, Position,
 };
 
@@ -35,7 +35,7 @@ pub struct Vehicle {
 
     id: Id,
     pub grid_path: Path,
-    pub reserved: VecDeque<PlanReservation>,
+    pub reserved: VecDeque<Reservation>,
     path_index: usize,
     path_time_ticks: u32,
     elapsed_ticks: u32,
@@ -148,7 +148,7 @@ impl Vehicle {
             return Ok(());
         }
 
-        let mut to_reserve: Vec<PlanReservation> = Vec::new();
+        let mut to_reserve: Vec<Reservation> = Vec::new();
 
         let mut start = if let Some(head) = self.reserved.front() {
             if head.end == u64::MAX {
@@ -170,7 +170,7 @@ impl Vehicle {
         {
             match grid.is_reserved(pos, self.id, start, end) {
                 Ok(()) => {
-                    to_reserve.push(PlanReservation::new(*pos, start, end));
+                    to_reserve.push(Reservation::new(*pos, start, end));
                 }
                 Err(ReservationError::TileInvalid) => return Err(ReservePathError::InvalidPath),
                 Err(ReservationError::TileReserved) => {
@@ -193,7 +193,7 @@ impl Vehicle {
             // we gotta check if we can for real stop here...
             match grid.is_reserved(pos, self.id, start, u64::MAX) {
                 Ok(()) => {
-                    *to_reserve.last_mut().unwrap() = PlanReservation::new(*pos, start, u64::MAX);
+                    *to_reserve.last_mut().unwrap() = Reservation::new(*pos, start, u64::MAX);
                     break;
                 }
                 Err(ReservationError::TileInvalid) => return Err(ReservePathError::InvalidPath),
@@ -319,7 +319,7 @@ impl Vehicle {
 #[cfg(test)]
 mod vehicle_tests {
 
-    use crate::map::tile::{PlanReserved, PlanReservedList};
+    use crate::map::tile::{Reserved, ReservedList};
 
     use super::*;
 
@@ -329,17 +329,17 @@ mod vehicle_tests {
         tick: Tick,
         start: Tick,
         end: Tick,
-    ) -> Result<PlanReservation, ReservationError> {
+    ) -> Result<Reservation, ReservationError> {
         grid.get_tile_mut(&pos)
             .unwrap()
             .reserve(1234, pos, tick, start, end)
     }
 
-    fn unreserve(grid: &mut Grid, res: PlanReservation) {
+    fn unreserve(grid: &mut Grid, res: Reservation) {
         grid.get_tile_mut(&res.pos).unwrap().unreserve(1234);
     }
 
-    fn get_reserved(grid: &mut Grid, pos: Position) -> Result<PlanReservedList, ReservationError> {
+    fn get_reserved(grid: &mut Grid, pos: Position) -> Result<ReservedList, ReservationError> {
         if let Some(Tile::Road(road)) = grid.get_tile(&pos) {
             Ok(road.reserved.clone())
         } else {
@@ -357,12 +357,12 @@ mod vehicle_tests {
 
         assert_eq!(
             vehicle.reserved,
-            [PlanReservation::new((0, 0).into(), 0, u64::MAX)]
+            [Reservation::new((0, 0).into(), 0, u64::MAX)]
         );
 
         assert_eq!(
             get_reserved(&mut grid, start_pos).unwrap(),
-            ([PlanReserved::new(vehicle.id, 0, u64::MAX)].as_slice()).into()
+            ([Reserved::new(vehicle.id, 0, u64::MAX)].as_slice()).into()
         );
 
         assert_eq!(vehicle.lead_pos(0), 0);
@@ -411,8 +411,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((1, 0).into(), 8, u64::MAX),
-                PlanReservation::new((0, 0).into(), 0, 8),
+                Reservation::new((1, 0).into(), 8, u64::MAX),
+                Reservation::new((0, 0).into(), 0, 8),
             ]
         );
 
@@ -421,8 +421,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((2, 0).into(), 16, u64::MAX),
-                PlanReservation::new((1, 0).into(), 8, 16),
+                Reservation::new((2, 0).into(), 16, u64::MAX),
+                Reservation::new((1, 0).into(), 8, 16),
             ]
         );
 
@@ -431,8 +431,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((3, 0).into(), 24, u64::MAX),
-                PlanReservation::new((2, 0).into(), 16, 24),
+                Reservation::new((3, 0).into(), 24, u64::MAX),
+                Reservation::new((2, 0).into(), 16, 24),
             ]
         );
     }
@@ -504,7 +504,7 @@ mod vehicle_tests {
 
         assert_eq!(
             vehicle.reserved[0],
-            PlanReservation::new(start.0, 0, u64::MAX)
+            Reservation::new(start.0, 0, u64::MAX)
         );
 
         // reserve the exit, make sure we don't go anyways
@@ -524,9 +524,9 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((2, 0).into(), 16, u64::MAX),
-                PlanReservation::new((1, 0).into(), 8, 16),
-                PlanReservation::new((1, 1).into(), 0, 8),
+                Reservation::new((2, 0).into(), 16, u64::MAX),
+                Reservation::new((1, 0).into(), 8, 16),
+                Reservation::new((1, 1).into(), 0, 8),
             ]
         );
 
@@ -548,13 +548,13 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((3, 0).into(), 24, u64::MAX),
-                PlanReservation::new((2, 0).into(), 16, 24),
+                Reservation::new((3, 0).into(), 24, u64::MAX),
+                Reservation::new((2, 0).into(), 16, 24),
             ]
         );
         assert_eq!(
             get_reserved(&mut grid, (3, 0).into()).unwrap(),
-            ([PlanReserved::new(1, 24, u64::MAX)].as_slice()).into()
+            ([Reserved::new(1, 24, u64::MAX)].as_slice()).into()
         );
 
         for _ in 0..SPEED_TICKS {
@@ -565,8 +565,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((4, 0).into(), 32, u64::MAX),
-                PlanReservation::new((3, 0).into(), 24, 32),
+                Reservation::new((4, 0).into(), 32, u64::MAX),
+                Reservation::new((3, 0).into(), 24, 32),
             ]
         );
     }
@@ -584,7 +584,7 @@ mod vehicle_tests {
 
         assert_eq!(
             vehicle.reserved,
-            [PlanReservation::new(start.0, 0, u64::MAX)]
+            [Reservation::new(start.0, 0, u64::MAX)]
         );
 
         let _reservation = reserve(&mut grid, (1, 0).into(), 0, 0, 8).unwrap();
@@ -593,7 +593,7 @@ mod vehicle_tests {
 
         assert_eq!(
             vehicle.reserved,
-            [PlanReservation::new(start.0, 0, u64::MAX)]
+            [Reservation::new(start.0, 0, u64::MAX)]
         );
 
         vehicle.update(&mut grid, 4);
@@ -601,9 +601,9 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                PlanReservation::new((2, 0).into(), 20, u64::MAX),
-                PlanReservation::new((1, 0).into(), 12, 20),
-                PlanReservation::new((1, 1).into(), 0, 12),
+                Reservation::new((2, 0).into(), 20, u64::MAX),
+                Reservation::new((1, 0).into(), 12, 20),
+                Reservation::new((1, 1).into(), 0, 12),
             ]
         );
     }
@@ -687,8 +687,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle_priority.reserved,
             [
-                PlanReservation::new((1, 0).into(), 8, u64::MAX),
-                PlanReservation::new((0, 0).into(), 0, 8),
+                Reservation::new((1, 0).into(), 8, u64::MAX),
+                Reservation::new((0, 0).into(), 0, 8),
             ]
         );
 
