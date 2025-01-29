@@ -12,13 +12,11 @@ use super::{
     Direction, Position,
 };
 
-
 pub enum ReservePathError {
     InvalidPath,
     ReachedMaxLookahead,
     Blocking(Position),
 }
-
 
 const SPEED_PIXELS: i32 = 4;
 pub const SPEED_TICKS: Tick = GRID_CELL_SIZE.0 as u64 / SPEED_PIXELS as u64;
@@ -97,7 +95,6 @@ impl Vehicle {
     }
 
     pub fn lead_pos(&self, tick: Tick) -> i32 {
-
         // if we are stuck
         if self.reserved.len() <= 1 {
             return 0;
@@ -108,7 +105,7 @@ impl Vehicle {
             if reserve.end == u64::MAX {
                 0
             } else {
-                // This overflowing is a bug 
+                // This overflowing is a bug
                 (tick - (reserve.end - SPEED_TICKS)) as i32 * SPEED_PIXELS
             }
         } else {
@@ -122,7 +119,6 @@ impl Vehicle {
             return Status::HopelesslyLate;
         }
         if let Some(res) = self.reserved.back() {
-
             if res.end > tick && res.end != u64::MAX {
                 return Status::EnRoute;
             }
@@ -144,21 +140,19 @@ impl Vehicle {
                 self.dir = res_next.pos - res.pos;
             }
             self.pos = res.pos;
-        } 
+        }
     }
 
-
     fn try_reserve_path(&mut self, grid: &mut Grid, tick: Tick) -> Result<(), ReservePathError> {
-
         if self.reserved.len() >= RESERVE_AHEAD_MIN {
-            return Ok(())
+            return Ok(());
         }
 
         let mut to_reserve: Vec<PlanReservation> = Vec::new();
 
         let mut start = if let Some(head) = self.reserved.front() {
             if head.end == u64::MAX {
-                head.start.max(tick) + SPEED_TICKS 
+                head.start.max(tick) + SPEED_TICKS
             } else {
                 head.end
             }
@@ -174,7 +168,6 @@ impl Vehicle {
             .ok_or(ReservePathError::InvalidPath)?
             .0[self.path_index..]
         {
-
             match grid.is_reserved(pos, self.id, start, end) {
                 Ok(()) => {
                     to_reserve.push(PlanReservation::new(*pos, start, end));
@@ -206,7 +199,7 @@ impl Vehicle {
                 Err(ReservationError::TileInvalid) => return Err(ReservePathError::InvalidPath),
                 Err(ReservationError::TileReserved) => {
                     // we could continue checking here
-                    return Err(ReservePathError::Blocking(*pos))
+                    return Err(ReservePathError::Blocking(*pos));
                 }
             }
         }
@@ -248,11 +241,9 @@ impl Vehicle {
         self.grid_path.is_some()
     }
 
-    pub fn reserve_next_pos(&mut self, grid: &mut Grid, tick: Tick)  {
+    pub fn reserve_next_pos(&mut self, grid: &mut Grid, tick: Tick) {
         match self.try_reserve_path(grid, tick) {
-            Ok(()) => {
-
-            }
+            Ok(()) => {}
             Err(ReservePathError::InvalidPath) => {
                 self.find_path(grid);
             }
@@ -261,7 +252,7 @@ impl Vehicle {
             }
             Err(ReservePathError::ReachedMaxLookahead) => {
                 // Might be nice if we could set the blocking tile to that position
-                // Also, if we are currently stopped, this could mean an intersection 
+                // Also, if we are currently stopped, this could mean an intersection
                 // is too large to ever cross
             }
         }
@@ -360,116 +351,119 @@ mod vehicle_tests {
     fn test_init() {
         let mut grid = Grid::new_from_string(">>>1");
         let start_pos = grid.pos(0, 0);
-        let _vehicle = Vehicle::new(1, (start_pos, Direction::RIGHT), 1, &mut grid, 0).unwrap();
+        let vehicle = Vehicle::new(1, (start_pos, Direction::RIGHT), 1, &mut grid, 0).unwrap();
 
         assert!(Vehicle::new(2, (start_pos, Direction::RIGHT), 1, &mut grid, 0).is_err());
+
+        assert_eq!(
+            vehicle.reserved,
+            [PlanReservation::new((0, 0).into(), 0, u64::MAX)]
+        );
+
+        assert_eq!(
+            get_reserved(&mut grid, start_pos).unwrap(),
+            ([PlanReserved::new(vehicle.id, 0, u64::MAX)].as_slice()).into()
+        );
+
+        assert_eq!(vehicle.lead_pos(0), 0);
     }
 
     #[test]
     fn test_lead_pos() {
         let mut grid = Grid::new_from_string(">>>>1");
-        let tick: Tick = 0;
         let mut vehicle =
             Vehicle::new(1, ((0, 0).into(), Direction::RIGHT), 1, &mut grid, 0).unwrap();
 
-        assert_eq!(vehicle.lead_pos(tick), 0);
-
         for tick in 0..16 {
             assert_eq!(vehicle.update(&mut grid, tick), Status::EnRoute);
-            assert_eq!(vehicle.path_index as u64, (tick) / SPEED_TICKS + 1, "i: {tick}");
-            assert_eq!(vehicle.pos, (tick as i16 / SPEED_TICKS as i16 , 0).into(), "i: {tick}");
-            assert_eq!(vehicle.pos, vehicle.reserved.back().unwrap().pos, "i: {tick}");
-            assert_eq!(vehicle.lead_pos(tick), (tick as i32 * SPEED_PIXELS) % GRID_CELL_SIZE.0 as i32, "i: {tick}");
+            assert_eq!(
+                vehicle.path_index as u64,
+                (tick) / SPEED_TICKS + 1,
+                "i: {tick}"
+            );
+            assert_eq!(
+                vehicle.pos,
+                (tick as i16 / SPEED_TICKS as i16, 0).into(),
+                "i: {tick}"
+            );
+            assert_eq!(
+                vehicle.pos,
+                vehicle.reserved.back().unwrap().pos,
+                "i: {tick}"
+            );
+            assert_eq!(
+                vehicle.lead_pos(tick),
+                (tick as i32 * SPEED_PIXELS) % GRID_CELL_SIZE.0 as i32,
+                "i: {tick}"
+            );
             println!("{}: {:?} + {}", tick, vehicle.pos, vehicle.lead_pos(tick));
         }
-
-        // assert!(false);
     }
 
     #[test]
     fn test_straight() {
         let mut grid = Grid::new_from_string(">>>>1");
-        let tick: Tick = 0;
         let mut vehicle =
             Vehicle::new(42, ((0, 0).into(), Direction::RIGHT), 1, &mut grid, 0).unwrap();
 
-        // starting
-        assert_eq!(vehicle.pos, (0, 0).into());
-        assert_eq!(
-            vehicle.reserved.back().unwrap(),
-            &PlanReservation::new((0, 0).into(), 0, u64::MAX)
-        );
+        vehicle.update(&mut grid, 0);
 
-        vehicle.update(&mut grid, tick);
-
-        assert_eq!(vehicle.pos, (0, 0).into());
-        assert_eq!(vehicle.reserved.len(), 2);
         assert_eq!(
-            vehicle.reserved.back().unwrap(),
-            &PlanReservation::new((0, 0).into(), 0, 8)
-        );
-        assert_eq!(
-            vehicle.reserved.front().unwrap(),
-            &PlanReservation::new((1, 0).into(), 8, u64::MAX)
+            vehicle.reserved,
+            [
+                PlanReservation::new((1, 0).into(), 8, u64::MAX),
+                PlanReservation::new((0, 0).into(), 0, 8),
+            ]
         );
 
         vehicle.update(&mut grid, 8);
 
-        assert_eq!(vehicle.pos, (1, 0).into());
-        assert_eq!(vehicle.reserved.len(), 2);
         assert_eq!(
-            vehicle.reserved.back().unwrap(),
-            &PlanReservation::new((1, 0).into(), 8, 16)
-        );
-        assert_eq!(
-            vehicle.reserved.front().unwrap(),
-            &PlanReservation::new((2, 0).into(), 16, u64::MAX)
+            vehicle.reserved,
+            [
+                PlanReservation::new((2, 0).into(), 16, u64::MAX),
+                PlanReservation::new((1, 0).into(), 8, 16),
+            ]
         );
 
         vehicle.update(&mut grid, 16);
 
-        assert_eq!(vehicle.pos, (2, 0).into());
-        assert_eq!(vehicle.reserved.len(), 2);
         assert_eq!(
-            vehicle.reserved.back().unwrap(),
-            &PlanReservation::new((2, 0).into(), 16, 24)
-        );
-        assert_eq!(
-            vehicle.reserved.front().unwrap(),
-            &PlanReservation::new((3, 0).into(), 24, u64::MAX)
+            vehicle.reserved,
+            [
+                PlanReservation::new((3, 0).into(), 24, u64::MAX),
+                PlanReservation::new((2, 0).into(), 16, 24),
+            ]
         );
     }
 
     #[test]
     fn test_late() {
         let mut grid = Grid::new_from_string(">>>1");
-        let mut vehicle = Vehicle::new(1, (grid.pos(0, 0), Direction::RIGHT), 1, &mut grid, 0).unwrap();
+        let mut vehicle =
+            Vehicle::new(1, (grid.pos(0, 0), Direction::RIGHT), 1, &mut grid, 0).unwrap();
 
         vehicle.update(&mut grid, 0);
 
-        // vehicle.elapsed_ticks = SPEED_TICKS as u32 + 1;
-        // assert_eq!(vehicle.trip_late(), 0.6666666);
+        vehicle.elapsed_ticks = SPEED_TICKS as u32 + 1;
+        assert_eq!(vehicle.trip_late(), 0.6666666);
 
-        // vehicle.elapsed_ticks = (SPEED_TICKS * 2) as u32 + 1;
-        // assert_eq!(vehicle.trip_late(), 0.33333337);
+        vehicle.elapsed_ticks = (SPEED_TICKS * 2) as u32 + 1;
+        assert_eq!(vehicle.trip_late(), 0.33333337);
     }
 
     #[test]
     fn test_trip() {
         let mut grid = Grid::new_from_string(">>>1");
-        let mut vehicle = Vehicle::new(1, (grid.pos(0, 0), Direction::RIGHT), 1, &mut grid, 0).unwrap();
+        let mut vehicle =
+            Vehicle::new(1, (grid.pos(0, 0), Direction::RIGHT), 1, &mut grid, 0).unwrap();
 
         let trip_length: u32 = 3;
         let trip_time = SPEED_TICKS as u32 * trip_length;
 
         assert_eq!(vehicle.path_time_ticks, trip_time);
-
         assert_eq!(vehicle.trip_completed_percent(), 0.);
-
         assert_eq!(vehicle.trip_late(), 1.0);
-        // let _res = reserve(&mut grid, (1, 0).into(), 0, 0, u64::MAX);
-
-        // assert_eq!(vehicle.update(&mut grid, 0), Status::EnRoute);
 
         for i in 0..(trip_length * SPEED_TICKS as u32) {
             assert_eq!(
@@ -485,8 +479,7 @@ mod vehicle_tests {
             assert_eq!(vehicle.elapsed_ticks, i + 1);
             assert_eq!(
                 vehicle.trip_completed_percent(),
-                ((i + SPEED_TICKS as u32) / SPEED_TICKS as u32) as f32
-                    / trip_length as f32,
+                ((i + SPEED_TICKS as u32) / SPEED_TICKS as u32) as f32 / trip_length as f32,
                 "Failed on tick {i}"
             );
             assert_eq!(
@@ -496,17 +489,7 @@ mod vehicle_tests {
                 vehicle.trip_completed_percent()
             );
         }
-
-        // println!("Vehicle : {:?}", vehicle.blocking_tile);
-        // assert_eq!(vehicle.update(&mut grid), Status::ReachedDestination);
-        // assert_eq!(vehicle.pos, destination);
-        // assert_ne!(vehicle.trip_late(), 1.0);
     }
-
-
-
-    #[test]
-    fn test_blocking_tile() {}
 
     #[test]
     fn instersection_do_not_block() {
@@ -523,18 +506,14 @@ mod vehicle_tests {
             vehicle.reserved[0],
             PlanReservation::new(start.0, 0, u64::MAX)
         );
-        assert_eq!(
-            get_reserved(&mut grid, start.0).unwrap(),
-            ([PlanReserved::new(vehicle.id, 0, u64::MAX)].as_slice()).into()
-        );
 
+        // reserve the exit, make sure we don't go anyways
         let reservation = reserve(&mut grid, (2, 0).into(), 0, 0, 16).unwrap();
+
         vehicle.update(&mut grid, 0);
+
         assert_eq!(vehicle.path_index, 0);
         assert_eq!(vehicle.pos, start.0);
-
-        // assert_eq!(vehicle.reserve_next_pos(&mut grid, 0), None);
-        // assert_eq!(vehicle.reserve_next_pos(&mut grid, 4), Some((1, 0).into()));
 
         unreserve(&mut grid, reservation);
 
@@ -543,37 +522,20 @@ mod vehicle_tests {
         vehicle.update(&mut grid, tick);
 
         assert_eq!(
-            vehicle.reserved[2],
-            PlanReservation::new((1, 1).into(), 0, 8)
+            vehicle.reserved,
+            [
+                PlanReservation::new((2, 0).into(), 16, u64::MAX),
+                PlanReservation::new((1, 0).into(), 8, 16),
+                PlanReservation::new((1, 1).into(), 0, 8),
+            ]
         );
-        assert_eq!(
-            vehicle.reserved[1],
-            PlanReservation::new((1, 0).into(), 8, 16)
-        );
-        assert_eq!(
-            vehicle.reserved[0],
-            PlanReservation::new((2, 0).into(), 16, u64::MAX)
-        );
-
-        assert_eq!(vehicle.path_index, 2);
-        // assert_eq!(vehicle.lead_pos(tick), 32);
-        // assert_eq!(
-        //     get_reserved(&mut grid, (1, 0).into()).unwrap(),
-        //     ([PlanReserved::new(1, 0, 8)].as_slice()).into()
-        // );
-        // assert_eq!(
-        //     get_reserved(&mut grid, (2, 0).into()).unwrap(),
-        //     ([PlanReserved::new(1, 8, u64::MAX)].as_slice()).into()
-        // );
 
         for _ in 0..SPEED_TICKS {
             tick += 1;
             vehicle.update(&mut grid, tick);
         }
 
-        // assert_eq!(vehicle.lag_pos(tick), 0);
         assert_eq!(tick, 8);
-        // assert_eq!(vehicle.pos, (2, 0).into());
         assert_eq!(vehicle.path_index, 2);
 
         for _ in 0..SPEED_TICKS {
@@ -584,12 +546,11 @@ mod vehicle_tests {
         assert_eq!(tick, 16);
 
         assert_eq!(
-            vehicle.reserved[1],
-            PlanReservation::new((2, 0).into(), 16, 24)
-        );
-        assert_eq!(
-            vehicle.reserved[0],
-            PlanReservation::new((3, 0).into(), 24, u64::MAX)
+            vehicle.reserved,
+            [
+                PlanReservation::new((3, 0).into(), 24, u64::MAX),
+                PlanReservation::new((2, 0).into(), 16, 24),
+            ]
         );
         assert_eq!(
             get_reserved(&mut grid, (3, 0).into()).unwrap(),
@@ -601,16 +562,17 @@ mod vehicle_tests {
             vehicle.update(&mut grid, tick);
         }
 
-        assert_eq!(vehicle.pos, (3, 0).into());
-
         assert_eq!(
-            vehicle.reserved[0],
-            PlanReservation::new((4, 0).into(), 32, u64::MAX)
+            vehicle.reserved,
+            [
+                PlanReservation::new((4, 0).into(), 32, u64::MAX),
+                PlanReservation::new((3, 0).into(), 24, 32),
+            ]
         );
     }
 
     #[test]
-    fn intersection_traffic() {
+    fn intersection_overlap_traffic() {
         let mut grid = Grid::new_from_string(
             "LR>>1
              _^___",
@@ -621,36 +583,29 @@ mod vehicle_tests {
         let mut vehicle = Vehicle::new(1, start, 1, &mut grid, 0).unwrap();
 
         assert_eq!(
-            vehicle.reserved[0],
-            PlanReservation::new(start.0, 0, u64::MAX)
-        );
-        assert_eq!(
-            get_reserved(&mut grid, start.0).unwrap(),
-            ([PlanReserved::new(vehicle.id, 0, u64::MAX)].as_slice()).into()
+            vehicle.reserved,
+            [PlanReservation::new(start.0, 0, u64::MAX)]
         );
 
         let _reservation = reserve(&mut grid, (1, 0).into(), 0, 0, 8).unwrap();
+
         vehicle.update(&mut grid, 0);
-        assert_eq!(vehicle.path_index, 0);
-
-        let tick = 4;
-
-        vehicle.update(&mut grid, tick);
 
         assert_eq!(
-            vehicle.reserved[2],
-            PlanReservation::new((1, 1).into(), 0, 12)
-        );
-        assert_eq!(
-            vehicle.reserved[1],
-            PlanReservation::new((1, 0).into(), 12, 20)
-        );
-        assert_eq!(
-            vehicle.reserved[0],
-            PlanReservation::new((2, 0).into(), 20, u64::MAX)
+            vehicle.reserved,
+            [PlanReservation::new(start.0, 0, u64::MAX)]
         );
 
-        assert_eq!(vehicle.path_index, 2);
+        vehicle.update(&mut grid, 4);
+
+        assert_eq!(
+            vehicle.reserved,
+            [
+                PlanReservation::new((2, 0).into(), 20, u64::MAX),
+                PlanReservation::new((1, 0).into(), 12, 20),
+                PlanReservation::new((1, 1).into(), 0, 12),
+            ]
+        );
     }
 
     #[test]
@@ -681,22 +636,18 @@ mod vehicle_tests {
         let start_right: (Position, Direction) = ((4, 2).into(), Direction::LEFT);
         let mut vehicle_right = Vehicle::new(4, start_right, 4, &mut grid, tick).unwrap();
 
-        // println!("grid: \n{:?}", grid);
-
         vehicle_top.update(&mut grid, 0);
         assert_eq!(vehicle_top.path_index, 3);
         vehicle_right.update(&mut grid, 1);
         assert_eq!(vehicle_right.path_index, 3);
-        vehicle_bottom.update(&mut grid,2);
+        vehicle_bottom.update(&mut grid, 2);
         assert_eq!(vehicle_bottom.path_index, 3);
 
         // This vehicle can't go through, because reservations are INCLUSIVE
         // So it just barely doesn't fit through.
         // Think of it like a garlic knot, in order for each peice to fit perfectly, there can't be any overlap
         // That's also why the update ticks above have to be incrementing.
-        // dbg!(get_reserved(&mut grid, (2, 3).into()).unwrap());
-        // dbg!(get_reserved(&mut grid, (3, 3).into()).unwrap());
-        vehicle_left.update(&mut grid,1);
+        vehicle_left.update(&mut grid, 1);
         assert_eq!(vehicle_left.path_index, 0);
 
         for tick in 0..SPEED_TICKS * 5 {
@@ -708,44 +659,45 @@ mod vehicle_tests {
 
         dbg!(&vehicle_top);
         assert_eq!(vehicle_top.update(&mut grid, 0), Status::ReachedDestination);
-        assert_eq!(vehicle_right.update(&mut grid, 0), Status::ReachedDestination);
-        assert_eq!(vehicle_bottom.update(&mut grid, 0), Status::ReachedDestination);
-        // assert_eq!(vehicle_left.update(&mut grid, 0), Status::ReachedDestination);
+        assert_eq!(
+            vehicle_right.update(&mut grid, 0),
+            Status::ReachedDestination
+        );
+        assert_eq!(
+            vehicle_bottom.update(&mut grid, 0),
+            Status::ReachedDestination
+        );
 
         assert_eq!(vehicle_top.reserved.len(), 1);
         assert_eq!(vehicle_top.reserved.front().unwrap().pos, vehicle_top.pos);
-
     }
 
     #[test]
-    fn yield_house_to_relevant_traffic() {
-        // Houses should yield, but only to relevant traffic
-        // let mut grid = Grid::new_from_string(
-        //     "\
-        //     <<<<
-        //     >>>1
-        //     _h__",
-        // );
+    fn house_yield() {
+        let mut grid = Grid::new_from_string(
+            ">>>2
+             _h__", // house is id 1
+        );
 
-        // let start: (Position, Direction) = ((1, 2).into(), Direction::UP);
+        let mut vehicle_priority =
+            Vehicle::new(42, ((0, 0).into(), Direction::RIGHT), 2, &mut grid, 0).unwrap();
 
-        // let mut path = VehiclePath::new(1, &mut grid, start, 1).unwrap();
+        vehicle_priority.update(&mut grid, 0);
+        
+        assert_eq!(
+            vehicle_priority.reserved,
+            [
+                PlanReservation::new((1, 0).into(), 8, u64::MAX),
+                PlanReservation::new((0, 0).into(), 0, 8),
+            ]
+        );
 
-        // let yield_to_pos = Position::new(0, 1);
+        let mut vehicle_yield =
+            Vehicle::new(2, ((1, 1).into(), Direction::UP), 2, &mut grid, 0).unwrap();
 
-        // let reservation = reserve(&mut grid, yield_to_pos).unwrap();
+        vehicle_yield.update(&mut grid, 0);
 
-        // assert_eq!(path.reserve_next_pos(&mut grid, start), None);
-        // assert_eq!(path.blocking_tile, Some(reservation.pos));
-
-        // drop(reservation);
-
-        // // reserve position accross the street
-        // let do_not_yield_to_pos = Position::new(1, 0);
-        // let reservation = reserve(&mut grid, do_not_yield_to_pos).unwrap();
-
-        // assert_eq!(path.reserve_next_pos(&mut grid, start), Some((1, 1).into()));
-
-        // drop(reservation);
+        assert_eq!(vehicle_yield.path_index, 0);
+        assert_eq!(vehicle_yield.blocking_tile, Some((1, 0).into()));
     }
 }
