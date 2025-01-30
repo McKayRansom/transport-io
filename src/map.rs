@@ -3,7 +3,6 @@ use building::Building;
 use city::City;
 use grid::Grid;
 use macroquad::rand::srand;
-use path::ReservationError;
 use serde::{Deserialize, Serialize};
 
 pub mod build;
@@ -41,7 +40,7 @@ type CityHashMap = HashMapId<City>;
 // pub struct VehicleId(Id);
 // pub struct BuildingId(Id);
 // pub struct CityId(Id);
-#[derive(Serialize, Deserialize, Default, PartialEq, Eq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Default, PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Unlocked {
     #[default]
     All,
@@ -50,7 +49,7 @@ pub enum Unlocked {
     Bridges,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, PartialEq, Eq, Debug)]
 pub struct MapMetadata {
     pub is_level: bool,
     pub grow_cities: bool,
@@ -70,7 +69,7 @@ impl MapMetadata {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Map {
     pub metadata: MapMetadata,
     pub tick: Tick,
@@ -97,15 +96,6 @@ impl Map {
         map.generate().expect("Error generating map");
 
         map
-    }
-
-    pub fn fixup(&mut self) -> Result<(), ReservationError> {
-        // Any way to not allow this to be called twice?
-        // for vehicle in &mut self.vehicles.values_mut() {
-        //     vehicle.fixup(&mut self.grid)?
-        // }
-
-        Ok(())
     }
 
     pub fn new_from_string(string: &str) -> Self {

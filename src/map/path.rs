@@ -1,7 +1,7 @@
 
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
-use tile::{Reservation, Tick, Tile};
+use tile::Tile;
 
 use super::*;
 
@@ -9,37 +9,8 @@ type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ReservationError {
-    TileInvalid,
-    TileReserved,
-}
 
 impl Grid {
-    pub fn reserve(
-        &mut self,
-        pos: &Position,
-        vehicle_id: Id,
-        current: Tick,
-        start: Tick,
-        end: Tick,
-    ) -> Result<Reservation, ReservationError> {
-        self.get_tile_mut(pos)
-            .ok_or(ReservationError::TileInvalid)?
-            .reserve(vehicle_id, *pos, current, start, end)
-    }
-
-    pub fn is_reserved(
-        &self,
-        pos: &Position,
-        vehicle_id: Id,
-        start: Tick,
-        end: Tick,
-    ) -> Result<(), ReservationError> {
-        self.get_tile(pos)
-            .ok_or(ReservationError::TileInvalid)?
-            .is_reserved(vehicle_id, start, end)
-    }
 
     pub fn find_path(&self, start: (Position, Direction), end: &Id) -> Path {
         let path_start = start.0 + start.1;

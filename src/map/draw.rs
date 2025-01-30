@@ -371,7 +371,7 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
 
     for (i, res) in vehicle.reserved.iter().enumerate() {
         let start = res.start.saturating_sub(map.tick);
-        let end: String = if res.end != u64::MAX {
+        let end: String = if res.end != Tick::MAX {
             format!("{}", res.end.saturating_sub(map.tick))
         } else {
             "M".into()

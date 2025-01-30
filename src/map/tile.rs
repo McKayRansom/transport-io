@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::hash_map_id::Id;
 
-use super::{path::ReservationError, Direction, Position};
+use super::Direction;
 
 const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
@@ -80,18 +80,15 @@ impl Tile {
     pub fn reserve(
         &mut self,
         id: Id,
-        pos: Position,
         current: Tick,
-        start: Tick,
-        end: Tick,
-    ) -> Result<Reservation, ReservationError> {
+        reservation: &Reservation,
+    ) -> Result<(), ReservationError> {
         match self {
             Tile::Road(road) => road
                 .reserved
-                .try_reserve(id, pos, current, start, end)
-                .ok_or(ReservationError::TileReserved),
+                .try_reserve(id, current, reservation),
 
-            Tile::Building(_) => Ok(Reservation::new(pos, start, end)),
+            Tile::Building(_) => Ok(()),
             _ => Err(ReservationError::TileInvalid),
         }
     }

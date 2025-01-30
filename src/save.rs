@@ -71,13 +71,12 @@ impl Map {
 
     pub fn load() -> LoadResult {
         #[cfg(not(target_family = "wasm"))]
-        let mut map = Self::load_desktop();
+        let map = Self::load_desktop();
         #[cfg(target_family = "wasm")]
-        let mut map = Self::load_wasm();
+        let map = Self::load_wasm();
 
-        match &mut map {
-            Ok(m) => m.fixup().unwrap(),
-            Err(err) => println!("Error loading save: {:?}", *err),
+        if let Err(err) = &map {
+            println!("Error loading save: {:?}", *err);
         }
 
         map
@@ -148,7 +147,7 @@ mod save_tests {
 
         assert!(!Map::save_exists());
 
-        let mut map = Map::new_blank((4, 4));
+        let mut map = Map::new_from_string(">>>>1");
 
         map.add_vehicle(
             Some((map.grid.pos(0, 0), Direction::RIGHT)),
@@ -161,20 +160,11 @@ mod save_tests {
 
         assert!(Map::save_exists());
 
-        let mut deserialized: Map = Map::load().unwrap();
+        let deserialized: Map = Map::load().unwrap();
 
         assert_eq!(
-            deserialized.grid.get_tile(&deserialized.grid.pos(0, 0)),
-            map.grid.get_tile(&deserialized.grid.pos(0, 0)),
+            deserialized,
+            map
         );
-
-        let pos = deserialized.grid.pos(0, 0);
-
-        assert!(deserialized
-            .grid
-            .get_tile_mut(&pos)
-            .unwrap()
-            .reserve(1234, pos, 0, 0, 1)
-            .is_err())
     }
 }

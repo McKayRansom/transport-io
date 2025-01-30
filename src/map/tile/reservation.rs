@@ -1,9 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{hash_map_id::Id, map::Position};
+use crate::{
+    hash_map_id::Id,
+    map::{grid::Grid, Position},
+};
+
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ReservationError {
+    TileInvalid,
+    TileReserved,
+}
 
 // #[derive(Clone, Debug, Default)]
-pub type Tick = u64;
+pub type Tick = u32;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Reservation {
@@ -16,6 +26,31 @@ impl Reservation {
     pub fn new(pos: Position, start: Tick, end: Tick) -> Self {
         Self { start, end, pos }
     }
+
+    pub fn reserve(&self, grid: &mut Grid, vehicle_id: Id, tick: Tick)-> Result<(), ReservationError> {
+        grid.get_tile_mut(&self.pos)
+            .ok_or(ReservationError::TileInvalid)?
+            .reserve(vehicle_id, tick, self)
+    }
+
+    #[allow(unused)]
+    pub fn unreserve(&self, grid: &mut Grid, vehicle_id: Id) -> Result<(), ReservationError> {
+        grid.get_tile_mut(&self.pos)
+            .ok_or(ReservationError::TileInvalid)?
+            .unreserve(vehicle_id);
+
+        Ok(())
+    }
+
+    pub fn is_reserved(
+        &self,
+        grid: &mut Grid, 
+        vehicle_id: Id
+    ) -> Result<(), ReservationError> {
+        grid.get_tile(&self.pos)
+            .ok_or(ReservationError::TileInvalid)?
+            .is_reserved(vehicle_id, self.start, self.end)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,19 +61,6 @@ pub struct Reserved {
 }
 
 impl Reserved {
-    pub fn create(id: Id, pos: Position, start: Tick, end: Tick) -> (Self, Reservation) {
-        let reservation = Reservation { start, end, pos };
-        (
-            Self {
-                id,
-                start,
-                end,
-            },
-            reservation,
-        )
-    }
-
-    #[allow(unused)]
     pub fn new(id: Id, start: Tick, end: Tick) -> Self {
         Self { id, start, end }
     }
@@ -87,33 +109,31 @@ impl ReservedList {
     pub fn try_reserve(
         &mut self,
         id: Id,
-        pos: Position,
         cur: Tick,
-        start: Tick,
-        end: Tick,
-    ) -> Option<Reservation> {
+        reservation: &Reservation,
+    ) -> Result<(), ReservationError> {
         let mut to_remove: Option<usize> = None;
         for (i, reserved) in self.list.iter().enumerate() {
             if reserved.is_expired(cur) {
                 to_remove = Some(i);
             }
-            if reserved.is_reserved(start, end) {
+            if reserved.is_reserved(reservation.start, reservation.end) {
                 if reserved.id == id {
                     to_remove = Some(i);
                     break;
                 }
-                return None;
+                return Err(ReservationError::TileReserved);
             }
         }
 
-        let (reserved, reservation) = Reserved::create(id, pos, start, end);
+        let reserved = Reserved::new(id, reservation.start, reservation.end);
         if let Some(i) = to_remove {
             *self.list.get_mut(i).unwrap() = reserved;
         } else {
             self.list.push(reserved);
         }
 
-        Some(reservation)
+        Ok(())
     }
 
     pub fn unreserve(&mut self, id: Id) {
@@ -145,8 +165,9 @@ mod reservation_tests {
 
         let pos = Position::new(0, 0);
 
-        let reservation = reserved.try_reserve(1234, pos, 0, 1, 4).unwrap();
-        assert_eq!(reservation.pos, pos);
+        reserved
+            .try_reserve(1234, 0, &Reservation::new(pos, 1, 4))
+            .unwrap();
 
         assert!(!reserved.is_reserved(0, 0, 0));
         assert!(reserved.is_reserved(0, 0, 11));
@@ -154,18 +175,42 @@ mod reservation_tests {
         assert!(!reserved.is_reserved(0, 5, 5));
 
         // overlaps start
-        assert!(reserved.try_reserve(56, pos, 0, 0, 1).is_none());
+        assert!(reserved
+            .try_reserve(56, 0, &Reservation::new(pos, 0, 1))
+            .is_err());
         // within
-        assert!(reserved.try_reserve(56, pos, 0, 2, 3).is_none());
+        assert!(reserved
+            .try_reserve(56, 0, &Reservation::new(pos, 2, 3))
+            .is_err());
         // overlaps end
-        assert!(reserved.try_reserve(56, pos, 0, 4, 5).is_none());
+        assert!(reserved
+            .try_reserve(56, 0, &Reservation::new(pos, 4, 5))
+            .is_err());
         // overlaps all
-        assert!(reserved.try_reserve(56, pos, 0, 0, 5).is_none());
+        assert!(reserved
+            .try_reserve(56, 0, &Reservation::new(pos, 0, 5))
+            .is_err());
 
-        let _reservation_later = reserved.try_reserve(1234, pos, 5, 5, 6).unwrap();
+        let _reservation_later = reserved
+            .try_reserve(1234, 5, &Reservation::new(pos, 5, 6))
+            .unwrap();
 
         // assume it is dropped
         assert!(!reserved.is_reserved(0, 0, 1));
         assert_eq!(reserved.list.len(), 1);
+    }
+
+    #[test]
+    fn test_tick_duration() {
+        let tick_max = Tick::MAX;
+
+        let tick_secs = tick_max / 60;
+        let tick_mins = tick_secs / 60;
+        let tick_hours = tick_mins / 60;
+
+        let tick_days = tick_hours / 24;
+        let tick_years = tick_days / 365;
+
+        assert_eq!(tick_years, 2);
     }
 }
