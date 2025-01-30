@@ -111,7 +111,7 @@ impl Position {
 
     // .<
     // >^
-    pub fn default_connections(&self) -> &'static[Direction] {
+    pub fn default_connections(&self) -> &'static [Direction] {
         let x_rem = self.x % 2;
         let y_rem = self.y % 2;
         match (x_rem, y_rem) {
@@ -122,25 +122,17 @@ impl Position {
             _ => &[],
         }
     }
-
 }
 
 impl From<(i16, i16)> for Position {
     fn from(pos: (i16, i16)) -> Self {
-        Position::new(
-            pos.0,
-            pos.1,
-        )
+        Position::new(pos.0, pos.1)
     }
 }
 
 impl From<(i16, i16, i16)> for Position {
     fn from(pos: (i16, i16, i16)) -> Self {
-        Position::_new_z(
-            pos.0,
-            pos.1,
-            pos.2,
-        )
+        Position::_new_z(pos.0, pos.1, pos.2)
     }
 }
 
@@ -168,14 +160,13 @@ impl Sub<Position> for Position {
     }
 }
 
-
 impl Div<i16> for Position {
     type Output = Position;
 
     fn div(self, other: i16) -> Position {
         Self {
-            x: self.x /other, 
-            y: self.y  / other,
+            x: self.x / other,
+            y: self.y / other,
             z: self.z / other,
         }
     }
@@ -241,7 +232,7 @@ impl From<Position> for Rect {
     fn from(pos: Position) -> Self {
         Rect::new(
             pos.x as f32 * GRID_CELL_SIZE.0,
-            pos.y as f32 * GRID_CELL_SIZE.1/* - (pos.z as f32 * GRID_Z_OFFSET) */,
+            pos.y as f32 * GRID_CELL_SIZE.1, /* - (pos.z as f32 * GRID_Z_OFFSET) */
             GRID_CELL_SIZE.0,
             GRID_CELL_SIZE.1,
         )
@@ -305,26 +296,29 @@ mod position_tests {
     fn test_iter_area() {
         let start_pos: Position = pos(2, 2);
         assert_eq!(
-            start_pos.iter_area((1, 1).into()).collect::<Vec<Position>>(),
+            start_pos
+                .iter_area((1, 1).into())
+                .collect::<Vec<Position>>(),
             vec![pos(2, 2)]
         );
 
         assert_eq!(
-            start_pos.iter_area((2, 2).into()).collect::<Vec<Position>>(),
+            start_pos
+                .iter_area((2, 2).into())
+                .collect::<Vec<Position>>(),
             vec![pos(2, 2), pos(3, 2), pos(2, 3), pos(3, 3)]
         );
 
         assert_eq!(
-            Position::new(0, 0).iter_area((2, 2).into()).collect::<Vec<Position>>(),
+            Position::new(0, 0)
+                .iter_area((2, 2).into())
+                .collect::<Vec<Position>>(),
             vec![pos(0, 0), pos(1, 0), pos(0, 1), pos(1, 1)]
         );
     }
 
     #[test]
     fn test_round_dir() {
-        assert_eq!(
-            pos(0, 0).default_connections()[0], 
-            Direction::DOWN
-        )
+        assert_eq!(pos(0, 0).default_connections()[0], Direction::DOWN)
     }
 }

@@ -149,10 +149,12 @@ impl ViewBuild {
             BuildMode::TwoWayRoad => Some(Box::new(action_two_way_road(self.mouse_down_pos?, pos))),
             BuildMode::OneWayRoad => Some(Box::new(action_one_way_road(self.mouse_down_pos?, pos))),
             BuildMode::Clear => {
-                let area: Direction = pos - self.mouse_down_pos?.round_to(2);
-                if map.grid.is_area_clear(&pos, area).is_err() {
+                let start_pos = self.mouse_down_pos?.round_to(2);
+                let end_pos = pos.round_to(2) + Direction::new(2, 2, 0);
+                let area: Direction = end_pos - start_pos;
+                if map.grid.is_area_clear(&start_pos, area).is_err() {
                     Some(Box::new(BuildActionClearArea::new(
-                        self.mouse_down_pos?.round_to(2),
+                        start_pos,
                         area,
                     )))
                 } else {
@@ -202,6 +204,7 @@ impl ViewBuild {
         let dir = start_pos.direction_to(end_pos);
         match self.build_toolbar.get_selected() {
             Some(BuildMode::Clear) => {
+                let end_pos = end_pos + Direction::new(2, 2, 0);
                 for pos in start_pos.iter_area(end_pos - start_pos) {
                     tileset.draw_rect(&pos.into(), SELECTED_DELETE);
                 }
