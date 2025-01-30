@@ -58,6 +58,20 @@ pub enum Status {
     HopelesslyLate,
 }
 
+
+#[derive(Debug)]
+pub enum VehicleError {
+    InvalidTile,
+    NoPath,
+}
+
+impl From<ReservationError> for VehicleError {
+    fn from(_value: ReservationError) -> Self {
+        VehicleError::InvalidTile
+    }
+}
+
+
 impl Vehicle {
     pub fn new(
         id: Id,
@@ -65,7 +79,7 @@ impl Vehicle {
         destination: Id,
         grid: &mut Grid,
         tick: Tick,
-    ) -> Result<Self, ReservationError> {
+    ) -> Result<Self, VehicleError> {
         let reservation = Reservation::new(start.0, tick, Tick::MAX);
         reservation.reserve(grid, id, tick)?;
 
@@ -83,9 +97,12 @@ impl Vehicle {
             reserved: VecDeque::from([reservation]),
         };
 
-        vehicle.find_path(grid);
+        if !vehicle.find_path(grid) {
+            Err(VehicleError::NoPath)
+        } else {
+            Ok(vehicle)
+        }
 
-        Ok(vehicle)
     }
 
     pub fn cleanup(&self, grid: &mut Grid) {
