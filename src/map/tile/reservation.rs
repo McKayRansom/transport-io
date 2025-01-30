@@ -90,6 +90,16 @@ impl ReservedList {
         Self { list: Vec::new() }
     }
 
+    pub fn cost(&self) -> u32 {
+        let mut cost = 1;
+        for res in &self.list {
+            if res.id > 0 {
+                cost += 1;
+            }
+        }
+        cost
+    }
+
     pub fn get_reserved_id(&self, start: Tick, end: Tick) -> Option<Id> {
         for reserved in self.list.iter() {
             if reserved.is_reserved(start, end) {

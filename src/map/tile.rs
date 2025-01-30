@@ -118,12 +118,8 @@ impl Tile {
 
     pub fn cost(&self) -> u32 {
         match self {
-            Tile::Road(_road) => {
-                // if road.reserved.is_reserved() {
-                // OCCUPIED_COST
-                // } else {
-                DEFAULT_COST
-                // }
+            Tile::Road(road) => {
+                road.reserved.cost()
             }
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
@@ -133,6 +129,14 @@ impl Tile {
 
     pub(crate) fn is_road(&self) -> bool {
         matches!(self, Tile::Road(_))
+    }
+
+    pub fn is_blockable(&self) -> bool {
+        if let Tile::Road(road) = self {
+            road.connection_count() <= 1
+        } else {
+            true
+        }
     }
 
     pub fn get_building_id(&self) -> Option<Id> {

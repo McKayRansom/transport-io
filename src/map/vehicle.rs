@@ -126,7 +126,7 @@ impl Vehicle {
             }
 
             if res.end <= tick {
-                self.reserved.pop_back();
+                let _ = self.reserved.pop_back().unwrap().unreserve(grid, self.id);
                 self.update_pos_dir();
             }
         }
@@ -170,37 +170,27 @@ impl Vehicle {
             .ok_or(ReservePathError::InvalidPath)?
             .0[self.path_index..]
         {
-            let mut reservation = Reservation::new(*pos, start, end);
-            match reservation.is_reserved(grid, self.id) {
-                Ok(()) => {
-                    println!("FOOBAR");
-                    to_reserve.push(Reservation::new(*pos, start, end));
-                }
-                Err(ReservationError::TileInvalid) => return Err(ReservePathError::InvalidPath),
-                Err(ReservationError::TileReserved) => {
-                    return Err(ReservePathError::Blocking)
-                }
+            let tile = grid.get_tile(pos).ok_or(ReservePathError::InvalidPath)?;
+            tile.is_reserved(self.id, start, end)?;
+
+            if tile.is_blockable() {
+                // we gotta check if we can for real stop here...
+                let end = Tick::MAX;
+
+                tile.is_reserved(self.id, start, end)?;
+                to_reserve.push(Reservation::new(*pos, start, end));
+
+                break;
             }
 
-            if let Some(Tile::Road(road)) = grid.get_tile(pos) {
-                if road.connection_count() > 1 {
-                    start += SPEED_TICKS;
-                    end += SPEED_TICKS;
+            to_reserve.push(Reservation::new(*pos, start, end));
 
-                    if self.reserved.len() + to_reserve.len() > RESERVE_AHEAD_MAX {
-                        return Err(ReservePathError::ReachedMaxLookahead);
-                    }
-                    continue;
-                }
+            start += SPEED_TICKS;
+            end += SPEED_TICKS;
+
+            if self.reserved.len() + to_reserve.len() > RESERVE_AHEAD_MAX {
+                return Err(ReservePathError::ReachedMaxLookahead);
             }
-
-            // we gotta check if we can for real stop here...
-            reservation.end = Tick::MAX;
-            reservation.is_reserved(grid, self.id)?;
-
-            *to_reserve.last_mut().unwrap() = reservation.clone();
-
-            break;
         }
 
         // fixup the most recent (front) reservation to be the correct duration and not forever
@@ -403,6 +393,10 @@ mod vehicle_tests {
                 Reservation::new((1, 0).into(), 8, 16),
             ]
         );
+
+        assert!(!Reservation::new((0, 0).into(), 0, 1)
+            .is_reserved(&mut grid, 1234)
+            .is_ok());
 
         vehicle.update(&mut grid, 16);
 
