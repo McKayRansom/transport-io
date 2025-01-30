@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 
+pub const GAME_SPEED_NORMAL: f64 = 1./ 15.;
+pub const GAME_SPEED_FAST: f64 = 1./ 60.;
+
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SpawnerColors {

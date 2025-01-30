@@ -52,20 +52,16 @@ impl BuildAction for BuildTile {
 
 pub struct BuildRoad {
     pos: Position,
-    dir: Direction,
-    was_empty: bool,
-    was_already: bool,
-    station: Option<Id>,
+    road: Road,
+    old: Tile,
 }
 
 impl BuildRoad {
     pub fn new(pos: Position, dir: Direction) -> Self {
         Self {
             pos,
-            dir,
-            was_empty: false,
-            was_already: false,
-            station: None,
+            road: Road::new_connected(dir, None),
+            old: Tile::Empty,
         }
     }
 }
@@ -73,31 +69,32 @@ impl BuildRoad {
 impl BuildAction for BuildRoad {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
         let tile = map.grid.get_tile_build(&self.pos)?;
+        self.old = tile.clone();
         match tile {
             Tile::Empty => {
-                self.was_empty = true;
-                *tile = Tile::Road(Road::new_connected(self.dir, self.station));
+                *tile = Tile::Road(self.road.clone());
                 Ok(())
             }
             Tile::Road(road) => {
-                self.was_empty = false;
-                self.was_already = road.is_connected(self.dir)
-                    || road.is_connected(self.dir + Direction::LAYER_UP);
-                if !self.was_already {
-                    road.connect(self.dir);
-                }
 
-                // Oh god o f
-                if self.station.is_some() {
-                    road.station = self.station;
+                for dir in &self.road.connections {
+                    // this feels wrong but here we are
+                    if !road.is_connected(*dir + Direction::LAYER_UP) {
+                        road.connect(*dir);
+                    }
+                    // we may need to roll this back for rails someday
+                    if road.is_connected(dir.inverse()) {
+                        road.disconnect(dir.inverse());
+                    }
                 }
 
                 Ok(())
             }
             Tile::Ramp(ramp) => {
-                if ramp.dir == self.dir || self.dir == Direction::NONE {
+                if self.road.connections.first().is_none_or(|dir| dir == &ramp.dir) {
                     Ok(())
                 } else {
+                    dbg!(&ramp.dir);
                     Err(BuildError::OccupiedTile)
                 }
             }
@@ -107,21 +104,9 @@ impl BuildAction for BuildRoad {
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
         let tile = map.grid.get_tile_build(&self.pos)?;
-        if self.was_empty {
-            *tile = Tile::Empty;
-            Ok(())
-        } else {
-            match tile {
-                Tile::Road(road) => {
-                    if !self.was_already {
-                        road.disconnect(self.dir);
-                    }
-                    Ok(())
-                }
-                Tile::Ramp(_) => Ok(()),
-                _ => Err(BuildError::OccupiedTile),
-            }
-        }
+        *tile = self.old.clone();
+
+        Ok(())
     }
 }
 
@@ -155,7 +140,7 @@ impl BuildActionClearArea {
         // let's find out the bridge direction
         if let Tile::Road(road) = map.grid.get_tile_build(&bridge_pos)? {
             if road
-                .get_connections(&bridge_pos)
+                .get_connections()
                 .first()
                 .ok_or(BuildError::InvalidTile)?
                 != &dir
@@ -307,7 +292,8 @@ impl BuildRoadLane {
         if index != length - 1 {
             dir
         } else {
-            Direction::NONE
+            // Direction::NONE
+            dir
         }
     }
 
@@ -621,7 +607,7 @@ mod grid_build_tests {
 
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("*<<<\n>>>*\n____\n____"));
+        assert_eq!(map.grid, Grid::new_from_string("<<<<\n>>>>\n____\n____"));
         action_right.undo(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
@@ -629,7 +615,7 @@ mod grid_build_tests {
         action_right.execute(map).unwrap();
         action_right.execute(map).unwrap();
         action_right.undo(map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("*<<<\n>>>*\n____\n____"));
+        assert_eq!(map.grid, Grid::new_from_string("<<<<\n>>>>\n____\n____"));
     }
 
     #[test]
@@ -639,13 +625,13 @@ mod grid_build_tests {
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         let mut action_down = action_two_way_road((0, 0).into(), (0, 2).into());
         action_down.execute(map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string(".*__\n.^__\n.^__\n*^__"));
+        assert_eq!(map.grid, Grid::new_from_string(".^__\n.^__\n.^__\n.^__"));
         action_down.undo(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
         action_right.execute(map).unwrap();
         action_down.execute(map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string(".<<<\nLR>*\n.^__\n*^__"));
+        assert_eq!(map.grid, Grid::new_from_string("lr<<\nLR>>\n.^__\n.^__"));
         action_down.undo(map).unwrap();
         action_right.undo(map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
@@ -663,13 +649,22 @@ mod grid_build_tests {
         let mut map = Map::new_blank((4, 4));
         let mut action_right = action_one_way_road((0, 0).into(), (2, 0).into());
         action_right.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string(">>>*\n>>>*\n____\n____"));
+        assert_eq!(map.grid, Grid::new_from_string(">>>>\n>>>>\n____\n____"));
         action_right.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
 
+        // overwrite two-way road with one-way road
+        let mut action_two_way = action_two_way_road((0, 0).into(), (2, 0).into());
+        action_two_way.execute(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string("<<<<\n>>>>\n____\n____"));
+        action_right.execute(&mut map).unwrap();
+        assert_eq!(map.grid, Grid::new_from_string(">>>>\n>>>>\n____\n____"));
+        action_right.undo(&mut map).unwrap();
+        action_two_way.undo(&mut map).unwrap();
+
         let mut action_down = action_one_way_road((0, 0).into(), (0, 2).into());
         action_down.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n**__"));
+        assert_eq!(map.grid, Grid::new_from_string("..__\n..__\n..__\n..__"));
         action_down.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("____\n____\n____\n____"));
     }
@@ -690,8 +685,8 @@ mod grid_build_tests {
             map.grid,
             Grid::new_from_string_layers(
                 "
-                }))*__
-                }))*__",
+                }))>__
+                }))>__",
                 "e>]e__
                 e>]e__"
             )
@@ -714,8 +709,8 @@ mod grid_build_tests {
             map.grid,
             Grid::new_from_string_layers(
                 "
-                *(({__
-                }))*__",
+                <(({__
+                }))>__",
                 "
                 e[<e__
                 e>]e__"
@@ -728,8 +723,8 @@ mod grid_build_tests {
             map.grid,
             Grid::new_from_string_layers(
                 "
-                *(({__
-                }))*__",
+                <(({__
+                }))>__",
                 "
                 e[<e__
                 e>]e__"
@@ -742,8 +737,8 @@ mod grid_build_tests {
             map.grid,
             Grid::new_from_string_layers(
                 "
-                *(({<<
-                }))>>*",
+                <(({<<
+                }))>>>",
                 "
                 e[<e__
                 e>]e__"
@@ -759,7 +754,7 @@ mod grid_build_tests {
             Grid::new_from_string_layers(
                 "
                 ____<<
-                ____>*",
+                ____>>",
                 "
                 ______
                 ______"

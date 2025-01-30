@@ -8,7 +8,7 @@ use super::{
     grid::Grid,
     path::Path,
     position::GRID_CELL_SIZE,
-    tile::{Reservation, ReservationError, Tick, Tile},
+    tile::{Reservation, ReservationError, Tick},
     Direction, Position,
 };
 
@@ -29,7 +29,7 @@ impl From<ReservationError> for ReservePathError {
 
 const SPEED_PIXELS: i32 = 4;
 pub const SPEED_TICKS: Tick = GRID_CELL_SIZE.0 as Tick / SPEED_PIXELS as Tick;
-const HOPELESSLY_LATE_PERCENT: f32 = 0.5;
+const HOPELESSLY_LATE_PERCENT: f32 = 0.25;
 
 const RESERVE_AHEAD_MIN: usize = 2; // current tile + next tile
 const RESERVE_AHEAD_MAX: usize = 8; // TODO: find correct
@@ -127,7 +127,6 @@ impl Vehicle {
 
             if res.end <= tick {
                 let _ = self.reserved.pop_back().unwrap().unreserve(grid, self.id);
-                self.update_pos_dir();
             }
         }
 
@@ -137,7 +136,7 @@ impl Vehicle {
     fn update_pos_dir(&mut self) {
         let mut iter = self.reserved.iter().rev();
         if let Some(res) = iter.next() {
-            self.dir = res.pos - self.pos;
+            // self.dir = res.pos - self.pos;
             if let Some(res_next) = iter.next() {
                 self.dir = res_next.pos - res.pos;
             }
@@ -195,13 +194,17 @@ impl Vehicle {
 
         // fixup the most recent (front) reservation to be the correct duration and not forever
         if !to_reserve.is_empty() {
-            let res = self.reserved.front_mut().unwrap();
+            // this actually can happen if a road is delted
+            let res = self
+                .reserved
+                .front_mut()
+                .ok_or(ReservePathError::InvalidPath)?;
+
             if res.end == Tick::MAX {
                 res.end = to_reserve[0].start;
-                grid.get_tile_mut(&res.pos)
-                    .unwrap()
-                    .reserve(self.id, tick, res)
-                    .unwrap();
+
+                // this actually can happen if a road is delted
+                res.reserve(grid, self.id, tick)?;
             }
         }
 
@@ -265,6 +268,8 @@ impl Vehicle {
 
         self.reserve_next_pos(grid, tick);
 
+        self.update_pos_dir();
+
         Status::EnRoute
     }
 
@@ -303,7 +308,7 @@ impl Vehicle {
 #[cfg(test)]
 mod vehicle_tests {
 
-    use crate::map::tile::{Reserved, ReservedList};
+    use crate::map::tile::{Reserved, ReservedList, Tile};
 
     use super::*;
 

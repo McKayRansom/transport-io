@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::hash_map_id::Id;
 
-use super::Direction;
+use super::{Direction, Position};
 
 const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
@@ -111,6 +111,7 @@ impl Tile {
                     Ok(())
                 }
             }
+            Tile::Building(_) => Ok(()),
             // T
             _ => Err(ReservationError::TileInvalid),
         }
@@ -123,7 +124,7 @@ impl Tile {
             }
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
-            _ => DEFAULT_COST * 3,
+            _ => DEFAULT_COST,
         }
     }
 
@@ -144,6 +145,14 @@ impl Tile {
             Tile::Building(building_id) => Some(*building_id),
             Tile::Road(road) => road.station,
             _ => None,
+        }
+    }
+    
+    pub(crate) fn successor(&self, pos: Position, dir: Direction) -> Position {
+        match self {
+            Tile::Empty => pos + dir.inverse() + dir.rotate_left(),
+            // Tile::Ramp(ramp) => pos + Direction::LAYER_UP
+            _ => pos,
         }
     }
 }

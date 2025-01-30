@@ -152,7 +152,7 @@ impl ViewBuild {
                 let area: Direction = pos - self.mouse_down_pos?.round_to(2);
                 if map.grid.is_area_clear(&pos, area).is_err() {
                     Some(Box::new(BuildActionClearArea::new(
-                        self.mouse_down_pos?,
+                        self.mouse_down_pos?.round_to(2),
                         area,
                     )))
                 } else {
@@ -184,7 +184,10 @@ impl ViewBuild {
         self.mouse_down_pos = None;
     }
 
-    pub fn mouse_motion_event(&mut self, pos: Position, _map: &mut Map) {
+    pub fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
+        if let Some(tile) = map.grid.get_tile(&pos) {
+            dbg!(tile);
+        }
         self.mouse_pos = pos;
     }
 

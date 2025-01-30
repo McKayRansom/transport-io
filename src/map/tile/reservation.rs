@@ -42,6 +42,7 @@ impl Reservation {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn is_reserved(
         &self,
         grid: &mut Grid, 

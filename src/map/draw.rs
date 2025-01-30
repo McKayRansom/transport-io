@@ -180,11 +180,15 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
     if connection_count > 1 {
         // draw intersection
         tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
-        for dir in road.get_connections(&pos) {
+        for dir in road.get_connections() {
             tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
         }
     } else {
-        let dir = road.get_connections(&pos).first().unwrap().flatten();
+        let dir = road
+            .get_connections()
+            .first()
+            .unwrap_or(&Direction::NONE)
+            .flatten();
 
         tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, dir.to_radians());
 
@@ -268,7 +272,7 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &G
     }
 
     let rect = Rect::from(*pos);
-    for dir in road.get_connections(pos) {
+    for dir in road.get_connections() {
         if ramp_below {
             //     if dir.z != 0 {
             //         let dir = dir.inverse();

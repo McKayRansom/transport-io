@@ -1,4 +1,5 @@
 use super::{EScene, GameOptions, Scene};
+use crate::consts::{GAME_SPEED_FAST, GAME_SPEED_NORMAL};
 // use crate::audio::play_sfx;
 use crate::context::Context;
 use crate::map::draw::draw_map;
@@ -61,9 +62,9 @@ impl Scene for Gameplay {
 
         let time_select = self.ui.time_select.get_selected();
         let map_speed = if time_select == Some(&TimeSelect::FastForward) {
-            1. / 60.
+            GAME_SPEED_FAST
         } else {
-            1. / 4.
+            GAME_SPEED_NORMAL
         };
 
         if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open)

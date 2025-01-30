@@ -62,11 +62,11 @@ impl Grid {
 
     pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            road.get_connections(pos)
+            road.get_connections()
                 .iter()
                 .filter_map(|dir| {
                     let new_pos = *pos + *dir;
-                    self.get_tile(&new_pos).map(|tile| (new_pos, tile.cost()))
+                    self.get_tile(&new_pos).map(|tile| (tile.successor(new_pos, *dir), tile.cost()))
                 })
                 .collect()
         } else {
@@ -147,8 +147,8 @@ mod path_tests {
     #[test]
     fn test_path_dead_end() {
         let grid = Grid::new_from_string(
-            "h_*<
-             __>*",
+            "h_<<_
+             __>>_",
         );
 
         assert_eq!(

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    hash_map_id::Id, map::{Direction, Position}
+    hash_map_id::Id,
+    map::Direction,
 };
 
 use super::{ReservedList, Tick};
@@ -11,11 +12,10 @@ pub struct Road {
     pub should_yield: bool,
     pub station: Option<Id>,
     pub reserved: ReservedList,
-    connections: Vec<Direction>,
+    pub connections: Vec<Direction>,
 }
 
 impl Road {
-
     pub fn new_connected(dir: Direction, station: Option<Id>) -> Self {
         Road {
             station,
@@ -120,13 +120,8 @@ impl Road {
         self.connections.len() as u32
     }
 
-    pub fn get_connections(&self, pos: &Position) -> &[Direction] {
-        if !self.connections.is_empty() {
-            self.connections.as_slice()
-        } else {
-            // Dead ends need this maybe?
-            &pos.default_connections()[0..1]
-        }
+    pub fn get_connections(&self) -> &[Direction] {
+        self.connections.as_slice()
     }
 }
 
@@ -154,13 +149,11 @@ impl std::fmt::Debug for Road {
             write!(f, "}}")
         } else if self.is_connected(Direction::RIGHT + Direction::LAYER_DOWN) {
             write!(f, "]")
-        } 
-        else if self.is_connected(Direction::LEFT + Direction::LAYER_UP) {
+        } else if self.is_connected(Direction::LEFT + Direction::LAYER_UP) {
             write!(f, "{{")
         } else if self.is_connected(Direction::LEFT + Direction::LAYER_DOWN) {
             write!(f, "[")
-        }
-        else {
+        } else {
             write!(f, "*")
         }
     }
@@ -201,7 +194,7 @@ mod road_tests {
         road.connect(Direction::RIGHT);
         road.connect(Direction::LEFT);
         assert_eq!(
-            road.get_connections(&Position::new(0, 0)),
+            road.get_connections(),
             vec![Direction::RIGHT, Direction::LEFT].as_slice()
         );
     }
