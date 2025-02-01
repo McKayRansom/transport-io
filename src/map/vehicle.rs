@@ -62,7 +62,7 @@ pub enum Status {
 #[derive(Debug)]
 pub enum VehicleError {
     InvalidTile,
-    NoPath,
+    // NoPath,
 }
 
 impl From<ReservationError> for VehicleError {
@@ -97,11 +97,11 @@ impl Vehicle {
             reserved: VecDeque::from([reservation]),
         };
 
-        if !vehicle.find_path(grid) {
-            Err(VehicleError::NoPath)
-        } else {
+        vehicle.find_path(grid);
+            // Err(VehicleError::NoPath)
+        // } else {
             Ok(vehicle)
-        }
+        // }
 
     }
 
