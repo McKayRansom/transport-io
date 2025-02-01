@@ -67,7 +67,7 @@ impl Scene for Gameplay {
             GAME_SPEED_NORMAL
         };
 
-        if (time_select != Some(&TimeSelect::Pause) && !self.ui.pause_menu_open)
+        if (time_select != Some(&TimeSelect::Pause) && time_select != Some(&TimeSelect::Menu))
             && get_time() - self.last_map_update > map_speed
         {
             if self.map.update() {

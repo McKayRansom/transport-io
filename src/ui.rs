@@ -36,6 +36,7 @@ const PLUS_MINUS_SENSITVITY: f32 = 0.8;
 pub enum TimeSelect {
     Pause,
     FastForward,
+    Menu,
 }
 
 enum ViewMode {
@@ -57,7 +58,6 @@ pub struct UiState {
     pub time_select: Toolbar<TimeSelect>,
     view_toolbar: Toolbar<ViewMode>,
     view_build: ViewBuild,
-    pub pause_menu_open: bool,
     pause_menu: Menu<PauseMenuSelect>,
 }
 
@@ -79,6 +79,12 @@ impl UiState {
                         ' ',
                         Sprite::new(10, 2),
                     ),
+                    ToolbarItem::new(
+                        TimeSelect::Menu,
+                        "Pause Menu",
+                        '\u{1b}',
+                        Sprite::new(10, 3),
+                    )
                 ],
             ),
             view_toolbar: Toolbar::new(
@@ -89,7 +95,6 @@ impl UiState {
                 ],
             ),
             view_build: ViewBuild::new(unlocked),
-            pause_menu_open: false,
             pause_menu: Menu::new(vec![
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
                 MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
@@ -250,11 +255,11 @@ impl UiState {
             .draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
         self.view_build.draw(map, ctx);
 
-        if self.pause_menu_open {
+        if self.time_select.get_selected() == Some(&TimeSelect::Menu) {
             if let Some(selected) = self.pause_menu.draw(hash!()) {
                 match selected {
                     PauseMenuSelect::Continue => {
-                        self.pause_menu_open = false;
+                        self.time_select.clear_selected();
                     }
                     PauseMenuSelect::Save => {
                         map.save().expect("Failed to save!");
@@ -280,14 +285,6 @@ impl UiState {
 
             '-' => ctx.tileset.zoom *= PLUS_MINUS_SENSITVITY,
             '=' => ctx.tileset.zoom /= PLUS_MINUS_SENSITVITY,
-
-            // TODO: This doesn't work on browser??
-            '\u{1b}' => {
-                self.pause_menu_open = !self.pause_menu_open;
-            }
-            'm' => {
-                self.pause_menu_open = !self.pause_menu_open;
-            }
 
             _ => {
                 self.time_select.key_down(ch);
