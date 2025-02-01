@@ -23,10 +23,12 @@ impl SpawnerColors {
     pub fn color(&self) -> Color {
         match self {
             SpawnerColors::None => WHITE,
-            SpawnerColors::Blue => Color::from_hex(0xa0dae8),
-            SpawnerColors::Red => Color::from_hex(0xf9524c),
-            SpawnerColors::Green => Color::from_hex(0x62cc86),
-            SpawnerColors::Yellow => Color::from_hex(0xf8c86a),
+            // There is a bug with colors
+            // some weird Color Luminance/Value rounding on macos
+            SpawnerColors::Blue => Color::from_hex(0x8fdcea),
+            SpawnerColors::Red => Color::from_hex(0xff3e42),
+            SpawnerColors::Green => Color::from_hex(0x1fcf7f),
+            SpawnerColors::Yellow => Color::from_hex(0xffc657),
         }
     }
     

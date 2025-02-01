@@ -21,7 +21,7 @@ fn window_conf() -> Conf {
         fullscreen: false,
         // This doesn't seem to work on Mac Native :(
         // Will need a way around this or turn it off...
-        high_dpi: true,
+        high_dpi: false,
         icon: Some(Icon {
             small: include_bytes!("../icons/16x16.rgba").to_owned(),
             medium: include_bytes!("../icons/32x32.rgba").to_owned(),
