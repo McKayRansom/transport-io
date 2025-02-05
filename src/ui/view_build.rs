@@ -31,7 +31,9 @@ enum BuildMode {
 enum BuildActions {
     Undo,
     Redo,
+    Clear,
     Copy,
+    Cut,
     Paste,
 }
 
@@ -94,10 +96,12 @@ impl ViewBuild {
             edit_action_bar: Toolbar::new(
                 ToolbarType::Horizontal,
                 vec![
-                    ToolbarItem::new(BuildActions::Undo, "Undo", 'u', Sprite::new(11, 0)),
+                    ToolbarItem::new(BuildActions::Undo, "Undo", 'z', Sprite::new(11, 0)),
                     ToolbarItem::new(BuildActions::Redo, "Redo", 'y', Sprite::new(11, 1)),
-                    ToolbarItem::new(BuildActions::Copy, "Copy", 'c', Sprite::new(11, 2)),
-                    ToolbarItem::new(BuildActions::Paste, "Paste", 'v', Sprite::new(11, 3)),
+                    ToolbarItem::new(BuildActions::Clear, "Clear", '\u{7f}', Sprite::new(11, 2)),
+                    ToolbarItem::new(BuildActions::Copy, "Copy", 'c', Sprite::new(11, 3)),
+                    ToolbarItem::new(BuildActions::Cut, "Cut", 'x', Sprite::new(11, 4)),
+                    ToolbarItem::new(BuildActions::Paste, "Paste", 'v', Sprite::new(11, 5)),
                 ],
             ),
             build_err: None,
@@ -239,16 +243,24 @@ impl ViewBuild {
 
         self.edit_action_bar.draw(
             ctx,
-            screen_width() - (TOOLBAR_SPACE * 4.),
+            screen_width() - (TOOLBAR_SPACE * 2.),
             screen_height() - TOOLBAR_SPACE,
         );
     }
 
     fn do_edit_action(&mut self, map: &mut Map, action: BuildActions) -> BuildResult {
         match action {
-            BuildActions::Undo => self.build_history.undo_action(map),
-            BuildActions::Redo => self.build_history.redo_action(map),
+            BuildActions::Undo => {
+                self.edit_action_bar.clear_selected();
+                self.build_history.undo_action(map)
+            }
+            BuildActions::Redo => {
+                self.edit_action_bar.clear_selected();
+                self.build_history.redo_action(map)
+            },
+            BuildActions::Clear => todo!(),
             BuildActions::Copy => todo!(),
+            BuildActions::Cut => todo!(),
             BuildActions::Paste => todo!(),
         }
     }
@@ -264,7 +276,6 @@ impl ViewBuild {
                     time: BUILD_ERROR_TIME,
                 })
             }
-            self.edit_action_bar.clear_selected();
         }
     }
 }

@@ -31,7 +31,7 @@ const SPEED_PIXELS: i32 = 4;
 pub const SPEED_TICKS: Tick = GRID_CELL_SIZE.0 as Tick / SPEED_PIXELS as Tick;
 const HOPELESSLY_LATE_PERCENT: f32 = 0.25;
 
-const RESERVE_AHEAD_MIN: usize = 2; // current tile + next tile
+const RESERVE_AHEAD_MIN: usize = 4; // current tile + next tile
 const RESERVE_AHEAD_MAX: usize = 8; // TODO: find correct
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -179,6 +179,8 @@ impl Vehicle {
         };
 
         let mut end = start + SPEED_TICKS;
+
+        // let mut intersection_count: usize = 0;
 
         for pos in &self
             .grid_path
