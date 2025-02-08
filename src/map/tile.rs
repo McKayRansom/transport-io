@@ -83,10 +83,12 @@ impl Tile {
         current: Tick,
         reservation: &Reservation,
     ) -> Result<(), ReservationError> {
+        // TEST: allow vehicles to cross in intersections...
+        // if !self.is_blockable() {
+        //     return Ok(());
+        // }
         match self {
-            Tile::Road(road) => road
-                .reserved
-                .try_reserve(id, current, reservation),
+            Tile::Road(road) => road.reserved.try_reserve(id, current, reservation),
 
             Tile::Building(_) => Ok(()),
             _ => Err(ReservationError::TileInvalid),
@@ -119,9 +121,7 @@ impl Tile {
 
     pub fn cost(&self) -> u32 {
         match self {
-            Tile::Road(road) => {
-                road.reserved.cost()
-            }
+            Tile::Road(road) => road.reserved.cost(),
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
             _ => DEFAULT_COST,
@@ -147,7 +147,7 @@ impl Tile {
             _ => None,
         }
     }
-    
+
     pub(crate) fn successor(&self, pos: Position, dir: Direction) -> Position {
         match self {
             Tile::Empty => pos + dir.inverse() + dir.rotate_left(),

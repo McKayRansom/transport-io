@@ -10,7 +10,7 @@ use crate::{
 
 pub const BUILDING_SIZE: Direction = Direction::new(2, 2, 0);
 
-const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
+const HOUSE_UPDATE_TICKS: i32 = 20 * 16;
 const SPAWNER_UPDATE_TICKS: i32 = 16;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]

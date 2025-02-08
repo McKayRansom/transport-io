@@ -7,6 +7,18 @@ use crate::{
 
 use super::{ReservedList, Tick};
 
+#[allow(unused)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FlagType {
+    Normal,
+    Priority,
+    Yield,
+    // DoNotBlock,
+    // Prefer,
+    // Opisite of Prefer
+    // 
+}
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,

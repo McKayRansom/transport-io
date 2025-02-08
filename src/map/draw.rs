@@ -362,7 +362,7 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, tick: Tick) {
 
     if vehicle.grid_path.is_none() {
         tileset.draw_icon(CAR_NO_PATH_SPRITE, &rect, rotation);
-    } else if vehicle.trip_late() < 0.75 {
+    } else if vehicle.trip_late() < 0.25 {
         tileset.draw_icon(CAR_VERY_LATE_SPRITE, &rect, rotation);
         // tileset.draw_text("!", 32., colors::RED, &rect);
     }

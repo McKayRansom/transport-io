@@ -29,10 +29,11 @@ impl From<ReservationError> for ReservePathError {
 
 const SPEED_PIXELS: i32 = 4;
 pub const SPEED_TICKS: Tick = GRID_CELL_SIZE.0 as Tick / SPEED_PIXELS as Tick;
-const HOPELESSLY_LATE_PERCENT: f32 = 0.25;
+const HOPELESSLY_LATE_PERCENT: f32 = 0.1;
+const PATH_TIMEOUT: Tick = 8 * 20;
 
-const RESERVE_AHEAD_MIN: usize = 4; // current tile + next tile
-const RESERVE_AHEAD_MAX: usize = 8; // TODO: find correct
+const RESERVE_AHEAD_MIN: usize = 8; // current tile + next tile
+const RESERVE_AHEAD_MAX: usize = 16; // TODO: find correct
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Vehicle {
@@ -46,8 +47,8 @@ pub struct Vehicle {
     pub grid_path: Path,
     pub reserved: VecDeque<Reservation>,
     path_index: usize,
-    path_time_ticks: u32,
-    elapsed_ticks: u32,
+    path_time_ticks: Tick,
+    elapsed_ticks: Tick,
     pub destination: Id,
 }
 
@@ -134,7 +135,7 @@ impl Vehicle {
 
     pub fn update(&mut self, grid: &mut Grid, tick: Tick) -> Status {
         self.update_trip();
-        if self.trip_late() < HOPELESSLY_LATE_PERCENT {
+        if self.trip_late() < HOPELESSLY_LATE_PERCENT || self.grid_path.is_none() && self.elapsed_ticks > PATH_TIMEOUT {
             return Status::HopelesslyLate;
         }
         if let Some(res) = self.reserved.back() {
@@ -242,6 +243,7 @@ impl Vehicle {
 
         if let Some(path) = &self.grid_path {
             self.path_time_ticks = (path.1 + 1) * SPEED_TICKS as u32;
+            self.elapsed_ticks = 0;
             self.path_index = 0;
         }
         self.grid_path.is_some()
@@ -251,6 +253,10 @@ impl Vehicle {
         match self.try_reserve_path(grid, tick) {
             Ok(()) => {}
             Err(ReservePathError::InvalidPath) => {
+                if self.path_time_ticks > 0 {
+                    self.path_time_ticks = 0;
+                    self.elapsed_ticks = 0;
+                }
                 self.find_path(grid);
             }
             Err(ReservePathError::Blocking) => {
