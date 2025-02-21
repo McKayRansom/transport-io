@@ -651,40 +651,38 @@ mod vehicle_tests {
     }
 
     #[test]
-    #[ignore = "I don't want to"]
     fn yield_roundabout_traffic() {
         let mut grid = Grid::new_from_string(
             "\
-            __.3__
-            __.^__
-            4<lr<<
-            >>LR>2
-            __.^__
-            __1^__
+            __3__
+            __|__
+            4-+-2
+            __|__
+            __1__
             ",
         );
 
         let tick = 0;
 
         // // Top Vehicle is going straight down
-        let start_top: (RoadPosition, Direction) = ((2, 1).into(), Direction::DOWN);
+        let start_top: (RoadPosition, Direction) = (((2, 1), (0, 1)).into(), Direction::DOWN);
         let mut vehicle_top = Vehicle::new(1, start_top, 1, &mut grid, tick).unwrap();
 
-        let start_left: (RoadPosition, Direction) = ((1, 3).into(), Direction::RIGHT);
+        let start_left: (RoadPosition, Direction) = (((1, 2), (1, 1)).into(), Direction::RIGHT);
         let mut vehicle_left = Vehicle::new(2, start_left, 2, &mut grid, tick).unwrap();
 
-        let start_bottom: (RoadPosition, Direction) = ((3, 4).into(), Direction::UP);
+        let start_bottom: (RoadPosition, Direction) = (((2, 3), (1, 0)).into(), Direction::UP);
         let mut vehicle_bottom = Vehicle::new(3, start_bottom, 3, &mut grid, tick).unwrap();
 
-        let start_right: (RoadPosition, Direction) = ((4, 2).into(), Direction::LEFT);
+        let start_right: (RoadPosition, Direction) = (((3, 2), (0, 0)).into(), Direction::LEFT);
         let mut vehicle_right = Vehicle::new(4, start_right, 4, &mut grid, tick).unwrap();
 
         vehicle_top.update(&mut grid, 0);
-        assert_eq!(vehicle_top.path_index, 3);
+        assert_eq!(vehicle_top.path_index, 2);
         vehicle_right.update(&mut grid, 1);
-        assert_eq!(vehicle_right.path_index, 3);
+        assert_eq!(vehicle_right.path_index, 2);
         vehicle_bottom.update(&mut grid, 2);
-        assert_eq!(vehicle_bottom.path_index, 3);
+        assert_eq!(vehicle_bottom.path_index, 2);
 
         // This vehicle can't go through, because reservations are INCLUSIVE
         // So it just barely doesn't fit through.
@@ -693,7 +691,7 @@ mod vehicle_tests {
         vehicle_left.update(&mut grid, 1);
         assert_eq!(vehicle_left.path_index, 0);
 
-        for tick in 0..SPEED_TICKS * 5 {
+        for tick in 0..SPEED_TICKS * 6 {
             vehicle_top.update(&mut grid, tick);
             vehicle_right.update(&mut grid, tick);
             vehicle_bottom.update(&mut grid, tick);
