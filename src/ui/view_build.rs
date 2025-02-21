@@ -148,19 +148,15 @@ impl ViewBuild {
         pos: Position,
         map: &mut Map,
     ) -> Option<Box<dyn BuildAction>> {
-        let pos = pos.round_to(2);
         match self.build_toolbar.get_selected()? {
             BuildMode::TwoWayRoad => Some(Box::new(action_two_way_road(self.mouse_down_pos?, pos))),
             BuildMode::OneWayRoad => Some(Box::new(action_one_way_road(self.mouse_down_pos?, pos))),
             BuildMode::Clear => {
-                let start_pos = self.mouse_down_pos?.round_to(2);
-                let end_pos = pos.round_to(2) + Direction::new(2, 2, 0);
+                let start_pos = self.mouse_down_pos?;
+                let end_pos = pos + Direction::new(1, 1, 0);
                 let area: Direction = end_pos - start_pos;
                 if map.grid.is_area_clear(&start_pos, area).is_err() {
-                    Some(Box::new(BuildActionClearArea::new(
-                        start_pos,
-                        area,
-                    )))
+                    Some(Box::new(BuildActionClearArea::new(start_pos, area)))
                 } else {
                     None
                 }
@@ -170,7 +166,7 @@ impl ViewBuild {
                 pos,
                 RoadBuildOption {
                     height: crate::map::build::BuildRoadHeight::Bridge,
-                    lanes: TWO_WAY_ROAD_LANES,
+                    one_way: false,
                 },
             ))),
         }
@@ -203,23 +199,19 @@ impl ViewBuild {
     }
 
     fn draw_selected(&self, mouse_down_pos: Position, _map: &Map, tileset: &Tileset) {
-        let start_pos = mouse_down_pos.round_to(2);
-        let end_pos = self.mouse_pos.round_to(2);
-        let dir = start_pos.direction_to(end_pos);
+        let start_pos = mouse_down_pos;
+        let end_pos = self.mouse_pos;
         match self.build_toolbar.get_selected() {
             Some(BuildMode::Clear) => {
-                let end_pos = end_pos + Direction::new(2, 2, 0);
+                let end_pos = end_pos + Direction::new(1, 1, 0);
                 for pos in start_pos.iter_area(end_pos - start_pos) {
                     tileset.draw_rect(&pos.into(), SELECTED_DELETE);
                 }
             }
             Some(_) => {
-                let (pos_iter, _) = start_pos
-                    .corner_pos(dir)
-                    .iter_line_to(end_pos.corner_pos(dir.inverse()));
+                let (pos_iter, _) = start_pos.iter_line_to(end_pos);
                 for pos in pos_iter {
                     tileset.draw_rect(&pos.into(), SELECTED_BUILD);
-                    tileset.draw_rect(&(pos + dir.rotate_right()).into(), SELECTED_BUILD);
                 }
             }
             None => {
@@ -257,7 +249,7 @@ impl ViewBuild {
             BuildActions::Redo => {
                 self.edit_action_bar.clear_selected();
                 self.build_history.redo_action(map)
-            },
+            }
             BuildActions::Clear => todo!(),
             BuildActions::Copy => todo!(),
             BuildActions::Cut => todo!(),

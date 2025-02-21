@@ -10,13 +10,9 @@ pub const Z_GROUND: i16 = 0;
 // pub const Z_BRIDGE: i16 = 1;
 
 // Now we define the pixel size of each tile, which we make 32x32 pixels.
-pub const GRID_CELL_SIZE: (f32, f32) = (32., 32.);
-pub const PIXEL_SIZE: f32 = 32. / 16.;
+pub const GRID_CELL_SIZE: (f32, f32) = (64., 64.);
+pub const PIXEL_SIZE: f32 = 64. / 16.;
 
-const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
-const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];
-const BOT_RIGHT_DIRS: [Direction; 2] = [Direction::UP, Direction::RIGHT];
-const BOT_LEFT_DIRS: [Direction; 2] = [Direction::RIGHT, Direction::DOWN];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Position {
@@ -98,30 +94,6 @@ impl Position {
         }
     }
 
-    pub fn corner_pos(&self, dir: Direction) -> Self {
-        match dir {
-            Direction::LEFT => *self + Direction::DOWN_RIGHT,
-            Direction::RIGHT => *self,
-            Direction::DOWN => *self + Direction::RIGHT,
-            Direction::UP => *self + Direction::DOWN,
-            // Direction::NONE => pos,
-            _ => *self,
-        }
-    }
-
-    // .<
-    // >^
-    pub fn default_connections(&self) -> &'static [Direction] {
-        let x_rem = self.x % 2;
-        let y_rem = self.y % 2;
-        match (x_rem, y_rem) {
-            (0, 0) => &TOP_LEFT_DIRS,
-            (1, 0) => &TOP_RIGHT_DIRS,
-            (1, 1) => &BOT_RIGHT_DIRS,
-            (0, 1) => &BOT_LEFT_DIRS,
-            _ => &[],
-        }
-    }
 }
 
 impl From<(i16, i16)> for Position {
@@ -316,9 +288,5 @@ mod position_tests {
             vec![pos(0, 0), pos(1, 0), pos(0, 1), pos(1, 1)]
         );
     }
-
-    #[test]
-    fn test_round_dir() {
-        assert_eq!(pos(0, 0).default_connections()[0], Direction::DOWN)
-    }
 }
+

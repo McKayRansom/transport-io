@@ -15,19 +15,16 @@ use super::{
     Direction, Map, Position,
 };
 
-const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new(3, 0);
-const ROAD_ARROW_SPRITE: Sprite = Sprite::new(3, 1);
-// const ROAD_STRAIGHT_SPRITE: Sprite = Sprite::new(3, 2);
-// const ROAD_TURN_SPRITE: Sprite = Sprite::new(3, 3);
-// const ROAD_YIELD_SPRITE: Sprite = Sprite::new(5, 2);
-pub const ROAD_RAMP_SPRITE: Sprite = Sprite::new(3, 7);
-pub const ROAD_RAMP_BASE_SPRITE: Sprite = Sprite::new(3, 8);
-const ROAD_BRIDGE_SPRITE: Sprite = Sprite::new(3, 7);
-
-const ROAD_EDGE_SPRITE: Sprite = Sprite::new(3, 6);
-const ROAD_ONE_WAY_SPRITE: Sprite = Sprite::new(3, 4);
-const ROAD_DOTTED_SPRITE: Sprite = Sprite::new(3, 5);
-const ROAD_CONTINUES_SPRITE: Sprite = Sprite::new(3, 3);
+const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new_size(2, 0, BUILDING_SIZE);
+const ROAD_TWO_WAY_SPRITE: Sprite = Sprite::new_size(2, 2, BUILDING_SIZE);
+const ROAD_TWO_WAY_TURN_SPRITE: Sprite = Sprite::new_size(2, 4, BUILDING_SIZE);
+const ROAD_DEAD_END: Sprite = Sprite::new_size(2, 6, BUILDING_SIZE);
+const ROAD_NOT_CONNECTED: Sprite = Sprite::new_size(2, 8, BUILDING_SIZE);
+const _ROAD_ONE_WAY_SPRITE: Sprite = Sprite::new_size(2, 10, BUILDING_SIZE);
+const _ROAD_ONE_WAY_TURN_SPRITE: Sprite = Sprite::new_size(2, 12, BUILDING_SIZE);
+const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(4, 10, BUILDING_SIZE);
+const ROAD_TWO_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 12, BUILDING_SIZE);
+const _ROAD_ONE_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 14, BUILDING_SIZE);
 
 const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 
@@ -55,17 +52,18 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
         draw_building(b, tileset, &map.grid);
     }
 
-    for s in map.vehicles.hash_map.iter() {
-        if s.1.pos.z == 0 {
-            draw_vehicle(s.1, tileset, map.tick);
+    // TODO: Draw before buildings but after driveways!
+    for s in map.vehicles.hash_map.values() {
+        if s.pos.pos.z == 0 {
+            draw_vehicle(s, tileset, map.tick);
         }
     }
 
     draw_bridges(&map.grid, tileset);
 
-    for s in map.vehicles.hash_map.iter() {
-        if s.1.pos.z == 1 {
-            draw_vehicle(s.1, tileset, map.tick);
+    for s in map.vehicles.hash_map.values() {
+        if s.pos.pos.z == 1 {
+            draw_vehicle(s, tileset, map.tick);
         }
     }
 
@@ -125,138 +123,40 @@ pub fn draw_bridge(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
 
 fn draw_ramp(ramp: &Ramp, pos: Position, tileset: &Tileset) {
     let rect: &Rect = &pos.into();
-    tileset.draw_tile(ROAD_RAMP_BASE_SPRITE, WHITE, rect, ramp.dir.to_radians());
+    // tileset.draw_tile(ROAD_RAMP_BASE_SPRITE, WHITE, rect, ramp.dir.to_radians());
     tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, rect, ramp.dir.to_radians());
 }
 
-enum RoadAdjacentType {
-    Empty,
-    SameDir,
-    OpDir,
-}
-
-fn get_road_adj_type(grid: &Grid, pos: Position, dir: Direction) -> RoadAdjacentType {
-    if let Some(Tile::Road(road)) = grid.get_tile(&pos) {
-        if road.connection_count() > 1 {
-            RoadAdjacentType::Empty
-        } else if road.is_connected(dir) {
-            RoadAdjacentType::SameDir
-        } else if road.is_connected(dir.inverse()) {
-            RoadAdjacentType::OpDir
-        } else {
-            RoadAdjacentType::Empty
-        }
-    } else {
-        RoadAdjacentType::Empty
-    }
-}
-
-fn draw_road_adjacent(
-    road_adj: RoadAdjacentType,
-    pos: Position,
-    dir: Direction,
-    tileset: &Tileset,
-    flip: bool,
-) {
-    let sprite = match road_adj {
-        RoadAdjacentType::Empty => ROAD_EDGE_SPRITE,
-        RoadAdjacentType::SameDir => ROAD_ONE_WAY_SPRITE,
-        RoadAdjacentType::OpDir => ROAD_DOTTED_SPRITE,
-    };
-    tileset.draw_tile_ex(sprite, WHITE, &pos.into(), dir.to_radians(), flip);
-}
-
-pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
+pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
     let connection_count = road.connection_count();
     let rect: &Rect = &pos.into();
 
-    // if connection_count == 0 {
-    //     tileset.draw_tile(
-    //         ROAD_TURN_SPRITE,
-    //         WHITE,
-    //         rect,
-    //         pos.default_connections()[0].to_radians(),
-    //     );
-    if connection_count > 1 {
+    let mut dir = road
+        .get_connections()
+        .first()
+        .unwrap_or(&Direction::NONE)
+        .flatten();
+
+    if connection_count == 0 {
+        tileset.draw_tile(ROAD_NOT_CONNECTED, WHITE, rect, 0.0);
+    } else if connection_count > 2 {
         // draw intersection
         tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
-        for dir in road.get_connections() {
-            tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
-        }
-    } else {
-        let dir = road
-            .get_connections()
-            .first()
-            .unwrap_or(&Direction::NONE)
-            .flatten();
-
-        tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, dir.to_radians());
-
-        let connected_behind: bool = match grid.get_tile(&(pos + dir.inverse())) {
-            Some(Tile::Road(road)) => road.is_connected(dir),
-            Some(Tile::Ramp(_)) => true,
-            _ => false,
-        };
-
-        if connected_behind {
-            tileset.draw_tile(
-                ROAD_CONTINUES_SPRITE,
-                WHITE,
-                rect,
-                dir.rotate_left().to_radians(),
-            );
-        } else {
-            tileset.draw_tile(
-                ROAD_EDGE_SPRITE,
-                WHITE,
-                rect,
-                dir.rotate_left().to_radians(),
-            );
-        }
-
-        let connected_ahead: bool = match grid.get_tile(&(pos + dir)) {
-            Some(Tile::Road(road)) => road.connection_count() > 1,
-            Some(Tile::Ramp(_)) => false,
-            _ => false,
-        };
-
-        if connected_ahead {
-            tileset.draw_tile(
-                ROAD_DOTTED_SPRITE,
-                WHITE,
-                rect,
-                dir.rotate_right().to_radians(),
-            );
-        }
-        draw_road_adjacent(
-            get_road_adj_type(grid, pos + dir.rotate_left(), dir),
-            pos,
-            dir,
-            tileset,
-            false,
-        );
-        draw_road_adjacent(
-            get_road_adj_type(grid, pos + dir.rotate_right(), dir),
-            pos,
-            dir,
-            tileset,
-            true,
-        );
-        // } else {
-        //     tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, dir.to_radians());
-        //     for dir in Direction::ALL {
-        //         if let Some(Tile::Road(_)) = grid.get_tile(&(pos + dir)) {
-        //             // tileset.dr
-        //         } else {
-        //             tileset.draw_tile(ROAD_EDGE_SPRITE, WHITE, rect, dir.rotate_right().to_radians());
-        //         }
-        //     }
+        // for dir in road.get_connections() {
+        // tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
         // }
+    } else if connection_count == 2 {
+        if road.is_straight() {
+            tileset.draw_tile(ROAD_TWO_WAY_SPRITE, WHITE, rect, dir.to_radians());
+        } else {
+            if road.connections[0].rotate_left() != road.connections[1] {
+                dir = road.connections[1]
+            }
+            tileset.draw_tile(ROAD_TWO_WAY_TURN_SPRITE, WHITE, rect, dir.to_radians());
+        }
+    } else if connection_count == 1 {
+        tileset.draw_tile(ROAD_DEAD_END, WHITE, rect, dir.to_radians());
     }
-
-    // if self.reserved {
-    //     tileset.draw_rect(&rect, RESERVED_PATH_COLOR);
-    // }
 }
 
 pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &Grid) {
@@ -281,7 +181,7 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &G
             //         tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
             //     }
         } else {
-            tileset.draw_tile(ROAD_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+            tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
         }
     }
 }
@@ -298,17 +198,25 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
     };
 
     // draw connecting roads...
-    if let Some((pos, dir)) = building.spawn_pos(grid) {
-        tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
-    } else {
-        // TODO: Draw some kind of Not-connected indicator
-    }
+    // if let Some((pos, dir)) = building.spawn_pos(grid) {
+    //     tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
+    // } else {
+    //     // TODO: Draw some kind of Not-connected indicator
+    // }
     // draw connecting roads...
-    if let Some((pos, dir)) = building.destination_pos(grid) {
-        tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
-    }
 
-    let rect = building.pos.into();
+    let rect: Rect = building.pos.into();
+
+    if matches!(building.building_type, BuildingType::House) {
+        // draw driveway
+        if let Some((_pos, dir)) = building.destination_pos(grid) {
+            let mut rect = rect;
+            // Push the driveway over so it lines up with the road
+            rect.x += dir.x as f32 * PIXEL_SIZE;
+            rect.y += dir.y as f32 * PIXEL_SIZE;
+            tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &rect, dir.to_radians());
+        }
+    }
 
     if building.building_type == BuildingType::House {
         tileset.draw_tile(*sprite, color, &rect, 0.0);
@@ -316,10 +224,10 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
         tileset.draw_tile(PROGRESS_BOX, color, &rect, 0.0);
 
         let rect = Rect::new(
-            rect.x + PIXEL_SIZE * 6. - 0.1,
-            rect.y + PIXEL_SIZE * 8. - 0.1,
-            PIXEL_SIZE * 2. * building.arrived_count.min(10) as f32 + 0.2,
-            PIXEL_SIZE * 16. + 0.2,
+            rect.x + PIXEL_SIZE * 3. - 0.1,
+            rect.y + PIXEL_SIZE * 4. - 0.1,
+            PIXEL_SIZE * 1. * building.arrived_count.min(10) as f32 + 0.2,
+            PIXEL_SIZE * 8. + 0.2,
         );
 
         tileset.draw_rect(&rect, color);
@@ -396,8 +304,9 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
         }
     } else {
         let start_pos = vehicle.pos + vehicle.dir;
-        map.grid
-            .iter_reachable(start_pos, |pos| tileset.draw_rect(&pos.into(), path_color));
+        map.grid.iter_reachable(start_pos.into(), |pos| {
+            tileset.draw_rect(&pos.into(), path_color)
+        });
 
         if let Some(building) = map.get_building(&vehicle.destination) {
             if let Some(end_pos) = building.destination_pos(&map.grid) {

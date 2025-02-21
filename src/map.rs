@@ -20,7 +20,7 @@ pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
-use tile::Tick;
+use tile::{RoadPosition, Tick};
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -155,7 +155,7 @@ impl Map {
 
         self.generate_center_roads()?;
 
-        for dir in [(2, 2), (2, -2), (-2, 2), (-2, -2)] {
+        for dir in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
             BuildActionBuilding::new(self, Building::new_house(pos + dir.into(), city_id))
                 .execute(self)?;
         }
@@ -178,7 +178,7 @@ impl Map {
 
     pub fn add_vehicle(
         &mut self,
-        start: Option<(Position, Direction)>,
+        start: Option<(RoadPosition, Direction)>,
         end: Id,
         color: SpawnerColors,
         tick: Tick

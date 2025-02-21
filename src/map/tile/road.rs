@@ -1,11 +1,23 @@
+use std::ops::{Add, Sub};
+
+use macroquad::math::Rect;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     hash_map_id::Id,
-    map::Direction,
+    map::{position::GRID_CELL_SIZE, Direction, Position},
 };
 
-use super::{ReservedList, Tick};
+use super::{Reservation, ReservationError, ReservedList, Tick};
+
+/*
+ * Road Refactor:
+ * - For things like turns and dead-ends to work as expected, we need roads to be a 1st class construct. Let's just go full Open-TTD and
+ * have two-way roads be a whole tile. This will be easier to think about. Highways are still possible with one-way roads.
+ * - This will be a MAJOR refactor of esentially everything.
+ * - Probably means rails will go Open-TTD route as well...
+ * - Before we begin this refactor, should we handle reservations differently...
+ */
 
 #[allow(unused)]
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,36 +28,255 @@ pub enum FlagType {
     // DoNotBlock,
     // Prefer,
     // Opisite of Prefer
-    // 
+    //
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
+pub struct RoadPosition {
+    pub pos: Position,
+    pub off: (i8, i8),
+}
+
+const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
+const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];
+const BOT_RIGHT_DIRS: [Direction; 2] = [Direction::UP, Direction::RIGHT];
+const BOT_LEFT_DIRS: [Direction; 2] = [Direction::RIGHT, Direction::DOWN];
+
+impl RoadPosition {
+    pub fn new(pos: (i16, i16), off: (i8, i8)) -> Self {
+        Self {
+            pos: pos.into(),
+            off,
+        }
+    }
+
+    pub fn index(&self) -> usize {
+        (self.off.0 + self.off.1 * 2) as usize
+    }
+
+    pub fn corner_pos(pos: Position, dir: Direction) -> Self {
+        match dir {
+            Direction::LEFT => Self { pos, off: (1, 1) },
+            Direction::RIGHT => Self { pos, off: (0, 0) },
+            Direction::DOWN => Self { pos, off: (1, 0) },
+            Direction::UP => Self { pos, off: (0, 1) },
+            // Direction::NONE => pos,
+            _ => Self { pos, off: (0, 0) },
+        }
+    }
+
+    // .<
+    // >^
+    pub fn default_connections(&self) -> &'static [Direction] {
+        match self.off {
+            (0, 0) => &TOP_LEFT_DIRS,
+            (1, 0) => &TOP_RIGHT_DIRS,
+            (1, 1) => &BOT_RIGHT_DIRS,
+            (0, 1) => &BOT_LEFT_DIRS,
+            _ => &[],
+        }
+    }
+
+    pub fn successor(&self, dir: Direction) -> RoadPosition {
+        if dir == self.default_connections()[1] {
+            // we can go directly to the next tile so do that
+            *self + dir
+        } else {
+            // start turning around...
+            *self + self.default_connections()[0]
+        }
+    }
+
+    pub fn iter_succ(&self, next_pos: Position) -> RoadPositionSuccIter {
+        RoadPositionSuccIter {
+            pos: *self,
+            next_pos,
+        }
+    }
+}
+
+pub struct RoadPositionSuccIter {
+    pos: RoadPosition,
+    next_pos: Position,
+}
+
+impl Iterator for RoadPositionSuccIter {
+    type Item = RoadPosition;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos.pos == self.next_pos {
+            None
+        } else {
+            self.pos = self.pos.successor(self.next_pos - self.pos.pos);
+            Some(self.pos)
+        }
+    }
+}
+
+impl From<(i16, i16)> for RoadPosition {
+    fn from(value: (i16, i16)) -> Self {
+        Self {
+            pos: value.into(),
+            off: (0, 0),
+        }
+    }
+}
+
+impl From<((i16, i16), (i8, i8))> for RoadPosition {
+    fn from(value: ((i16, i16), (i8, i8))) -> Self {
+        Self {
+            pos: value.0.into(),
+            off: value.1,
+        }
+    }
+}
+
+impl From<Position> for RoadPosition {
+    fn from(pos: Position) -> Self {
+        Self {
+            pos: pos,
+            off: (0, 0),
+        }
+    }
+}
+
+impl From<RoadPosition> for Position {
+    fn from(pos: RoadPosition) -> Self {
+        pos.pos
+    }
+}
+
+impl From<RoadPosition> for Rect {
+    fn from(pos: RoadPosition) -> Self {
+        Rect::new(
+            // TODO: THIS IS WRONG
+            pos.pos.x as f32 * GRID_CELL_SIZE.0 + pos.off.0 as f32 * GRID_CELL_SIZE.0 / 2.,
+            pos.pos.y as f32 * GRID_CELL_SIZE.1 + pos.off.1 as f32 * GRID_CELL_SIZE.1 / 2., /* - (pos.z as f32 * GRID_Z_OFFSET) */
+            GRID_CELL_SIZE.0 / 2.,
+            GRID_CELL_SIZE.1 / 2.,
+        )
+    }
+}
+
+impl Sub<RoadPosition> for RoadPosition {
+    type Output = Direction;
+    fn sub(self, rhs: RoadPosition) -> Self::Output {
+        let dir = self.pos - rhs.pos;
+        if dir != Direction::NONE {
+            dir
+        } else {
+            Direction::new(self.off.0 - rhs.off.0, self.off.1 - rhs.off.1, 0)
+        }
+    }
+}
+
+impl Add<Direction> for RoadPosition {
+    type Output = RoadPosition;
+
+    fn add(self, rhs: Direction) -> Self::Output {
+        let mut new_pos = Self {
+            pos: self.pos,
+            off: self.off,
+        };
+
+        new_pos.off.0 += rhs.x;
+        new_pos.off.1 += rhs.y;
+
+        // There is probably a better way to do this...
+        if new_pos.off.0 < 0 {
+            new_pos.pos.x -= 1;
+            new_pos.off.0 = 1;
+        } else if new_pos.off.0 > 1 {
+            new_pos.pos.x += 1;
+            new_pos.off.0 = 0;
+        }
+
+        // There is probably a better way to do this...
+        if new_pos.off.1 < 0 {
+            new_pos.pos.y -= 1;
+            new_pos.off.1 = 1;
+        } else if new_pos.off.1 > 1 {
+            new_pos.pos.y += 1;
+            new_pos.off.1 = 0;
+        }
+
+        new_pos
+    }
+}
+
+#[cfg(test)]
+mod road_pos_tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        assert_eq!(
+            RoadPosition::new((0, 0), (0, 0)) + Direction::RIGHT,
+            RoadPosition::new((0, 0), (1, 0))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)) + Direction::RIGHT,
+            RoadPosition::new((1, 0), (0, 0))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 1)) + Direction::RIGHT,
+            RoadPosition::new((1, 0), (0, 1))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 1)) + Direction::DOWN_RIGHT,
+            RoadPosition::new((1, 1), (0, 0))
+        );
+        // assert_eq!(
+        //     RoadPosition::new((1, 1), (0, 0)) + Direction::UP_LEFT,
+        //     RoadPosition::new((0, 0), (1, 1))
+        // );
+    }
+
+    #[test]
+    fn test_round_dir() {
+        assert_eq!(
+            RoadPosition::new((0, 0), (0, 0)).successor(Direction::DOWN),
+            RoadPosition::new((0, 0), (0, 1))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT),
+            RoadPosition::new((1, 0), (0, 1))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT),
+            RoadPosition::new((1, 0), (0, 1))
+        );
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub should_yield: bool,
+    // pub is_one_way: bool,
     pub station: Option<Id>,
-    pub reserved: ReservedList,
+    // pub reserved: ReservedList,
+    pub reservations: [ReservedList; 4],
     pub connections: Vec<Direction>,
 }
 
 impl Road {
     pub fn new_connected(dir: Direction, station: Option<Id>) -> Self {
-        Road {
-            station,
-            should_yield: false,
-            reserved: ReservedList::new(),
-            connections: if dir != Direction::NONE {
-                vec![dir]
-            } else {
-                Vec::new()
-            },
-        }
+        let mut road = Self::new();
+        road.station = station;
+        road.connect(dir);
+        road
     }
 
     pub fn new() -> Self {
         Road {
             station: None,
             should_yield: false,
-            reserved: ReservedList::new(),
+            reservations: [
+                ReservedList::new(),
+                ReservedList::new(),
+                ReservedList::new(),
+                ReservedList::new(),
+            ],
             connections: Vec::new(),
         }
     }
@@ -92,6 +323,20 @@ impl Road {
                 road.connect(Direction::RIGHT);
                 road.connect(Direction::UP);
             }
+            '|' => {
+                road.connect(Direction::DOWN);
+                road.connect(Direction::UP);
+            }
+            '-' => {
+                road.connect(Direction::RIGHT);
+                road.connect(Direction::LEFT);
+            }
+            '+' => {
+                road.connect(Direction::RIGHT);
+                road.connect(Direction::UP);
+                road.connect(Direction::DOWN);
+                road.connect(Direction::LEFT);
+            }
             '}' => {
                 road.connect(Direction::RIGHT + Direction::LAYER_UP);
             }
@@ -135,18 +380,52 @@ impl Road {
     pub fn get_connections(&self) -> &[Direction] {
         self.connections.as_slice()
     }
+
+    pub fn unreserve(&mut self, id: Id, road_pos: RoadPosition) {
+        self.reservations[road_pos.index()].unreserve(id);
+    }
+
+    pub fn try_reserve(
+        &mut self,
+        id: Id,
+        current: Tick,
+        reservation: &Reservation,
+    ) -> Result<(), ReservationError> {
+        self.reservations[reservation.pos.index()].try_reserve(id, current, reservation)
+    }
+
+    pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> bool {
+        self.reservations[pos.index()].is_reserved(id, start, end)
+    }
+
+    pub fn is_straight(&self) -> bool {
+        self.connections.len() == 2 && self.connections[0].inverse() == self.connections[1]
+    }
 }
 
 impl std::fmt::Debug for Road {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.reserved.is_reserved(0, 0, Tick::MAX) {
-            write!(f, "o")
-        } else if self.is_connected(Direction::UP) && self.is_connected(Direction::LEFT) {
+        // if self.reserved.is_reserved(0, 0, Tick::MAX) {
+        // write!(f, "o")
+        // } else
+        if self.is_connected(Direction::UP) && self.is_connected(Direction::LEFT) {
             write!(f, "r")
         } else if self.is_connected(Direction::DOWN) && self.is_connected(Direction::LEFT) {
             write!(f, "l")
         } else if self.is_connected(Direction::DOWN) && self.is_connected(Direction::RIGHT) {
             write!(f, "L")
+        } else if self.is_connected(Direction::UP) && self.is_connected(Direction::RIGHT) {
+            write!(f, "R")
+        } else if self.is_connected(Direction::UP) && self.is_connected(Direction::DOWN) {
+            write!(f, "|")
+        } else if self.is_connected(Direction::LEFT) && self.is_connected(Direction::RIGHT) {
+            write!(f, "-")
+        } else if self.is_connected(Direction::UP)
+            && self.is_connected(Direction::DOWN)
+            && self.is_connected(Direction::LEFT)
+            && self.is_connected(Direction::RIGHT)
+        {
+            write!(f, "R")
         } else if self.is_connected(Direction::UP) && self.is_connected(Direction::RIGHT) {
             write!(f, "R")
         } else if self.is_connected(Direction::LEFT) {

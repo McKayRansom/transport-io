@@ -150,7 +150,7 @@ mod save_tests {
         let mut map = Map::new_from_string(">>>>1");
 
         map.add_vehicle(
-            Some((map.grid.pos(0, 0), Direction::RIGHT)),
+            Some(((0, 0).into(), Direction::RIGHT)),
             1,
             crate::consts::SpawnerColors::Blue,
             0,

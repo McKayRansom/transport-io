@@ -1,7 +1,7 @@
 use crate::{
     context::Context,
     map::{
-        draw::draw_vehicle_detail, levels::new_level, tile::Tile, vehicle::{Vehicle, SPEED_TICKS}, Map, Position, Unlocked,
+        draw::draw_vehicle_detail, levels::new_level, tile::Tile, vehicle::Vehicle, Map, Position, Unlocked,
     },
     tileset::{Sprite, Tileset},
 };
@@ -215,13 +215,13 @@ impl UiState {
                     }
                 }
             }
-            Tile::Road(road) => {
+            Tile::Road(_road) => {
                 // ui.label(None, &format!("Road {:?}", road));
-                if let Some(vehicle_id) = road.reserved.get_reserved_id(map.tick, map.tick + SPEED_TICKS /2) {
-                    if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
-                        self.draw_vehicle_details(map, &ctx.tileset, vehicle);
-                    }
-                }
+                // if let Some(vehicle_id) = road.reserved.get_reserved_id(map.tick, map.tick + SPEED_TICKS /2) {
+                //     if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
+                //         self.draw_vehicle_details(map, &ctx.tileset, vehicle);
+                //     }
+                // }
                 // if let Some(station_id) = road.station {
                     // ui.label(None, &format!("S {:?}", station_id));
                     // println!("Station")

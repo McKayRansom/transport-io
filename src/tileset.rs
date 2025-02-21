@@ -104,8 +104,8 @@ impl Tileset {
 
     pub fn draw_tile_ex(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32, flip: bool) {
         let dest_size = vec2(
-            dest.w * sprite.size.x as f32 * self.zoom,
-            dest.h * sprite.size.y as f32 * self.zoom,
+            dest.w as f32 * self.zoom,
+            dest.h as f32 * self.zoom,
         );
         let spr_rect = self.sprite_rect(sprite);
 

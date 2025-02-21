@@ -77,6 +77,7 @@ impl Tile {
         }
     }
 
+    // TODO: Inline this into Reservation
     pub fn reserve(
         &mut self,
         id: Id,
@@ -88,7 +89,7 @@ impl Tile {
         //     return Ok(());
         // }
         match self {
-            Tile::Road(road) => road.reserved.try_reserve(id, current, reservation),
+            Tile::Road(road) => road.try_reserve(id, current, reservation),
 
             Tile::Building(_) => Ok(()),
             _ => Err(ReservationError::TileInvalid),
@@ -96,18 +97,18 @@ impl Tile {
     }
 
     #[allow(clippy::single_match)]
-    pub fn unreserve(&mut self, id: Id) {
+    pub fn unreserve(&mut self, id: Id, pos: RoadPosition) {
         match self {
-            Tile::Road(road) => road.reserved.unreserve(id),
+            Tile::Road(road) => road.unreserve(id, pos),
 
             _ => {}
         }
     }
 
-    pub fn is_reserved(&self, id: Id, start: Tick, end: Tick) -> Result<(), ReservationError> {
+    pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> Result<(), ReservationError> {
         match self {
             Tile::Road(road) => {
-                if road.reserved.is_reserved(id, start, end) {
+                if road.is_reserved(id, pos, start, end) {
                     Err(ReservationError::TileReserved)
                 } else {
                     Ok(())
@@ -121,20 +122,21 @@ impl Tile {
 
     pub fn cost(&self) -> u32 {
         match self {
-            Tile::Road(road) => road.reserved.cost(),
+            // TODO: THINK ABOUT THIS COST!
+            Tile::Road(_road) => DEFAULT_COST, // road.reserved.cost(),
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
             _ => DEFAULT_COST,
         }
     }
 
-    pub(crate) fn is_road(&self) -> bool {
+    pub fn is_road(&self) -> bool {
         matches!(self, Tile::Road(_))
     }
 
     pub fn is_blockable(&self) -> bool {
         if let Tile::Road(road) = self {
-            road.connection_count() <= 1
+            road.connection_count() <= 2
         } else {
             true
         }
@@ -148,7 +150,7 @@ impl Tile {
         }
     }
 
-    pub(crate) fn successor(&self, pos: Position, dir: Direction) -> Position {
+    pub fn successor(&self, pos: Position, dir: Direction) -> Position {
         match self {
             Tile::Empty => pos + dir.inverse() + dir.rotate_left(),
             // Tile::Ramp(ramp) => pos + Direction::LAYER_UP

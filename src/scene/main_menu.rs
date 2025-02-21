@@ -23,31 +23,21 @@ use macroquad::ui::hash;
 use macroquad::window::{screen_height, screen_width};
 
 const MAIN_MENU_MAP: &str = "
-__________________
-__________________
-__________________
-__________________
-________11________
-________11________
-____lr<<lr<<lr____
-____LR>>LR>>LR____
-____.^__.^__.^____
-____.^__.^__.^____
-____.^__.^__.^____
-____.^__.^__.^____
-22<<lr<<lr<<lr<<33
-22>>LR>>LR>>LR>>33
-____.^__.^__.^____
-____.^__.^__.^____
-____.^__.^__.^____
-____.^__.^__.^____
-____lr<<lr<<lr____
-____LR>>LR>>LR____
-________.^________
-________.^________
-________44________
-________44________
+_________
+_________
+____1____
+__L-+-l__
+__|_|_|__
+__|_|_|__
+2-+-+-+-3
+__|_|_|__
+__|_|_|__
+__l-+-r__
+____4____
+_________
+_________
 ";
+
 
 #[derive(Clone)]
 enum MenuOption {
@@ -164,8 +154,9 @@ impl Scene for MainMenu {
         //     return;
         // }
 
+        // TODO: Map.size() call
         ctx.tileset
-            .reset_camera((GRID_CELL_SIZE.0 * 18., GRID_CELL_SIZE.1 * 20.));
+            .reset_camera((GRID_CELL_SIZE.0 * 9., GRID_CELL_SIZE.1 * 10.));
         ctx.tileset.change_zoom(1.2);
 
         draw_map(&self.map, &ctx.tileset);

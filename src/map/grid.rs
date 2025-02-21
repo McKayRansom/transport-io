@@ -8,9 +8,6 @@ use super::{BuildingHashMap, Direction, Position, DEFAULT_CITY_ID};
 use crate::consts::SpawnerColors;
 use crate::hash_map_id::HashMapId;
 
-
-
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct GridTile {
     pub ground: Tile,
@@ -68,7 +65,6 @@ pub struct Grid {
 
 impl Position {}
 
-
 impl fmt::Debug for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f)?;
@@ -109,11 +105,6 @@ impl Grid {
         )
     }
 
-    #[allow(dead_code)]
-    pub fn pos(&self, x: i16, y: i16) -> Position {
-        Position::new(x, y)
-    }
-
     pub fn new_from_string(string: &str) -> Grid {
         let mut grid = Grid {
             buildings: HashMapId::new(),
@@ -141,23 +132,25 @@ impl Grid {
                 }
                 Tile::Road(road) => {
                     if let Some(station) = road.station {
-                        self.buildings.hash_map.entry(station).or_insert_with( || {
-                            let dir = if pos.x < size.0 / 4 {
-                                Direction::RIGHT
-                            } else if pos.y < size.1 / 4 {
-                                Direction::DOWN
-                            } else if pos.x > (size.0 * 3) / 4 {
-                                Direction::LEFT
-                            } else {
-                                Direction::UP
-                            };
-                                Building::new_spawner(
-                                    pos,
-                                    dir,
-                                    SpawnerColors::from_number(station),
-                                    DEFAULT_CITY_ID,
-                                )
+                        let dir = if pos.x < size.0 / 4 {
+                            Direction::RIGHT
+                        } else if pos.y < size.1 / 4 {
+                            Direction::DOWN
+                        } else if pos.x > (size.0 * 3) / 4 {
+                            Direction::LEFT
+                        } else {
+                            Direction::UP
+                        };
+                        road.connect(dir);
+                        self.buildings.hash_map.entry(station).or_insert_with(|| {
+                            Building::new_spawner(
+                                pos,
+                                dir,
+                                SpawnerColors::from_number(station),
+                                DEFAULT_CITY_ID,
+                            )
                         });
+
                     }
                 }
                 _ => {}
@@ -197,7 +190,6 @@ impl Grid {
             .get_mut(pos.x as usize)?
             .get_mut(pos.z)
     }
-
 }
 
 #[cfg(test)]
@@ -209,15 +201,9 @@ mod grid_tests {
     #[test]
     fn test_new() {
         let grid = Grid::new((3, 1));
-        assert_eq!(
-            *grid.get_tile(&grid.pos(0, 0)).unwrap(),
-            Tile::Empty
-        );
+        assert_eq!(*grid.get_tile(&(0, 0).into()).unwrap(), Tile::Empty);
 
-        assert_eq!(
-            grid.size(),
-            (3, 1)
-        );
+        assert_eq!(grid.size(), (3, 1));
 
         assert!(grid.get_tile(&(3, 0).into()).is_none());
         assert!(grid.get_tile(&(0, 1).into()).is_none());
@@ -227,18 +213,14 @@ mod grid_tests {
     fn test_new_from_string() {
         let grid = Grid::new_from_string(
             "<<<
-             >>>");
-
-        assert_eq!(
-            format!("{:?}", grid),
-            "\n<<<\n>>>\n"
+             >>>",
         );
 
+        assert_eq!(format!("{:?}", grid), "\n<<<\n>>>\n");
+
         assert_eq!(
-            *grid.get_tile(&grid.pos(1, 1)).unwrap(),
+            *grid.get_tile(&(1, 1).into()).unwrap(),
             Tile::Road(Road::new_connected(Direction::RIGHT, None))
         );
     }
-
-
 }

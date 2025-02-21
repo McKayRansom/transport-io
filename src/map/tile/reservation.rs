@@ -2,8 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     hash_map_id::Id,
-    map::{grid::Grid, Position},
+    map::grid::Grid,
 };
+
+use super::RoadPosition;
 
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -19,25 +21,25 @@ pub type Tick = u32;
 pub struct Reservation {
     pub start: Tick,
     pub end: Tick,
-    pub pos: Position,
+    pub pos: RoadPosition,
 }
 
 impl Reservation {
-    pub fn new(pos: Position, start: Tick, end: Tick) -> Self {
+    pub fn new(pos: RoadPosition, start: Tick, end: Tick) -> Self {
         Self { start, end, pos }
     }
 
     pub fn reserve(&self, grid: &mut Grid, vehicle_id: Id, tick: Tick)-> Result<(), ReservationError> {
-        grid.get_tile_mut(&self.pos)
+        grid.get_tile_mut(&self.pos.pos)
             .ok_or(ReservationError::TileInvalid)?
             .reserve(vehicle_id, tick, self)
     }
 
     #[allow(unused)]
     pub fn unreserve(&self, grid: &mut Grid, vehicle_id: Id) -> Result<(), ReservationError> {
-        grid.get_tile_mut(&self.pos)
+        grid.get_tile_mut(&self.pos.pos)
             .ok_or(ReservationError::TileInvalid)?
-            .unreserve(vehicle_id);
+            .unreserve(vehicle_id, self.pos);
 
         Ok(())
     }
@@ -48,9 +50,9 @@ impl Reservation {
         grid: &mut Grid, 
         vehicle_id: Id
     ) -> Result<(), ReservationError> {
-        grid.get_tile(&self.pos)
+        grid.get_tile(&self.pos.pos)
             .ok_or(ReservationError::TileInvalid)?
-            .is_reserved(vehicle_id, self.start, self.end)
+            .is_reserved(vehicle_id, self.pos, self.start, self.end)
     }
 }
 
@@ -91,7 +93,7 @@ impl ReservedList {
         Self { list: Vec::new() }
     }
 
-    pub fn cost(&self) -> u32 {
+    pub fn _cost(&self) -> u32 {
         let mut cost = 1;
         for res in &self.list {
             if res.id > 0 {
@@ -174,7 +176,7 @@ mod reservation_tests {
         let mut reserved = ReservedList::new();
         assert!(!reserved.is_reserved(0, 0, 1));
 
-        let pos = Position::new(0, 0);
+        let pos = RoadPosition::new((0, 0), (0, 0));
 
         reserved
             .try_reserve(1234, 0, &Reservation::new(pos, 1, 4))

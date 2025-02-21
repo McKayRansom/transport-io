@@ -1,4 +1,3 @@
-
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
 use tile::Tile;
@@ -8,10 +7,7 @@ use super::*;
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
-
-
 impl Grid {
-
     pub fn find_path(&self, start: (Position, Direction), end: &Id) -> Path {
         let path_start = start.0 + start.1;
 
@@ -66,7 +62,8 @@ impl Grid {
                 .iter()
                 .filter_map(|dir| {
                     let new_pos = *pos + *dir;
-                    self.get_tile(&new_pos).map(|tile| (tile.successor(new_pos, *dir), tile.cost()))
+                    self.get_tile(&new_pos)
+                        .map(|tile| (tile.successor(new_pos, *dir), tile.cost()))
                 })
                 .collect()
         } else {
@@ -87,7 +84,6 @@ impl Grid {
         }
     }
 }
-
 
 #[cfg(test)]
 mod path_tests {
@@ -116,9 +112,9 @@ mod path_tests {
         let grid = Grid::new_from_string(">>1");
 
         let path = grid
-            .find_path((grid.pos(0, 0), Direction::RIGHT), &1)
+            .find_path(((0, 0).into(), Direction::RIGHT), &1)
             .unwrap();
-        assert_eq!(path, (vec![grid.pos(1, 0), grid.pos(2, 0)], 1));
+        assert_eq!(path, (vec![(1, 0).into(), (2, 0).into()], 1));
     }
 
     #[test]
@@ -126,43 +122,34 @@ mod path_tests {
         let grid = Grid::new_from_string("<<1");
 
         assert!(grid
-            .find_path((grid.pos(0, 0), Direction::RIGHT), &1)
+            .find_path(((0, 0).into(), Direction::RIGHT), &1)
             .is_none());
     }
 
     #[test]
     fn test_path_house() {
-        let grid = Grid::new_from_string(
-            "__<<h_
-             _h>>__",
-        );
+        let grid = Grid::new_from_string("h*h");
 
         assert_eq!(
-            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &1)
+            grid.find_path(((0, 0).into(), Direction::RIGHT), &2)
                 .unwrap(),
-            ((2..5).map(|i| grid.pos(i, 1)).collect(), 2)
+            (vec![(1, 0).into(), (2, 0).into()], 1)
         );
     }
 
     #[test]
     fn test_path_dead_end() {
-        let grid = Grid::new_from_string(
-            "h_<<_
-             __>>_",
-        );
+        let grid = Grid::new_from_string("h*");
 
         assert_eq!(
-            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &1)
+            grid.find_path(((0, 0).into(), Direction::RIGHT), &1)
                 .unwrap(),
             (
                 vec![
-                    grid.pos(2, 1),
-                    grid.pos(3, 1),
-                    grid.pos(3, 0),
-                    grid.pos(2, 0),
-                    grid.pos(1, 0),
+                    (1, 0).into(),
+                    (0, 0).into(),
                 ],
-                4
+                1
             )
         );
     }
@@ -175,9 +162,9 @@ mod path_tests {
         );
 
         assert_eq!(
-            grid.find_path((grid.pos(1, 1), Direction::RIGHT), &2)
+            grid.find_path(((1, 1).into(), Direction::RIGHT), &2)
                 .unwrap(),
-            ((2..5).map(|i| grid.pos(i, 1)).collect(), 2)
+            ((2..5).map(|i| (i, 1).into()).collect(), 2)
         );
     }
 }
