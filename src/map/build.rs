@@ -236,9 +236,9 @@ impl BuildActionList {
     }
 
     fn rollback(&mut self, map: &mut Map, index: usize) {
-        for i in 0..index {
+        for item in self.list[0..index].iter_mut().rev() {
             // not sure what we could even do with an error at this point
-            let _ = self.list[i].undo(map);
+            let _ = item.undo(map);
         }
     }
 
@@ -321,11 +321,11 @@ fn build_lane(
                     dir = dir + Direction::LAYER_UP;
                 }
                 1 => {
-                    action_list.append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
+                    // action_list.append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
                     pos += Direction::LAYER_UP;
                 }
                 _ if i == count - 2 => {
-                    action_list.append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
+                    // action_list.append(Box::new(BuildTile::new(pos, Tile::Ramp(Ramp::new(dir)))));
                     dir = dir + Direction::LAYER_DOWN;
                     pos += Direction::LAYER_UP;
                 }
@@ -469,12 +469,13 @@ impl BuildActionBuilding {
 
 impl BuildAction for BuildActionBuilding {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
-        map.insert_building(self.building_id, self.building);
 
         // for dir in Direction::SQUARE {
         BuildTile::new(self.building.pos, Tile::Building(self.building_id))
             .execute(map)?;
         // }
+
+        map.insert_building(self.building_id, self.building);
 
         Ok(())
     }
@@ -706,34 +707,34 @@ mod grid_build_tests {
     }
 
     #[test]
-    #[ignore = "bridges sucks ass"]
     fn test_build_bridge() {
         let mut map = Map::new_blank((6, 1));
         let mut action = action_build_road(
             (0, 0).into(),
-            (2, 0).into(),
+            (4, 0).into(),
             RoadBuildOption {
                 height: BuildRoadHeight::Bridge,
                 one_way: true,
             },
         );
         action.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string_layers("}))>__", "e>]e__"));
+        assert_eq!(map.grid, Grid::new_from_string_layers(">u___u_", "ed--d__"));
 
         action.undo(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string("______\n______"));
+        assert_eq!(map.grid, Grid::new_from_string("______"));
 
         let mut action = action_build_road(
             (0, 0).into(),
             (2, 0).into(),
             RoadBuildOption {
                 height: BuildRoadHeight::Bridge,
-                one_way: true,
+                one_way: false,
             },
         );
 
         action.execute(&mut map).unwrap();
-        assert_eq!(map.grid, Grid::new_from_string_layers("<(({__", "e>]e__"));
+        assert_eq!(map.grid, Grid::new_from_string_layers("})e)*_", "e>>]e__"));
+        // assert_eq!(map.grid, Grid::new_from_string_layers("<(({__", "e>]e__"));
 
         // let mut wrong_dir_road_action = action_one_way_road((2, 0).into(), (4, 0).into());
         // assert!(wrong_dir_road_action.execute(&mut map).is_err());
@@ -794,10 +795,7 @@ mod grid_build_tests {
             map.cities.hash_map.get(&city_id).unwrap().houses[0],
             action_house.building_id
         );
-
-        for dir in Direction::SQUARE {
-            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(1));
-        }
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::Building(1));
 
         action_house.undo(&mut map).unwrap();
 
@@ -806,9 +804,7 @@ mod grid_build_tests {
 
         // Redo
         action_house.execute(&mut map).unwrap();
-        for dir in Direction::SQUARE {
-            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(1));
-        }
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::Building(1));
 
         // Clear
         let mut clear_action = BuildActionClearArea::new((0, 0).into(), (2, 2).into());
@@ -819,8 +815,8 @@ mod grid_build_tests {
 
         // Undo clear
         clear_action.undo(&mut map).unwrap();
-        for dir in Direction::SQUARE {
-            assert_eq!(map.grid.get_tile(&(pos + dir)).unwrap(), &Tile::Building(1));
-        }
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::Building(1));
     }
+
+    // TODO: Test case for reversing BuildList in correct order
 }

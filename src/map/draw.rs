@@ -181,7 +181,7 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &G
             //         tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
             //     }
         } else {
-            tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.to_radians());
+            tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.rotate_left().to_radians());
         }
     }
 }
@@ -197,14 +197,6 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
         }),
     };
 
-    // draw connecting roads...
-    // if let Some((pos, dir)) = building.spawn_pos(grid) {
-    //     tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &pos.into(), dir.to_radians());
-    // } else {
-    //     // TODO: Draw some kind of Not-connected indicator
-    // }
-    // draw connecting roads...
-
     let rect: Rect = building.pos.into();
 
     if matches!(building.building_type, BuildingType::House) {
@@ -216,6 +208,7 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
             rect.y += dir.y as f32 * PIXEL_SIZE;
             tileset.draw_tile(DRIVEWAY_SPRITE, WHITE, &rect, dir.to_radians());
         }
+        // TODO: Draw some kind of not-connected indicator
     }
 
     if building.building_type == BuildingType::House {

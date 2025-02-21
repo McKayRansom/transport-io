@@ -139,13 +139,14 @@ impl Map {
         self.cities.hash_map.get_mut(&id)
     }
 
-    fn generate_center_roads(&mut self) -> BuildResult {
-        // We need a mut Map for this :(
-        // build::action_two_way_road(self.pos, self.pos + Direction::RIGHT * 5)
-        //     .execute(map);
-        // grid.build_two_way_road(self.pos, self.pos + Direction::LEFT * 5)?;
-        // grid.build_two_way_road(self.pos, self.pos + Direction::UP * 5)?;
-        // grid.build_two_way_road(self.pos, self.pos + Direction::DOWN * 5)?;
+    fn generate_center_roads(&mut self, pos: Position) -> BuildResult {
+        build::action_two_way_road(pos + Direction::LEFT * 5, pos + Direction::RIGHT * 5)
+            .execute(self)
+            .unwrap();
+
+        build::action_two_way_road(pos + Direction::UP * 5, pos + Direction::DOWN * 5)
+            .execute(self)
+            .unwrap();
 
         Ok(())
     }
@@ -153,19 +154,23 @@ impl Map {
     fn new_city_generate(&mut self, pos: Position, name: String) -> BuildResult {
         let city_id = self.new_city(pos, name);
 
-        self.generate_center_roads()?;
+        self.generate_center_roads(pos)?;
 
         for dir in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
             BuildActionBuilding::new(self, Building::new_house(pos + dir.into(), city_id))
                 .execute(self)?;
         }
 
-        // let city = self.get_city(city_id).unwrap();
-        // for _ in 0..10 {
-        //     if let Some(building)  = city.grow_building(&self.buildings, &self.grid) {
-        //         self.add_building(building);
-        //     }
-        // }
+        let mut building_to_add: Vec<Building> = Vec::new();
+        for _ in 0..10 {
+            let city = self.cities.hash_map.get(&city_id).unwrap();
+            if let Some(building) = city.grow_building(&self.grid) {
+                building_to_add.push(building);
+            }
+        }
+        for building in building_to_add {
+            let _ = BuildActionBuilding::new(self, building).execute(self);
+        }
 
         Ok(())
     }
@@ -181,7 +186,7 @@ impl Map {
         start: Option<(RoadPosition, Direction)>,
         end: Id,
         color: SpawnerColors,
-        tick: Tick
+        tick: Tick,
     ) -> Option<Id> {
         let id = self.vehicles.id;
         if let Ok(mut vehicle) = Vehicle::new(id, start?, end, &mut self.grid, tick) {

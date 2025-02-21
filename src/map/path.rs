@@ -63,7 +63,7 @@ impl Grid {
                 .filter_map(|dir| {
                     let new_pos = *pos + *dir;
                     self.get_tile(&new_pos)
-                        .map(|tile| (tile.successor(new_pos, *dir), tile.cost()))
+                        .map(|tile| (new_pos, tile.cost()))
                 })
                 .collect()
         } else {

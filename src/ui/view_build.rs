@@ -5,7 +5,7 @@ use macroquad::{
 
 use crate::{
     context::Context,
-    map::{build::*, Direction, Map, Position, Unlocked},
+    map::{build::*, tile::Tile, Direction, Map, Position, Unlocked},
     tileset::{Sprite, Tileset},
 };
 
@@ -189,6 +189,17 @@ impl ViewBuild {
     pub fn mouse_motion_event(&mut self, pos: Position, map: &mut Map) {
         if let Some(tile) = map.grid.get_tile(&pos) {
             dbg!(tile);
+            if let Tile::Building(id) = tile {
+                if let Some(building) = map.get_building(id) {
+                    dbg!(id);
+                    dbg!(building);
+                }
+            }
+            for vehicle in map.vehicles.hash_map.values() {
+                if vehicle.pos.pos == pos {
+                    dbg!(vehicle);
+                }
+            }
         }
         self.mouse_pos = pos;
     }

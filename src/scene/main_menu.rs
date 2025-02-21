@@ -5,7 +5,6 @@ use super::{EScene, Scene};
 use crate::consts::*;
 use crate::context::Context;
 use crate::map::draw::draw_map;
-use crate::map::position::GRID_CELL_SIZE;
 use crate::map::{Map, DEFAULT_CITY_ID};
 use crate::ui::{
     menu::{Menu, MenuItem},
@@ -32,12 +31,11 @@ __|_|_|__
 2-+-+-+-3
 __|_|_|__
 __|_|_|__
-__l-+-r__
+__R-+-r__
 ____4____
 _________
 _________
 ";
-
 
 #[derive(Clone)]
 enum MenuOption {
@@ -154,10 +152,10 @@ impl Scene for MainMenu {
         //     return;
         // }
 
-        // TODO: Map.size() call
-        ctx.tileset
-            .reset_camera((GRID_CELL_SIZE.0 * 9., GRID_CELL_SIZE.1 * 10.));
-        ctx.tileset.change_zoom(1.2);
+        ctx.tileset.reset_camera(self.map.grid.size_px());
+
+        // zoom in for a better look
+        ctx.tileset.change_zoom(1.5);
 
         draw_map(&self.map, &ctx.tileset);
 

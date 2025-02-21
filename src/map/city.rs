@@ -50,6 +50,8 @@ impl City {
                     Err(BuildError::InvalidTile) => break,
                 }
             }
+        } else {
+            // TODO: Remove the house from our list
         }
 
         None
