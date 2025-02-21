@@ -1,14 +1,13 @@
-use std::fmt;
 
 mod road;
 pub use road::*;
 
 mod reservation;
 pub use reservation::*;
+
+use std::fmt;
 use serde::{Deserialize, Serialize};
-
 use crate::hash_map_id::Id;
-
 use super::Direction;
 
 const DEFAULT_COST: u32 = 1;
@@ -20,6 +19,7 @@ pub struct Ramp {
 }
 
 impl Ramp {
+    #[allow(unused)]
     pub fn new(dir: Direction) -> Self {
         Self { dir }
     }
@@ -35,8 +35,6 @@ impl fmt::Debug for Ramp {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BuildingTile {}
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {

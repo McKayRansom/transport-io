@@ -9,7 +9,7 @@ use super::Direction;
 pub const Z_GROUND: i16 = 0;
 // pub const Z_BRIDGE: i16 = 1;
 
-// Now we define the pixel size of each tile, which we make 32x32 pixels.
+// Default zoom pixel size of Position
 pub const GRID_CELL_SIZE: (f32, f32) = (64., 64.);
 pub const PIXEL_SIZE: f32 = 64. / 16.;
 

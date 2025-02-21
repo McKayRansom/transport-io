@@ -194,7 +194,6 @@ impl Vehicle {
             .ok_or(ReservePathError::InvalidPath)?
             .0[self.path_index..]
         {
-
             for road_pos in last_road_pos.iter_succ(*pos) {
                 let tile = grid
                     .get_tile(&road_pos.pos)
@@ -262,7 +261,7 @@ impl Vehicle {
         self.grid_path = grid.find_path((self.pos.pos, self.dir), &self.destination);
 
         if let Some(path) = &self.grid_path {
-            self.path_time_ticks = (path.1 + 1) * SPEED_TICKS as u32;
+            self.path_time_ticks = (path.1 + 1) * SPEED_TICKS;
             self.elapsed_ticks = 0;
             self.path_index = 0;
         }
@@ -323,7 +322,7 @@ impl Vehicle {
     // 1.5 = 50% early
     pub fn trip_late(&self) -> f32 {
         if let Some(path) = &self.grid_path {
-            let tiles_elapsed = (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS as u32) / 2 + 1;
+            let tiles_elapsed = (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS) / 2 + 1;
             let tiles_expected = path.1 + 1;
 
             let elapsed_percent = tiles_elapsed as f32 / tiles_expected as f32;
@@ -486,10 +485,10 @@ mod vehicle_tests {
 
         vehicle.update(&mut grid, 0);
 
-        vehicle.elapsed_ticks = SPEED_TICKS * 2 as u32 + 1;
+        vehicle.elapsed_ticks = SPEED_TICKS * 2 + 1;
         assert_eq!(vehicle.trip_late(), 0.6666666);
 
-        vehicle.elapsed_ticks = (SPEED_TICKS * 4) as u32 + 1;
+        vehicle.elapsed_ticks = (SPEED_TICKS * 4) + 1;
         assert_eq!(vehicle.trip_late(), 0.33333337);
     }
 
@@ -507,13 +506,13 @@ mod vehicle_tests {
         .unwrap();
 
         let trip_length: u32 = 3;
-        let trip_time = SPEED_TICKS as u32 * trip_length;
+        let trip_time = SPEED_TICKS * trip_length;
 
         assert_eq!(vehicle.path_time_ticks, trip_time);
         assert_eq!(vehicle.trip_completed_percent(), 0.);
         assert_eq!(vehicle.trip_late(), 1.0);
 
-        for i in 0..(trip_length * SPEED_TICKS as u32) {
+        for i in 0..(trip_length * SPEED_TICKS) {
             assert_eq!(
                 vehicle.update(&mut grid, i as Tick),
                 Status::EnRoute,
@@ -521,13 +520,13 @@ mod vehicle_tests {
             );
             assert_eq!(
                 vehicle.path_index,
-                (i / (SPEED_TICKS as u32)) as usize,
+                (i / (SPEED_TICKS)) as usize,
                 "Failed on tick {i}"
             );
             assert_eq!(vehicle.elapsed_ticks, i + 1);
             assert_eq!(
                 vehicle.trip_completed_percent(),
-                ((i * SPEED_TICKS as u32) / SPEED_TICKS as u32) as f32 / trip_length as f32,
+                ((i * SPEED_TICKS) / SPEED_TICKS) as f32 / trip_length as f32,
                 "Failed on tick {i}"
             );
             assert_eq!(

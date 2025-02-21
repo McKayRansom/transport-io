@@ -10,26 +10,6 @@ use crate::{
 
 use super::{Reservation, ReservationError, ReservedList, Tick};
 
-/*
- * Road Refactor:
- * - For things like turns and dead-ends to work as expected, we need roads to be a 1st class construct. Let's just go full Open-TTD and
- * have two-way roads be a whole tile. This will be easier to think about. Highways are still possible with one-way roads.
- * - This will be a MAJOR refactor of esentially everything.
- * - Probably means rails will go Open-TTD route as well...
- * - Before we begin this refactor, should we handle reservations differently...
- */
-
-#[allow(unused)]
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FlagType {
-    Normal,
-    Priority,
-    Yield,
-    // DoNotBlock,
-    // Prefer,
-    // Opisite of Prefer
-    //
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub struct RoadPosition {
@@ -37,10 +17,6 @@ pub struct RoadPosition {
     pub off: (i8, i8),
 }
 
-const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
-const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];
-const BOT_RIGHT_DIRS: [Direction; 2] = [Direction::UP, Direction::RIGHT];
-const BOT_LEFT_DIRS: [Direction; 2] = [Direction::RIGHT, Direction::DOWN];
 
 impl RoadPosition {
     pub fn new(pos: (i16, i16), off: (i8, i8)) -> Self {
@@ -65,14 +41,19 @@ impl RoadPosition {
         }
     }
 
+    const TOP_LEFT_DIRS: [Direction; 2] = [Direction::DOWN, Direction::LEFT];
+    const TOP_RIGHT_DIRS: [Direction; 2] = [Direction::LEFT, Direction::UP];
+    const BOT_RIGHT_DIRS: [Direction; 2] = [Direction::UP, Direction::RIGHT];
+    const BOT_LEFT_DIRS: [Direction; 2] = [Direction::RIGHT, Direction::DOWN];
+
     // .<
     // >^
     pub fn default_connections(&self) -> &'static [Direction] {
         match self.off {
-            (0, 0) => &TOP_LEFT_DIRS,
-            (1, 0) => &TOP_RIGHT_DIRS,
-            (1, 1) => &BOT_RIGHT_DIRS,
-            (0, 1) => &BOT_LEFT_DIRS,
+            (0, 0) => &Self::TOP_LEFT_DIRS,
+            (1, 0) => &Self::TOP_RIGHT_DIRS,
+            (1, 1) => &Self::BOT_RIGHT_DIRS,
+            (0, 1) => &Self::BOT_LEFT_DIRS,
             _ => &[],
         }
     }
@@ -134,7 +115,7 @@ impl From<((i16, i16), (i8, i8))> for RoadPosition {
 impl From<Position> for RoadPosition {
     fn from(pos: Position) -> Self {
         Self {
-            pos: pos,
+            pos,
             off: (0, 0),
         }
     }
@@ -149,9 +130,8 @@ impl From<RoadPosition> for Position {
 impl From<RoadPosition> for Rect {
     fn from(pos: RoadPosition) -> Self {
         Rect::new(
-            // TODO: THIS IS WRONG
             pos.pos.x as f32 * GRID_CELL_SIZE.0 + pos.off.0 as f32 * GRID_CELL_SIZE.0 / 2.,
-            pos.pos.y as f32 * GRID_CELL_SIZE.1 + pos.off.1 as f32 * GRID_CELL_SIZE.1 / 2., /* - (pos.z as f32 * GRID_Z_OFFSET) */
+            pos.pos.y as f32 * GRID_CELL_SIZE.1 + pos.off.1 as f32 * GRID_CELL_SIZE.1 / 2.,
             GRID_CELL_SIZE.0 / 2.,
             GRID_CELL_SIZE.1 / 2.,
         )
@@ -251,10 +231,7 @@ mod road_pos_tests {
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
-    pub should_yield: bool,
-    // pub is_one_way: bool,
     pub station: Option<Id>,
-    // pub reserved: ReservedList,
     pub reservations: [ReservedList; 4],
     pub connections: Vec<Direction>,
 }
@@ -270,7 +247,6 @@ impl Road {
     pub fn new() -> Self {
         Road {
             station: None,
-            should_yield: false,
             reservations: [
                 ReservedList::new(),
                 ReservedList::new(),
@@ -298,10 +274,6 @@ impl Road {
             }
             '.' => {
                 road.connect(Direction::DOWN);
-            }
-            'y' => {
-                road.connect(Direction::UP);
-                road.should_yield = true;
             }
             // Roundabouts - top left
             'l' => {
@@ -405,9 +377,6 @@ impl Road {
 
 impl std::fmt::Debug for Road {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // if self.reserved.is_reserved(0, 0, Tick::MAX) {
-        // write!(f, "o")
-        // } else
         if self.is_connected(Direction::UP) && self.is_connected(Direction::LEFT) {
             write!(f, "r")
         } else if self.is_connected(Direction::DOWN) && self.is_connected(Direction::LEFT) {
@@ -425,9 +394,7 @@ impl std::fmt::Debug for Road {
             && self.is_connected(Direction::LEFT)
             && self.is_connected(Direction::RIGHT)
         {
-            write!(f, "R")
-        } else if self.is_connected(Direction::UP) && self.is_connected(Direction::RIGHT) {
-            write!(f, "R")
+            write!(f, "+")
         } else if self.is_connected(Direction::LEFT) {
             write!(f, "<")
         } else if self.is_connected(Direction::RIGHT) {

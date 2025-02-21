@@ -16,11 +16,11 @@ use scene::main_menu::MainMenu;
 use scene::{EScene, Scene};
 
 use macroquad::prelude::*;
+
 fn window_conf() -> Conf {
     Conf {
         fullscreen: false,
-        // This doesn't seem to work on Mac Native :(
-        // Will need a way around this or turn it off...
+        // high-dpi doesn't seem to work on Mac Native :(
         high_dpi: false,
         icon: Some(Icon {
             small: include_bytes!("../icons/16x16.rgba").to_owned(),

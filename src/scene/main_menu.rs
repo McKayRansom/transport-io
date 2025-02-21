@@ -195,8 +195,6 @@ impl Scene for MainMenu {
             },
         );
 
-        // draw_text("Transport IO", x, y, font_size, WHITE);
-
         if let Some(selected) = self.menu.draw(hash!()).cloned() {
             self.menu_option_selected(selected, ctx);
         }

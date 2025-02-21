@@ -1,12 +1,13 @@
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
-use super::{grid::Grid, tile::{RoadPosition, Tile}, Direction, Position};
-
-use crate::{
-    consts::SpawnerColors,
-    hash_map_id::Id,
+use super::{
+    grid::Grid,
+    tile::{RoadPosition, Tile},
+    Direction, Position,
 };
+
+use crate::{consts::SpawnerColors, hash_map_id::Id};
 
 pub const BUILDING_SIZE: Direction = Direction::new(2, 2, 0);
 
@@ -79,13 +80,13 @@ impl Building {
     pub fn spawn_pos(&self, grid: &Grid) -> Option<(RoadPosition, Direction)> {
         if let Some(dir) = self.dir {
             let dir = dir.inverse();
-           return Some((RoadPosition::corner_pos(self.pos, dir).into(), dir.inverse()))
+            return Some((RoadPosition::corner_pos(self.pos, dir), dir.inverse()));
         }
         for dir in Direction::ALL {
             // let dir = pos.default_connections()[1];
             let pos_adj = self.pos + dir;
             if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
-                return Some((RoadPosition::corner_pos(self.pos, dir.inverse()), dir))
+                return Some((RoadPosition::corner_pos(self.pos, dir.inverse()), dir));
             }
         }
         // should there be a default?
@@ -94,13 +95,13 @@ impl Building {
 
     pub fn destination_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
         if let Some(dir) = self.dir {
-            return Some((self.pos, dir.inverse()))
+            return Some((self.pos, dir.inverse()));
         }
         for dir in Direction::ALL {
             // let dir = pos.default_connections()[0].inverse();
             let pos_adj = self.pos + dir;
             if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
-                return Some((self.pos, dir))
+                return Some((self.pos, dir));
             }
         }
         None

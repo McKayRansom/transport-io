@@ -1,12 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    hash_map_id::Id,
-    map::grid::Grid,
-};
+use crate::{hash_map_id::Id, map::grid::Grid};
 
 use super::RoadPosition;
-
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ReservationError {
@@ -29,7 +25,12 @@ impl Reservation {
         Self { start, end, pos }
     }
 
-    pub fn reserve(&self, grid: &mut Grid, vehicle_id: Id, tick: Tick)-> Result<(), ReservationError> {
+    pub fn reserve(
+        &self,
+        grid: &mut Grid,
+        vehicle_id: Id,
+        tick: Tick,
+    ) -> Result<(), ReservationError> {
         grid.get_tile_mut(&self.pos.pos)
             .ok_or(ReservationError::TileInvalid)?
             .reserve(vehicle_id, tick, self)
@@ -45,11 +46,7 @@ impl Reservation {
     }
 
     #[allow(unused)]
-    pub fn is_reserved(
-        &self,
-        grid: &mut Grid, 
-        vehicle_id: Id
-    ) -> Result<(), ReservationError> {
+    pub fn is_reserved(&self, grid: &mut Grid, vehicle_id: Id) -> Result<(), ReservationError> {
         grid.get_tile(&self.pos.pos)
             .ok_or(ReservationError::TileInvalid)?
             .is_reserved(vehicle_id, self.pos, self.start, self.end)
@@ -204,7 +201,7 @@ mod reservation_tests {
             .try_reserve(56, 0, &Reservation::new(pos, 0, 5))
             .is_err());
 
-        let _reservation_later = reserved
+        reserved
             .try_reserve(1234, 5, &Reservation::new(pos, 5, 6))
             .unwrap();
 
