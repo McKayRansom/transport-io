@@ -1,3 +1,6 @@
+extern crate test;
+use test::Bencher;
+
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
 use tile::Tile;
@@ -62,8 +65,7 @@ impl Grid {
                 .iter()
                 .filter_map(|dir| {
                     let new_pos = *pos + *dir;
-                    self.get_tile(&new_pos)
-                        .map(|tile| (new_pos, tile.cost()))
+                    self.get_tile(&new_pos).map(|tile| (new_pos, tile.cost()))
                 })
                 .collect()
         } else {
@@ -87,6 +89,8 @@ impl Grid {
 
 #[cfg(test)]
 mod path_tests {
+    use pathfinding::prelude::bfs;
+
     use super::*;
 
     #[test]
@@ -144,13 +148,7 @@ mod path_tests {
         assert_eq!(
             grid.find_path(((0, 0).into(), Direction::RIGHT), &1)
                 .unwrap(),
-            (
-                vec![
-                    (1, 0).into(),
-                    (0, 0).into(),
-                ],
-                1
-            )
+            (vec![(1, 0).into(), (0, 0).into(),], 1)
         );
     }
 
@@ -166,5 +164,56 @@ mod path_tests {
                 .unwrap(),
             ((2..5).map(|i| (i, 1).into()).collect(), 2)
         );
+    }
+
+    fn bench_grid() -> Grid {
+        Grid::new_from_string(
+            "+++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++
+             +++++++++++++++++",
+        )
+    }
+
+    #[bench]
+    fn bench_astar(b: &mut Bencher) {
+        let grid = bench_grid();
+
+        b.iter(|| {
+            let end = Position::new(15, 15);
+            astar(
+                &Position::new(7, 7),
+                |p| grid.road_successors(p),
+                |p| p.distance(&end),
+                |p| p == &end,
+            )
+        })
+    }
+
+    #[bench]
+    fn bench_bfs(b: &mut Bencher) {
+        let grid = bench_grid();
+
+        b.iter(|| {
+            let end = Position::new(15, 15);
+            bfs(
+                &Position::new(7, 7),
+                |p| {
+                    grid.road_successors(p)
+                        .into_iter()
+                        .map(|(pos, _cost)| pos)
+                },
+                |p| p == &end,
+            )
+        })
     }
 }

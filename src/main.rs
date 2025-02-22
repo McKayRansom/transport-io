@@ -1,3 +1,6 @@
+#![feature(test)]
+
+
 mod consts;
 mod context;
 mod hash_map_id;
