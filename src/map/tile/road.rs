@@ -59,7 +59,7 @@ impl RoadPosition {
     }
 
     pub fn successor(&self, dir: Direction) -> RoadPosition {
-        if dir == self.default_connections()[1] {
+        if dir.flatten() == self.default_connections()[1] {
             // we can go directly to the next tile so do that
             *self + dir
         } else {
@@ -159,6 +159,8 @@ impl Add<Direction> for RoadPosition {
             off: self.off,
         };
 
+        new_pos.pos.z += rhs.z as i16;
+
         new_pos.off.0 += rhs.x;
         new_pos.off.1 += rhs.y;
 
@@ -225,6 +227,10 @@ mod road_pos_tests {
         assert_eq!(
             RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT),
             RoadPosition::new((1, 0), (0, 1))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT + Direction::LAYER_UP),
+            RoadPosition{ pos: Position::_new_z(1, 0, 1), off: (0, 1)}
         );
     }
 }
