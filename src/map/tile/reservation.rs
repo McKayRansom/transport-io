@@ -80,15 +80,12 @@ impl Reserved {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReservedList {
     list: Vec<Reserved>,
 }
 
 impl ReservedList {
-    pub fn new() -> Self {
-        Self { list: Vec::new() }
-    }
 
     pub fn _cost(&self) -> u32 {
         let mut cost = 1;
@@ -170,7 +167,7 @@ mod reservation_tests {
 
     #[test]
     fn test_new() {
-        let mut reserved = ReservedList::new();
+        let mut reserved = ReservedList::default();
         assert!(!reserved.is_reserved(0, 0, 1));
 
         let pos = RoadPosition::new((0, 0), (0, 0));

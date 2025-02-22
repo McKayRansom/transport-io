@@ -1,4 +1,3 @@
-
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
 use tile::Tile;
@@ -59,10 +58,10 @@ impl Grid {
 
     pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            road.get_connections()
+            road.connections
                 .iter()
                 .filter_map(|dir| {
-                    let new_pos = *pos + *dir;
+                    let new_pos = *pos + dir;
                     self.get_tile(&new_pos).map(|tile| (new_pos, tile.cost()))
                 })
                 .collect()
@@ -208,11 +207,7 @@ mod path_tests {
             let end = Position::new(15, 15);
             bfs(
                 &Position::new(7, 7),
-                |p| {
-                    grid.road_successors(p)
-                        .into_iter()
-                        .map(|(pos, _cost)| pos)
-                },
+                |p| grid.road_successors(p).into_iter().map(|(pos, _cost)| pos),
                 |p| p == &end,
             )
         })

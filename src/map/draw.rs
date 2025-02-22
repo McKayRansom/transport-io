@@ -117,13 +117,13 @@ pub fn draw_bridge(tile: &Tile, pos: Position, tileset: &Tileset) {
 }
 
 pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
-    let connection_count = road.connection_count();
+    let connection_count = road.connections.count();
     let rect: &Rect = &pos.into();
 
     let mut dir = road
-        .get_connections()
-        .first()
-        .unwrap_or(&Direction::NONE)
+        .connections
+        .get_nth_dir(0)
+        .unwrap_or(Direction::NONE)
         .flatten();
 
     if connection_count == 0 {
@@ -138,8 +138,15 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
         if road.is_straight() {
             tileset.draw_tile(ROAD_TWO_WAY_SPRITE, WHITE, rect, dir.to_radians());
         } else {
-            if road.connections[0].rotate_left().flatten() != road.connections[1].flatten() {
-                dir = road.connections[1]
+            if road
+                .connections
+                .get_nth_dir(0)
+                .unwrap()
+                .rotate_left()
+                .flatten()
+                != road.connections.get_nth_dir(1).unwrap().flatten()
+            {
+                dir = road.connections.get_nth_dir(1).unwrap()
             }
             tileset.draw_tile(ROAD_TWO_WAY_TURN_SPRITE, WHITE, rect, dir.to_radians());
         }
@@ -154,8 +161,13 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset) {
     tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
 
     let rect = Rect::from(*pos);
-    for dir in road.get_connections() {
-        tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.rotate_left().to_radians());
+    for dir in road.connections.iter() {
+        tileset.draw_tile(
+            ROAD_TWO_WAY_BRIDGE_SPRITE,
+            WHITE,
+            &rect,
+            dir.rotate_left().to_radians(),
+        );
     }
 }
 

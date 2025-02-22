@@ -26,24 +26,6 @@ impl Tile {
         Tile::Empty
     }
 
-    pub fn new_from_char(ch: char) -> Self {
-        match ch {
-            'h' => Tile::Building(0),
-            '_' => Tile::Empty,
-            'w' => Tile::Water,
-            '1'..'9' => Tile::Road(Road::new_connected(
-                Direction::NONE,
-                Some(ch as Id - '0' as Id),
-            )),
-            _ => {
-                if let Some(road) = Road::new_from_char(ch) {
-                    Tile::Road(road)
-                } else {
-                    Tile::Empty
-                }
-            }
-        }
-    }
 
     // TODO: Inline this into Reservation
     pub fn reserve(
@@ -104,7 +86,7 @@ impl Tile {
 
     pub fn is_blockable(&self) -> bool {
         if let Tile::Road(road) = self {
-            road.connection_count() <= 2
+            road.connections.count() <= 2
         } else {
             true
         }
@@ -115,6 +97,27 @@ impl Tile {
             Tile::Building(building_id) => Some(*building_id),
             Tile::Road(road) => road.station,
             _ => None,
+        }
+    }
+}
+
+impl From<char> for Tile {
+    fn from(ch: char) -> Self {
+        match ch {
+            'h' => Tile::Building(0),
+            '_' => Tile::Empty,
+            'w' => Tile::Water,
+            '1'..'9' => Tile::Road(Road::new_connected(
+                Direction::NONE,
+                Some(ch as Id - '0' as Id),
+            )),
+            _ => {
+                if let Ok(road) = ch.try_into() {
+                    Tile::Road(road)
+                } else {
+                    Tile::Empty
+                }
+            }
         }
     }
 }

@@ -70,7 +70,7 @@ impl BuildAction for BuildRoad {
         // don't allow building over a bridge entry
         if self.pos.z != 0 {
             if let Some(Tile::Road(road)) = map.grid.get_tile(&(self.pos + Direction::LAYER_DOWN)) {
-                for dir in &road.connections {
+                for dir in road.connections.iter() {
                     if dir.z != 0 {
                         return Err(BuildError::OccupiedTile);
                     }
@@ -88,25 +88,26 @@ impl BuildAction for BuildRoad {
             Tile::Road(road) => {
                 // don't allow bridges to cross for now, unless it is a two-way road
                 // (this janky mess just detects if it is a two-way road...)
+                // TODO: Don't allow building over a bridge entry ramp!
                 if self.pos.z != 0
                     && road
                         .connections
-                        .first()
-                        .unwrap_or(&Direction::NONE)
+                        .get_nth_dir(0)
+                        .unwrap_or(Direction::NONE)
                         .flatten()
                         != self
                             .road
                             .connections
-                            .first()
-                            .unwrap_or(&Direction::NONE)
+                            .get_nth_dir(0)
+                            .unwrap_or(Direction::NONE)
                             .inverse()
                             .flatten()
                 {
                     return Err(BuildError::OccupiedTile);
                 }
 
-                for dir in &self.road.connections {
-                    road.connect(*dir);
+                for dir in self.road.connections.iter() {
+                    road.connections.connect(dir, false);
                 }
 
                 Ok(())
@@ -153,27 +154,27 @@ impl BuildActionClearArea {
                 }
             }
             Tile::Road(road) => {
-                for dir in road.connections.clone() {
+                for dir in road.connections.iter() {
                     if dir.z == 1 {
                         self.clear_bridge(map, pos, dir)?;
                     }
                 }
                 for dir in Direction::ALL {
                     if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&(pos + dir)) {
-                        if road.is_connected(dir.inverse()) {
+                        if road.connections.is_connected(dir.inverse()) {
                             self.old_tiles.push((pos + dir, Tile::Road(road.clone())));
-                            road.disconnect(dir.inverse());
-                            if road.connection_count() == 0 {
+                            road.connections.disconnect(dir.inverse());
+                            if road.connections.count() == 0 {
                                 *map.grid.get_tile_mut(&(pos + dir)).unwrap() = Tile::Empty;
                             }
                         }
                     }
                     let dir = dir + Direction::LAYER_DOWN;
                     if let Some(Tile::Road(road)) = map.grid.get_tile_mut(&(pos + dir)) {
-                        if road.is_connected(dir.inverse()) {
+                        if road.connections.is_connected(dir.inverse()) {
                             self.old_tiles.push((pos + dir, Tile::Road(road.clone())));
-                            road.disconnect(dir.inverse());
-                            if road.connection_count() == 0 {
+                            road.connections.disconnect(dir.inverse());
+                            if road.connections.count() == 0 {
                                 *map.grid.get_tile_mut(&(pos + dir)).unwrap() = Tile::Empty;
                             }
                         }
@@ -554,22 +555,22 @@ mod grid_build_tests {
         let mut action = BuildRoad::new(pos, Direction::RIGHT);
 
         action.execute(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('>').into());
         action.undo(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('e').into());
 
         action.execute(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('>').into());
 
         let mut clear_action = BuildActionClearArea::new(pos, (1, 1).into());
         clear_action.execute(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('e').into());
 
         action.execute(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('>'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('>').into());
 
         clear_action.execute(map).unwrap();
-        assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::new_from_char('e'));
+        assert_eq!(map.grid.get_tile(&pos).unwrap(), &('e').into());
     }
 
     #[test]

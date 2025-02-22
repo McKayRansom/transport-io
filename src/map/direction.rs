@@ -24,13 +24,23 @@ impl Direction {
     pub const UP: Direction = Direction::new(0, -1, 0);
     pub const DOWN: Direction = Direction::new(0, 1, 0);
 
+    pub const RIGHT_UP: Direction = Direction::new(1, 0, 1);
+    pub const LEFT_UP: Direction = Direction::new(-1, 0, 1);
+    pub const UP_UP: Direction = Direction::new(0, -1, 1);
+    pub const DOWN_UP: Direction = Direction::new(0, 1, 1);
+
+    pub const RIGHT_DOWN: Direction = Direction::new(1, 0, -1);
+    pub const LEFT_DOWN: Direction = Direction::new(-1, 0, -1);
+    pub const UP_DOWN: Direction = Direction::new(0, -1, -1);
+    pub const DOWN_DOWN: Direction = Direction::new(0, 1, -1);
+
     pub const DOWN_RIGHT: Direction = Direction::new(1, 1, 0);
 
     pub const LAYER_UP: Direction = Direction::new(0, 0, 1);
     pub const LAYER_DOWN: Direction = Direction::new(0, 0, -1);
     pub const LAYER_DOWN_2: Direction = Direction::new(0, 0, -2);
 
-    pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::LEFT, Direction::UP, Direction::DOWN];
+    pub const ALL: [Direction; 4] = [Direction::RIGHT, Direction::DOWN, Direction::LEFT, Direction::UP];
     pub const SQUARE: [Direction; 4] = [Direction::NONE, Direction::RIGHT, Direction::DOWN, Direction::DOWN_RIGHT];
 
     pub fn inverse(&self) -> Self {

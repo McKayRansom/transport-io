@@ -24,15 +24,15 @@ impl GridTile {
 
     fn new_from_char(chr: char) -> Self {
         GridTile {
-            ground: Tile::new_from_char(chr),
+            ground: chr.into(),
             bridge: Tile::Empty,
         }
     }
 
     fn new_from_char_layers(args: (char, char)) -> Self {
         GridTile {
-            ground: Tile::new_from_char(args.0),
-            bridge: Tile::new_from_char(args.1),
+            ground: args.0.into(),
+            bridge: args.1.into(),
         }
     }
 
@@ -141,7 +141,7 @@ impl Grid {
                         } else {
                             Direction::UP
                         };
-                        road.connect(dir);
+                        road.connections.connect(dir, false);
                         self.buildings.hash_map.entry(station).or_insert_with(|| {
                             Building::new_spawner(
                                 pos,
