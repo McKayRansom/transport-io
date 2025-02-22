@@ -14,34 +14,10 @@ const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Ramp {
-    pub dir: Direction,
-}
-
-impl Ramp {
-    #[allow(unused)]
-    pub fn new(dir: Direction) -> Self {
-        Self { dir }
-    }
-}
-
-impl fmt::Debug for Ramp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.dir {
-            Direction::RIGHT => write!(f, ")"),
-            Direction::LEFT => write!(f, "("),
-            _ => write!(f, "r?"),
-        }
-    }
-}
-
-
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tile {
     Empty,
     Building(Id),
     Road(Road),
-    Ramp(Ramp),
     Water,
 }
 
@@ -53,12 +29,6 @@ impl Tile {
     pub fn new_from_char(ch: char) -> Self {
         match ch {
             'h' => Tile::Building(0),
-            ')' => Tile::Ramp(Ramp {
-                dir: Direction::RIGHT,
-            }),
-            '(' => Tile::Ramp(Ramp {
-                dir: Direction::LEFT,
-            }),
             '_' => Tile::Empty,
             'w' => Tile::Water,
             '1'..'9' => Tile::Road(Road::new_connected(
@@ -156,8 +126,6 @@ impl fmt::Debug for Tile {
             Tile::Road(road) => road.fmt(f),
             Tile::Building(_) => write!(f, "h"),
             Tile::Water => write!(f, "w"),
-            Tile::Ramp(ramp) => ramp.fmt(f),
-            // => write!(f, "b")?,
         }
     }
 }

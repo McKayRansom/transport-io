@@ -377,7 +377,7 @@ impl Road {
     }
 
     pub fn is_straight(&self) -> bool {
-        self.connections.len() == 2 && self.connections[0].inverse() == self.connections[1]
+        self.connections.len() == 2 && self.connections[0].inverse().flatten() == self.connections[1].flatten()
     }
 }
 

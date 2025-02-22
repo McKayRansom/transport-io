@@ -1,5 +1,3 @@
-extern crate test;
-use test::Bencher;
 
 use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
@@ -90,6 +88,9 @@ impl Grid {
 #[cfg(test)]
 mod path_tests {
     use pathfinding::prelude::bfs;
+
+    extern crate test;
+    use test::Bencher;
 
     use super::*;
 

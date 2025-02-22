@@ -10,7 +10,7 @@ use super::{
     city::City,
     grid::Grid,
     position::PIXEL_SIZE,
-    tile::{Ramp, Road, Tick, Tile},
+    tile::{Road, Tick, Tile},
     vehicle::Vehicle,
     Direction, Map, Position,
 };
@@ -22,7 +22,6 @@ const ROAD_DEAD_END: Sprite = Sprite::new_size(2, 6, BUILDING_SIZE);
 const ROAD_NOT_CONNECTED: Sprite = Sprite::new_size(2, 8, BUILDING_SIZE);
 const _ROAD_ONE_WAY_SPRITE: Sprite = Sprite::new_size(2, 10, BUILDING_SIZE);
 const _ROAD_ONE_WAY_TURN_SPRITE: Sprite = Sprite::new_size(2, 12, BUILDING_SIZE);
-const ROAD_RAMP_SPRITE: Sprite = Sprite::new_size(4, 10, BUILDING_SIZE);
 const ROAD_TWO_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 12, BUILDING_SIZE);
 const _ROAD_ONE_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 14, BUILDING_SIZE);
 
@@ -42,9 +41,6 @@ const SPAWNER_SPRITE: Sprite = Sprite::new_size(6, 4, BUILDING_SIZE);
 const PROGRESS_BOX: Sprite = Sprite::new_size(6, 6, BUILDING_SIZE);
 // const PROGRESS_BAR: Sprite = Sprite::new_size(6, 8, BUILDING_SIZE);
 
-// Shadow offset
-pub const GRID_Z_OFFSET: f32 = 10.;
-
 pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_grid_tiles(&map.grid, tileset);
 
@@ -62,7 +58,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_bridges(&map.grid, tileset);
 
     for s in map.vehicles.hash_map.values() {
-        if s.pos.pos.z == 1 {
+        if s.pos.pos.z == 1 || s.pos.pos.z + s.dir.z as i16 == 1 {
             draw_vehicle(s, tileset, map.tick);
         }
     }
@@ -100,7 +96,7 @@ pub fn draw_grid_tiles(grid: &Grid, tileset: &Tileset) {
 pub fn draw_bridges(grid: &Grid, tileset: &Tileset) {
     for (y, row) in grid.tiles.iter().enumerate() {
         for (x, tile) in row.iter().enumerate() {
-            draw_bridge(&tile.bridge, (x as i16, y as i16, 1).into(), tileset, grid);
+            draw_bridge(&tile.bridge, (x as i16, y as i16, 1).into(), tileset);
         }
     }
 }
@@ -108,23 +104,16 @@ pub fn draw_bridges(grid: &Grid, tileset: &Tileset) {
 pub fn draw_tile(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
     match tile {
         Tile::Road(road) => draw_road(road, pos, tileset, grid),
-        Tile::Ramp(ramp) => draw_ramp(ramp, pos, tileset),
         Tile::Water => tileset.draw_tile(WATER_SPRITE, WHITE, &pos.into(), 0.),
         // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
         _ => {}
     }
 }
 
-pub fn draw_bridge(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
+pub fn draw_bridge(tile: &Tile, pos: Position, tileset: &Tileset) {
     if let Tile::Road(road) = tile {
-        draw_road_bridge(road, &pos, tileset, grid);
+        draw_road_bridge(road, &pos, tileset);
     }
-}
-
-fn draw_ramp(ramp: &Ramp, pos: Position, tileset: &Tileset) {
-    let rect: &Rect = &pos.into();
-    // tileset.draw_tile(ROAD_RAMP_BASE_SPRITE, WHITE, rect, ramp.dir.to_radians());
-    tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, rect, ramp.dir.to_radians());
 }
 
 pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
@@ -149,7 +138,7 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
         if road.is_straight() {
             tileset.draw_tile(ROAD_TWO_WAY_SPRITE, WHITE, rect, dir.to_radians());
         } else {
-            if road.connections[0].rotate_left() != road.connections[1] {
+            if road.connections[0].rotate_left().flatten() != road.connections[1].flatten() {
                 dir = road.connections[1]
             }
             tileset.draw_tile(ROAD_TWO_WAY_TURN_SPRITE, WHITE, rect, dir.to_radians());
@@ -159,30 +148,14 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
     }
 }
 
-pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset, grid: &Grid) {
-    // shadow
-    let ramp_below = matches!(
-        grid.get_tile(&(*pos + Direction::LAYER_DOWN)),
-        Some(Tile::Ramp(_))
-    );
-    let mut shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
-    shadow_rect.x += GRID_Z_OFFSET;
-    if !ramp_below {
-        tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
-    }
+pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset) {
+    let shadow_rect = Rect::from(*pos + Direction::LAYER_DOWN_2);
+    // shadow_rect.x += GRID_Z_OFFSET;
+    tileset.draw_rect(&shadow_rect, SHADOW_COLOR);
 
     let rect = Rect::from(*pos);
     for dir in road.get_connections() {
-        if ramp_below {
-            //     if dir.z != 0 {
-            //         let dir = dir.inverse();
-            //         tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
-            //     } else {
-            //         tileset.draw_tile(ROAD_RAMP_SPRITE, WHITE, &rect, dir.to_radians());
-            //     }
-        } else {
-            tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.rotate_left().to_radians());
-        }
+        tileset.draw_tile(ROAD_TWO_WAY_BRIDGE_SPRITE, WHITE, &rect, dir.rotate_left().to_radians());
     }
 }
 

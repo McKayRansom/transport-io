@@ -198,9 +198,6 @@ impl UiState {
             Tile::Empty => {
                 // ui.label(None, "Empty");
             }
-            Tile::Ramp(_) => {
-                // ui.label(None, "Ramp");
-            }
             Tile::Water => {
                 // ui.label(None, "Water");
             }
