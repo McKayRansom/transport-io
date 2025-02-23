@@ -57,7 +57,7 @@ impl RoadPosition {
     }
 
     pub fn successor(&self, dir: Direction) -> RoadPosition {
-        if dir.flatten() == self.default_connections()[1] {
+        if dir.f || dir.flatten() == self.default_connections()[1] {
             // we can go directly to the next tile so do that
             *self + dir
         } else {
@@ -70,17 +70,32 @@ impl RoadPosition {
         }
     }
 
-    pub fn iter_succ(&self, next_pos: Position) -> RoadPositionSuccIter {
+    pub fn iter_succ(&self, next_pos: Position, one_way: bool) -> RoadPositionSuccIter {
         RoadPositionSuccIter {
             pos: *self,
             next_pos,
+            one_way,
         }
     }
+
+    pub fn one_way_alt(&self, dir: Direction) -> RoadPosition {
+
+        // TODO: THIS IS DEF WRONG, BUT I LIKE THAT IT POPS ENTERING VEHICLES OVER
+        let mut new_pos = *self;
+        if dir.x == 0 {
+            new_pos.off.1 ^= 1;
+        } else if dir.y == 0 {
+            new_pos.off.0 ^= 1;
+        }
+
+        new_pos
+    } 
 }
 
 pub struct RoadPositionSuccIter {
     pos: RoadPosition,
     next_pos: Position,
+    one_way: bool,
 }
 
 impl Iterator for RoadPositionSuccIter {
@@ -90,7 +105,11 @@ impl Iterator for RoadPositionSuccIter {
         if self.pos.pos == self.next_pos {
             None
         } else {
-            self.pos = self.pos.successor(self.next_pos - self.pos.pos);
+            let mut dir = self.next_pos - self.pos.pos;
+            if self.one_way {
+                dir.f = true;
+            }
+            self.pos = self.pos.successor(dir);
             Some(self.pos)
         }
     }
@@ -228,11 +247,36 @@ mod road_pos_tests {
             RoadPosition::new((1, 0), (0, 1))
         );
         assert_eq!(
-            RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT + Direction::LAYER_UP),
+            RoadPosition::new((0, 0), (1, 1)).successor(Direction::RIGHT_UP),
             RoadPosition {
                 pos: Position::_new_z(1, 0, 1),
                 off: (0, 1)
             }
+        );
+    }
+
+    #[test]
+    fn test_one_way() {
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)).successor(Direction::RIGHT),
+            RoadPosition::new((0, 0), (0, 0))
+        );
+
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)).successor(Direction::RIGHT_F),
+            RoadPosition::new((1, 0), (0, 0))
+        );
+    }
+
+    #[test]
+    fn test_pos_alt() {
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::RIGHT),
+            RoadPosition::new((0, 0), (0, 0))
+        );
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::UP),
+            RoadPosition::new((0, 0), (1, 1))
         );
     }
 }
@@ -316,21 +360,27 @@ impl Connections {
             .fold(0, |sum, con| sum + (con & Self::CONNECTED) as usize)
     }
 
+    pub fn is_one_way(&self, dir: Direction) -> bool {
+        let index = Self::index(dir);
+        self.get(index)
+            .is_some_and(|c| *c & Self::ONE_WAY == Self::ONE_WAY)
+    }
+
     pub fn is_connected(&self, dir: Direction) -> bool {
         let index = Self::index(dir);
         self.get(index)
-            .is_some_and(|c| Self::dir(index, *c) == Some(dir) )
+            .is_some_and(|c| Self::dir(index, *c) == Some(dir))
     }
 
     pub fn is_connected_flat(&self, dir: Direction) -> bool {
         let index = Self::index(dir);
         self.get(index)
-            .is_some_and(|c| *c & Self::CONNECTED == 1 )
+            .is_some_and(|c| *c & Self::CONNECTED == Self::CONNECTED)
     }
 
     pub fn get_nth_dir(&self, mut n: usize) -> Option<Direction> {
         for (index, con) in self.cons.iter().enumerate() {
-            if *con & Self::CONNECTED == 1 {
+            if *con & Self::CONNECTED == Self::CONNECTED {
                 if n == 0 {
                     return Self::dir(index, *con);
                 }

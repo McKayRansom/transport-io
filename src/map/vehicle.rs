@@ -8,7 +8,7 @@ use super::{
     grid::Grid,
     path::Path,
     position::GRID_CELL_SIZE,
-    tile::{Reservation, ReservationError, RoadPosition, Tick},
+    tile::{Reservation, ReservationError, RoadPosition, Tick, Tile},
     Direction,
 };
 
@@ -194,18 +194,42 @@ impl Vehicle {
             .ok_or(ReservePathError::InvalidPath)?
             .0[self.path_index..]
         {
-            for road_pos in last_road_pos.iter_succ(*pos) {
+            let mut one_way = false;
+            if let Some(Tile::Road(road)) = grid.get_tile(&last_road_pos.pos) {
+                if road.connections.is_one_way(*pos - last_road_pos.pos) {
+                    one_way = true;
+                }
+            }
+
+            for mut road_pos in last_road_pos.iter_succ(*pos, one_way) {
                 let tile = grid
                     .get_tile(&road_pos.pos)
                     .ok_or(ReservePathError::InvalidPath)?;
 
-                tile.is_reserved(self.id, road_pos, start, end)?;
+                // Jankciy: Janktoberfest
+                let mut tried_alt = false;
+                if let Err(err) = tile.is_reserved(self.id, road_pos, start, end) {
+                    if one_way {
+                        road_pos = road_pos.one_way_alt(*pos - last_road_pos.pos);
+                        tried_alt = true;
+                        tile.is_reserved(self.id, road_pos, start, end)?;
+                    } else {
+                        return Err(err.into());
+                    }
+                }
 
                 if tile.is_blockable() {
                     // we gotta check if we can for real stop here...
                     let end = Tick::MAX;
 
-                    tile.is_reserved(self.id, road_pos, start, end)?;
+                    if let Err(err) = tile.is_reserved(self.id, road_pos, start, end) {
+                        if one_way && !tried_alt {
+                            road_pos = road_pos.one_way_alt(*pos - last_road_pos.pos);
+                            tile.is_reserved(self.id, road_pos, start, end)?;
+                        } else {
+                            return Err(err.into());
+                        }
+                    }
 
                     to_reserve.push(Reservation::new(road_pos, start, end));
 
