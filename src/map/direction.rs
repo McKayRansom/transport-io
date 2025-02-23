@@ -8,13 +8,18 @@ pub struct Direction {
     pub x: i8,
     pub y: i8,
     pub z: i8,
+    pub f: bool,
 }
 
 impl Direction {
     // use super::{Direction};
 
     pub const fn new(x: i8, y: i8, z: i8) -> Self {
-        Direction { x, y, z }
+        Direction { x, y, z, f: false }
+    }
+
+    pub const fn new_f(x: i8, y: i8, z: i8, f: bool) -> Self {
+        Direction { x, y, z, f }
     }
 
     pub const NONE: Direction = Direction::new(0, 0, 0);
@@ -23,6 +28,11 @@ impl Direction {
     pub const LEFT: Direction = Direction::new(-1, 0, 0);
     pub const UP: Direction = Direction::new(0, -1, 0);
     pub const DOWN: Direction = Direction::new(0, 1, 0);
+
+    pub const RIGHT_F: Direction = Direction::new_f(1, 0, 0, true);
+    pub const LEFT_F: Direction = Direction::new_f(-1, 0, 0, true);
+    pub const UP_F: Direction = Direction::new_f(0, -1, 0, true);
+    pub const DOWN_F: Direction = Direction::new_f(0, 1, 0, true);
 
     pub const RIGHT_UP: Direction = Direction::new(1, 0, 1);
     pub const LEFT_UP: Direction = Direction::new(-1, 0, 1);
@@ -86,6 +96,15 @@ impl Direction {
 
         dir
     }
+
+    pub fn flag(self) -> Self {
+        Direction {
+            x: self.x,
+            y: self.y, 
+            z: self.z,
+            f: true,
+        }
+    }
 }
 
 impl From<(i8, i8)> for Direction {
@@ -116,6 +135,7 @@ impl Add for Direction {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
+            f: self.f || other.f,
         }
     }
 }
@@ -128,6 +148,7 @@ impl Mul<i8> for Direction {
             x: self.x * other,
             y: self.y * other,
             z: self.z * other,
+            f: self.f,
         }
     }
 }

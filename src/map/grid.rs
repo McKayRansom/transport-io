@@ -141,7 +141,7 @@ impl Grid {
                         } else {
                             Direction::UP
                         };
-                        road.connections.connect(dir, false);
+                        road.connections.connect(dir);
                         self.buildings.hash_map.entry(station).or_insert_with(|| {
                             Building::new_spawner(
                                 pos,
@@ -220,7 +220,7 @@ mod grid_tests {
 
         assert_eq!(
             *grid.get_tile(&(1, 1).into()).unwrap(),
-            Tile::Road(Road::new_connected(Direction::RIGHT, None))
+            Tile::Road(Road::new_connected(&[Direction::RIGHT]))
         );
     }
 }

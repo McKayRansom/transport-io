@@ -8,7 +8,6 @@ pub use reservation::*;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 use crate::hash_map_id::Id;
-use super::Direction;
 
 const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
@@ -107,8 +106,7 @@ impl From<char> for Tile {
             'h' => Tile::Building(0),
             '_' => Tile::Empty,
             'w' => Tile::Water,
-            '1'..'9' => Tile::Road(Road::new_connected(
-                Direction::NONE,
+            '1'..'9' => Tile::Road(Road::new_station(
                 Some(ch as Id - '0' as Id),
             )),
             _ => {

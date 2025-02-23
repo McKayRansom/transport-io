@@ -68,21 +68,21 @@ mod build_history_tests {
         build_history
             .do_action(
                 &mut map,
-                Box::new(BuildRoad::new((0, 0).into(), Direction::RIGHT)),
+                Box::new(BuildRoad::new((0, 0).into(), &[Direction::RIGHT])),
             )
             .unwrap();
 
             build_history
             .do_action(
                 &mut map,
-                Box::new(BuildRoad::new((1, 0).into(), Direction::RIGHT)),
+                Box::new(BuildRoad::new((1, 0).into(), &[Direction::RIGHT])),
             )
             .unwrap();
 
             build_history
             .do_action(
                 &mut map,
-                Box::new(BuildRoad::new((2, 0).into(), Direction::RIGHT)),
+                Box::new(BuildRoad::new((2, 0).into(), &[Direction::RIGHT])),
             )
             .unwrap();
 
@@ -108,7 +108,7 @@ mod build_history_tests {
         build_history
             .do_action(
                 &mut map,
-                Box::new(BuildRoad::new((0, 0).into(), Direction::RIGHT)),
+                Box::new(BuildRoad::new((0, 0).into(), &[Direction::RIGHT])),
             )
             .unwrap();
         assert_eq!(map.grid, Grid::new_from_string(">>ee"));

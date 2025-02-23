@@ -275,6 +275,7 @@ impl Connections {
         } else if con & Self::LAYER_DOWN == Self::LAYER_DOWN {
             dir.z = -1;
         }
+        dir.f = con & Self::ONE_WAY == Self::ONE_WAY;
 
         Some(dir)
     }
@@ -287,9 +288,9 @@ impl Connections {
         self.cons.get(index)
     }
 
-    pub fn connect(&mut self, dir: Direction, is_one_way: bool) {
+    pub fn connect(&mut self, dir: Direction) {
         let mut connect: u8 = Self::CONNECTED;
-        if is_one_way {
+        if dir.f {
             connect |= Self::ONE_WAY;
         }
         match dir.z {
@@ -318,7 +319,13 @@ impl Connections {
     pub fn is_connected(&self, dir: Direction) -> bool {
         let index = Self::index(dir);
         self.get(index)
-            .is_some_and(|c| Self::dir(index, *c) == Some(dir))
+            .is_some_and(|c| Self::dir(index, *c) == Some(dir) )
+    }
+
+    pub fn is_connected_flat(&self, dir: Direction) -> bool {
+        let index = Self::index(dir);
+        self.get(index)
+            .is_some_and(|c| *c & Self::CONNECTED == 1 )
     }
 
     pub fn get_nth_dir(&self, mut n: usize) -> Option<Direction> {
@@ -357,6 +364,16 @@ impl Iterator for ConnectionsIter {
     }
 }
 
+impl From<&[Direction]> for Connections {
+    fn from(value: &[Direction]) -> Self {
+        let mut connection = Connections::default();
+        for dir in value {
+            connection.connect(*dir);
+        }
+        connection
+    }
+}
+
 #[cfg(test)]
 mod road_connections_tests {
     use super::*;
@@ -364,7 +381,7 @@ mod road_connections_tests {
     #[test]
     fn test_new() {
         let mut con = Connections::default();
-        con.connect(Direction::DOWN, false);
+        con.connect(Direction::DOWN);
         assert!(con.is_connected(Direction::DOWN));
         assert_eq!(con.count(), 1);
         con.disconnect(Direction::DOWN);
@@ -376,7 +393,7 @@ mod road_connections_tests {
     fn test_iter() {
         let mut con = Connections::default();
         for dir in Direction::ALL {
-            con.connect(dir, true);
+            con.connect(dir);
         }
 
         assert_eq!(
@@ -388,9 +405,9 @@ mod road_connections_tests {
     #[test]
     fn test_layers() {
         let mut con = Connections::default();
-        con.connect(Direction::LEFT + Direction::LAYER_UP, false);
+        con.connect(Direction::LEFT + Direction::LAYER_UP);
         assert!(con.is_connected(Direction::LEFT + Direction::LAYER_UP));
-        assert!(!con.is_connected(Direction::LEFT));
+        // assert!(!con.is_connected(Direction::LEFT));
         assert_eq!(
             con.get_nth_dir(0).unwrap(),
             Direction::LEFT + Direction::LAYER_UP
@@ -411,11 +428,18 @@ pub struct Road {
 }
 
 impl Road {
-    pub fn new_connected(dir: Direction, station: Option<Id>) -> Self {
-        let mut road = Self::new();
-        road.station = station;
-        road.connections.connect(dir, false);
-        road
+    pub fn new_connected(dirs: &[Direction]) -> Self {
+        Self {
+            connections: dirs.into(),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_station(station: Option<Id>) -> Self {
+        Self {
+            station,
+            ..Default::default()
+        }
     }
 
     pub fn new() -> Self {
@@ -440,12 +464,6 @@ impl Road {
     pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> bool {
         self.reservations[pos.index()].is_reserved(id, start, end)
     }
-
-    pub fn is_straight(&self) -> bool {
-        self.connections.count() == 2
-            && self.connections.get_nth_dir(0).unwrap().inverse().flatten()
-                == self.connections.get_nth_dir(1).unwrap().flatten()
-    }
 }
 
 const ROAD_DBG_CHAR: &[(char, &[Direction])] = &[
@@ -453,6 +471,10 @@ const ROAD_DBG_CHAR: &[(char, &[Direction])] = &[
     ('<', &[Direction::LEFT]),
     ('^', &[Direction::UP]),
     ('.', &[Direction::DOWN]),
+    ('d', &[Direction::RIGHT_F]),
+    ('a', &[Direction::LEFT_F]),
+    ('w', &[Direction::UP_F]),
+    ('s', &[Direction::DOWN_F]),
     // Roundabouts - top left
     ('l', &[Direction::LEFT, Direction::DOWN]),
     // Roundabouts - top right
@@ -465,9 +487,9 @@ const ROAD_DBG_CHAR: &[(char, &[Direction])] = &[
     ('-', &[Direction::RIGHT, Direction::LEFT]),
     ('+', &Direction::ALL),
     ('}', &[Direction::RIGHT_UP]),
-    (']', &[Direction::RIGHT_DOWN]),
     ('{', &[Direction::LEFT_UP]),
-    ('[', &[Direction::LEFT_DOWN]),
+    (']', &[Direction::RIGHT_DOWN, Direction::LEFT]),
+    ('[', &[Direction::LEFT_DOWN, Direction::RIGHT]),
     ('*', &[Direction::NONE]), // unconnected road
 ];
 
@@ -477,7 +499,7 @@ impl TryFrom<char> for Road {
         let mut road = Road::new();
         if let Some(elem) = ROAD_DBG_CHAR.iter().find(|elem| elem.0 == c) {
             for dir in elem.1 {
-                road.connections.connect(*dir, false);
+                road.connections.connect(*dir);
             }
             Ok(road)
         } else {

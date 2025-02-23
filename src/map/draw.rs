@@ -18,10 +18,11 @@ use super::{
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new_size(2, 0, BUILDING_SIZE);
 const ROAD_TWO_WAY_SPRITE: Sprite = Sprite::new_size(2, 2, BUILDING_SIZE);
 const ROAD_TWO_WAY_TURN_SPRITE: Sprite = Sprite::new_size(2, 4, BUILDING_SIZE);
-const ROAD_DEAD_END: Sprite = Sprite::new_size(2, 6, BUILDING_SIZE);
+const ROAD_DEAD_END_SPRITE: Sprite = Sprite::new_size(2, 6, BUILDING_SIZE);
 const ROAD_NOT_CONNECTED: Sprite = Sprite::new_size(2, 8, BUILDING_SIZE);
 const _ROAD_ONE_WAY_SPRITE: Sprite = Sprite::new_size(2, 10, BUILDING_SIZE);
 const _ROAD_ONE_WAY_TURN_SPRITE: Sprite = Sprite::new_size(2, 12, BUILDING_SIZE);
+const ROAD_T_INTERSECTION_SPRITE: Sprite = Sprite::new_size(2, 14, BUILDING_SIZE);
 const ROAD_TWO_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 12, BUILDING_SIZE);
 const _ROAD_ONE_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 14, BUILDING_SIZE);
 
@@ -116,42 +117,82 @@ pub fn draw_bridge(tile: &Tile, pos: Position, tileset: &Tileset) {
     }
 }
 
-pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, _grid: &Grid) {
-    let connection_count = road.connections.count();
+pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
     let rect: &Rect = &pos.into();
 
-    let mut dir = road
-        .connections
-        .get_nth_dir(0)
-        .unwrap_or(Direction::NONE)
-        .flatten();
+    let mut connections: Vec<Direction> = road.connections.iter().collect();
+
+    for dir in Direction::ALL {
+        if !road.connections.is_connected_flat(dir) {
+            if let Some(Tile::Road(road)) = grid.get_tile(&(pos + dir)) {
+                if road.connections.is_connected_flat(dir.inverse()) {
+                    connections.push(dir);
+                }
+            }
+        }
+    }
+
+    let mut first_dir = connections.get(0).unwrap_or(&Direction::NONE);
+
+    let connection_count = connections.len();
 
     if connection_count == 0 {
         tileset.draw_tile(ROAD_NOT_CONNECTED, WHITE, rect, 0.0);
-    } else if connection_count > 2 {
+    } else if connection_count == 4 {
         // draw intersection
         tileset.draw_tile(ROAD_INTERSECTION_SPRITE, WHITE, rect, 0.0);
         // for dir in road.get_connections() {
         // tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
         // }
-    } else if connection_count == 2 {
-        if road.is_straight() {
-            tileset.draw_tile(ROAD_TWO_WAY_SPRITE, WHITE, rect, dir.to_radians());
-        } else {
-            if road
-                .connections
-                .get_nth_dir(0)
-                .unwrap()
-                .rotate_left()
-                .flatten()
-                != road.connections.get_nth_dir(1).unwrap().flatten()
-            {
-                dir = road.connections.get_nth_dir(1).unwrap()
+    } else if connection_count == 3 { 
+        // find the one connection we aren't
+        for dir in &Direction::ALL {
+            if connections.iter().find(|con_dir| con_dir.flatten() == *dir).is_none() {
+                first_dir = dir;
             }
-            tileset.draw_tile(ROAD_TWO_WAY_TURN_SPRITE, WHITE, rect, dir.to_radians());
         }
-    } else if connection_count == 1 {
-        tileset.draw_tile(ROAD_DEAD_END, WHITE, rect, dir.to_radians());
+        tileset.draw_tile(ROAD_T_INTERSECTION_SPRITE, WHITE, rect, first_dir.to_radians());
+    }
+    else if connection_count == 2 {
+        if connections[0].flatten().inverse() == connections[1].flatten() {
+            tileset.draw_tile(
+                if first_dir.f {
+                    _ROAD_ONE_WAY_SPRITE
+                } else {
+                    ROAD_TWO_WAY_SPRITE
+                },
+                WHITE,
+                rect,
+                first_dir.to_radians(),
+            );
+        } else {
+            let mut flip = false;
+            let turn_dir: Direction = if connections[0].rotate_left().flatten() != connections[1].flatten() {
+                connections[1]
+            } else {
+                flip = true;
+                connections[0].rotate_left()
+            };
+            tileset.draw_tile_ex(
+                if first_dir.f {
+                    _ROAD_ONE_WAY_TURN_SPRITE
+                } else {
+                    ROAD_TWO_WAY_TURN_SPRITE
+                },
+                WHITE,
+                rect,
+                turn_dir.to_radians(),
+                flip,
+            );
+        }
+    } else /* if connection_count == 1 */ {
+        if first_dir.f {
+            // TODO: Road one-way dead end? (this requires fixing the above logic so we actually get here...)
+            // todo!();
+            tileset.draw_tile(_ROAD_ONE_WAY_SPRITE, WHITE, rect, first_dir.to_radians());
+        } else {
+            tileset.draw_tile(ROAD_DEAD_END_SPRITE, WHITE, rect, first_dir.to_radians());
+        }
     }
 }
 
