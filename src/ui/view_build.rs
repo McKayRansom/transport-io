@@ -109,7 +109,7 @@ impl ViewBuild {
         }
     }
 
-    pub fn update_build_err(&mut self) {
+    fn update_build_err(&mut self) {
         if let Some(build_err) = &mut self.build_err {
             build_err.time += 1;
             if build_err.time > BUILD_ERROR_TIME {
@@ -118,7 +118,7 @@ impl ViewBuild {
         }
     }
 
-    pub fn draw_build_err(&self, tileset: &Tileset) {
+    fn draw_build_err(&self, tileset: &Tileset) {
         if let Some(build_err) = &self.build_err {
             tileset.draw_text(
                 format!("{:?}", build_err.err).as_str(),
@@ -129,7 +129,7 @@ impl ViewBuild {
         }
     }
 
-    pub fn do_action(&mut self, map: &mut Map, action: Box<dyn BuildAction>, pos: Position) {
+    fn do_action(&mut self, map: &mut Map, action: Box<dyn BuildAction>, pos: Position) {
         if let Err(err) = self.build_history.do_action(map, action) {
             self.build_err = Some(BuildErrorMsg { pos, err, time: 0 })
         }
@@ -268,6 +268,7 @@ impl ViewBuild {
         }
     }
 
+    // This is our chance to edit the map outside of an mouse handler...
     pub fn update(&mut self, map: &mut Map) {
         self.update_build_err();
 

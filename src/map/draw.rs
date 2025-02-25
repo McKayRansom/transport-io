@@ -1,15 +1,20 @@
 use macroquad::{
     color::{Color, BLUE, RED, WHITE},
     math::Rect,
+    shapes::{draw_circle, draw_line},
 };
 
-use crate::tileset::{Sprite, Tileset};
+use crate::{
+    consts::SpawnerColors,
+    tileset::{Sprite, Tileset},
+};
 
 use super::{
     building::{Building, BuildingType, BUILDING_SIZE},
     city::City,
     grid::Grid,
     position::PIXEL_SIZE,
+    route::Route,
     tile::{Road, Tick, Tile},
     vehicle::Vehicle,
     Direction, Map, Position,
@@ -64,12 +69,38 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
         }
     }
 
+    for (index, r) in map.routes.iter().enumerate() {
+        draw_route(r, index, map);
+    }
+
     for c in map.cities.hash_map.values() {
         draw_city(c, tileset);
     }
     if let Some(hint) = &map.metadata.level_hint {
         let pos: Position = (map.grid.size().0 / 2, map.grid.size().1 / 2 + 2).into();
         tileset.draw_text(hint.as_str(), 16., WHITE, &pos.into());
+    }
+}
+
+pub fn draw_route(r: &Route, index: usize, map: &Map) {
+    // This should be changed to a path...
+    let prev_pos: Option<Rect> = None;
+    for s in &r.stops {
+        if let Some(building) = map.get_building(s) {
+            let color = SpawnerColors::from_number(index as u64).color();
+            let rect: Rect = building.pos.into();
+            if let Some(previous) = prev_pos {
+                draw_line(
+                    previous.x,
+                    previous.y,
+                    rect.x,
+                    rect.y,
+                    10.,
+                    color,
+                );
+            }
+            draw_circle(rect.x, rect.y, 20., color);
+        }
     }
 }
 
@@ -144,16 +175,24 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
         // for dir in road.get_connections() {
         // tileset.draw_tile(ROAD_ARROW_SPRITE, WHITE, rect, dir.to_radians());
         // }
-    } else if connection_count == 3 { 
+    } else if connection_count == 3 {
         // find the one connection we aren't
         for dir in &Direction::ALL {
-            if connections.iter().find(|con_dir| con_dir.flatten() == *dir).is_none() {
+            if connections
+                .iter()
+                .find(|con_dir| con_dir.flatten() == *dir)
+                .is_none()
+            {
                 first_dir = dir;
             }
         }
-        tileset.draw_tile(ROAD_T_INTERSECTION_SPRITE, WHITE, rect, first_dir.to_radians());
-    }
-    else if connection_count == 2 {
+        tileset.draw_tile(
+            ROAD_T_INTERSECTION_SPRITE,
+            WHITE,
+            rect,
+            first_dir.to_radians(),
+        );
+    } else if connection_count == 2 {
         if connections[0].flatten().inverse() == connections[1].flatten() {
             tileset.draw_tile(
                 if first_dir.f {
@@ -167,12 +206,13 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
             );
         } else {
             let mut flip = false;
-            let turn_dir: Direction = if connections[0].rotate_left().flatten() != connections[1].flatten() {
-                connections[1]
-            } else {
-                flip = true;
-                connections[0].rotate_left()
-            };
+            let turn_dir: Direction =
+                if connections[0].rotate_left().flatten() != connections[1].flatten() {
+                    connections[1]
+                } else {
+                    flip = true;
+                    connections[0].rotate_left()
+                };
             tileset.draw_tile_ex(
                 if first_dir.f {
                     _ROAD_ONE_WAY_TURN_SPRITE
@@ -185,7 +225,9 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
                 flip,
             );
         }
-    } else /* if connection_count == 1 */ {
+    } else
+    /* if connection_count == 1 */
+    {
         if first_dir.f {
             // TODO: Road one-way dead end? (this requires fixing the above logic so we actually get here...)
             // todo!();

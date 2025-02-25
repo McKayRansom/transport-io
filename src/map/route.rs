@@ -6,7 +6,7 @@ use crate::hash_map_id::Id;
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Route {
-    stops: Vec<Id>,
+    pub stops: Vec<Id>,
     // is_loop: bool,
 }
 
@@ -23,6 +23,7 @@ impl Route {
 }
 
 
+#[cfg(test)]
 mod route_tests {
 
     use super::*;
@@ -37,8 +38,5 @@ mod route_tests {
         assert_eq!(route.get_stop(1), None);
     }
 }
-
-
-
 
  

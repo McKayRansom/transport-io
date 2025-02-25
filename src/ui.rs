@@ -27,6 +27,7 @@ pub mod popup;
 pub mod skin;
 mod toolbar;
 mod view_build;
+mod view_route;
 
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
 const SCROLL_SENSITIVITY: f32 = 0.1;
@@ -109,6 +110,7 @@ impl UiState {
         let new_mouse_pos = mouse_position();
 
         if root_ui().is_mouse_over(vec2(new_mouse_pos.0, new_mouse_pos.1)) {
+            self.view_build.mouse_clear();
             return;
         }
 
