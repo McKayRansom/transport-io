@@ -8,7 +8,7 @@ use crate::{
     map::{position::GRID_CELL_SIZE, Direction, Position},
 };
 
-use super::{Reservation, ReservationError, ReservedList, Tick};
+use super::{Reservation, ReservationError, ReservedList, Tick, DEFAULT_COST};
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub struct RoadPosition {
@@ -513,6 +513,16 @@ impl Road {
 
     pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> bool {
         self.reservations[pos.index()].is_reserved(id, start, end)
+    }
+
+    pub fn cost(&self) -> u32 {
+        // let mut cost: u32 = 1;
+        // for resers in &self.reservations {
+        //     cost += (resers.list.len() as u32) / 2;
+        // }
+
+        // cost
+        DEFAULT_COST
     }
 }
 

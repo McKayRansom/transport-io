@@ -82,7 +82,7 @@ impl Reserved {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReservedList {
-    list: Vec<Reserved>,
+    pub list: Vec<Reserved>,
 }
 
 impl ReservedList {

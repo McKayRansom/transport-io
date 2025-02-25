@@ -71,8 +71,7 @@ impl Tile {
 
     pub fn cost(&self) -> u32 {
         match self {
-            // TODO: THINK ABOUT THIS COST!
-            Tile::Road(_road) => DEFAULT_COST, // road.reserved.cost(),
+            Tile::Road(_road) => _road.cost(),
             Tile::Building(_) => DEFAULT_COST * 2,
             // we run into this for dead-end turn around
             _ => DEFAULT_COST,

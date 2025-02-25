@@ -103,13 +103,13 @@ impl Vehicle {
         // }
     }
 
+    // TODO: Warn on drop if this isn't called...
     pub fn cleanup(&self, grid: &mut Grid) {
         for res in &self.reserved {
-            if let Some(tile) = grid.get_tile_mut(&res.pos.pos) {
-                tile.unreserve(self.id, res.pos);
-            }
+            let _ = res.unreserve(grid, self.id);
         }
     }
+
 
     pub fn lead_pos(&self, tick: Tick) -> i32 {
         // if we are stuck
@@ -268,12 +268,13 @@ impl Vehicle {
 
         // if we've reached this point, we have a list of already free reservations to make
         for res in &to_reserve {
-            // oh boy oh howdy
+            // oh boy oh howdy, this is correct but feels jank
             if res.pos.pos != reserved_head_pos.pos {
                 reserved_head_pos = res.pos;
                 self.path_index += 1;
             }
 
+            // if this fails, that means we messed up somewhere above
             res.reserve(grid, self.id, tick).unwrap();
             self.reserved.push_front(res.clone());
         }
