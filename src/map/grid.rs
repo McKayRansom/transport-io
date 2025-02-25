@@ -57,7 +57,7 @@ impl GridTile {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Grid {
     pub tiles: Vec<Vec<GridTile>>,
     pub buildings: BuildingHashMap,

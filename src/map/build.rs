@@ -526,7 +526,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build() {
-        let map = &mut Map::new_blank((2, 2));
+        let map = &mut Map::new_empty((2, 2));
 
         let pos = Position::new(0, 0);
 
@@ -572,7 +572,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_two_way_road() {
-        let map = &mut Map::new_blank((2, 2));
+        let map = &mut Map::new_empty((2, 2));
 
         let mut action_same_place = action_two_way_road((0, 0).into(), (0, 0).into());
         action_same_place.execute(map).unwrap();
@@ -625,7 +625,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_two_way_road_again() {
-        let map = &mut Map::new_blank((4, 4));
+        let map = &mut Map::new_empty((4, 4));
 
         let mut action_right = action_two_way_road((0, 0).into(), (2, 0).into());
         let mut action_down = action_two_way_road((0, 0).into(), (0, 2).into());
@@ -667,7 +667,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_one_way_road() {
-        let mut map = Map::new_blank((4, 4));
+        let mut map = Map::new_empty((4, 4));
         let mut action_one_way = action_one_way_road((0, 0).into(), (2, 0).into());
         action_one_way.execute(&mut map).unwrap();
         assert_eq!(
@@ -701,7 +701,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_bridge() {
-        let mut map = Map::new_blank((5, 1));
+        let mut map = Map::new_empty((5, 1));
         let mut action = action_build_road(
             (0, 0).into(),
             (4, 0).into(),
@@ -716,7 +716,7 @@ mod grid_build_tests {
         action.undo(&mut map).unwrap();
         assert_eq!(map.grid, Grid::new_from_string("_____"));
 
-        let mut map = Map::new_blank((5, 5));
+        let mut map = Map::new_empty((5, 5));
         let mut action = action_build_road(
             (0, 1).into(),
             (2, 1).into(),
@@ -752,7 +752,7 @@ mod grid_build_tests {
 
     #[test]
     fn test_build_building() {
-        let mut map = Map::new_blank((4, 4));
+        let mut map = Map::new_empty((4, 4));
         let pos: Position = (0, 0).into();
         let city_id = map.new_city(pos, "test".into());
         let building: Building = Building::new_house(pos, city_id);

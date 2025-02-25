@@ -62,7 +62,7 @@ mod build_history_tests {
 
     #[test]
     fn test_undo() {
-        let mut map = Map::new_blank((4, 1));
+        let mut map = Map::new_empty((4, 1));
         let mut build_history = BuildHistory::new();
 
         build_history

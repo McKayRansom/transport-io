@@ -2,7 +2,6 @@ use build::{BuildAction, BuildActionBuilding, BuildResult};
 use building::Building;
 use city::City;
 use grid::Grid;
-use macroquad::rand::srand;
 use serde::{Deserialize, Serialize};
 
 pub mod build;
@@ -15,6 +14,8 @@ pub mod tile;
 pub mod draw;
 pub mod levels;
 pub mod vehicle;
+mod route;
+use route::Route;
 
 pub mod position;
 pub use position::Position;
@@ -49,7 +50,7 @@ pub enum Unlocked {
     Bridges,
 }
 
-#[derive(Serialize, Deserialize, Default, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct MapMetadata {
     pub is_level: bool,
     pub grow_cities: bool,
@@ -60,38 +61,40 @@ pub struct MapMetadata {
     pub level_hint: Option<String>,
 }
 
-impl MapMetadata {
-    pub fn new() -> Self {
+impl Default for MapMetadata {
+    fn default() -> Self {
         Self {
+            is_level: false,
             grow_cities: true,
-            ..Default::default()
+            level_complete: false,
+            level_number: 0,
+            unlocks: Unlocked::default(),
+            level_hint: None,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Map {
     pub metadata: MapMetadata,
     pub tick: Tick,
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
     cities: CityHashMap,
+    routes: Vec<Route>,
 }
 
 impl Map {
-    pub fn new_blank(size: (i16, i16)) -> Self {
-        srand(1234);
+    pub fn new_empty(size: (i16, i16)) -> Self {
+        // srand(1234);
         Map {
-            metadata: MapMetadata::new(),
-            tick: 0,
             grid: Grid::new(size),
-            vehicles: VehicleHashMap::new(),
-            cities: CityHashMap::new(),
+            ..Default::default()
         }
     }
 
     pub fn new_generate(size: (i16, i16)) -> Self {
-        let mut map = Self::new_blank(size);
+        let mut map = Self::new_empty(size);
 
         map.generate().expect("Error generating map");
 
@@ -100,11 +103,8 @@ impl Map {
 
     pub fn new_from_string(string: &str) -> Self {
         let mut map = Map {
-            tick: 0,
-            metadata: MapMetadata::new(),
             grid: Grid::new_from_string(string),
-            vehicles: VehicleHashMap::new(),
-            cities: CityHashMap::new(),
+            ..Default::default()
         };
 
         let city_id = map.new_city(

@@ -11,12 +11,18 @@ pub struct HashMapId<V> {
     pub hash_map: HashMap<Id, V>,
 }
 
-impl<V> HashMapId<V> {
-    pub fn new() -> Self {
+impl<V> Default for HashMapId<V> {
+    fn default() -> Self {
         HashMapId {
             id: 1,
-            hash_map: HashMap::new(),
+            hash_map: HashMap::default(),
         }
+    }
+}
+
+impl<V> HashMapId<V> {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn reserve_id(&mut self) -> Id {
