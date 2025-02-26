@@ -5,7 +5,7 @@ use macroquad::{
 
 use crate::{
     context::Context,
-    map::{build::*, tile::Tile, Direction, Map, Position, Unlocked},
+    map::{build::*, building::Building, tile::Tile, Direction, Map, Position, Unlocked},
     tileset::{Sprite, Tileset},
 };
 
@@ -23,7 +23,7 @@ enum BuildMode {
     TwoWayRoad,
     OneWayRoad,
     Bridge,
-    // Station,
+    Station,
     Clear,
 }
 
@@ -80,7 +80,15 @@ impl ViewBuild {
                 Sprite::new(8, 2),
             ))
         }
-        // ToolbarItem::new(BuildMode::Station, "Station", '4', Sprite::new(8, 4)),
+
+        if unlocked == Unlocked::All {
+            build_toolbar.push(ToolbarItem::new(
+                BuildMode::Station,
+                "Station",
+                '4',
+                Sprite::new(8, 4),
+            ));
+        }
 
         build_toolbar.push(ToolbarItem::new(
             BuildMode::Clear,
@@ -160,6 +168,13 @@ impl ViewBuild {
                 } else {
                     None
                 }
+            }
+            BuildMode::Station => {
+                Some(Box::new(BuildActionStation::new(
+                    map,
+                    pos,
+                    Building::_new_station(pos, /* TODO */ 1),
+                )))
             }
             BuildMode::Bridge => Some(Box::new(action_build_road(
                 self.mouse_down_pos?,

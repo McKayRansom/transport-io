@@ -396,49 +396,44 @@ pub fn action_one_way_road(pos: Position, end_pos: Position) -> BuildActionList 
     action_build_road(pos, end_pos, options)
 }
 
-// pub struct BuildActionStation {
-//     road_actions: BuildActionList,
-//     building: Building,
-//     building_id: Id,
-// }
+pub struct BuildActionStation {
+    pos: Position,
+    building: Building,
+    building_id: Id,
+}
 
-// impl BuildActionStation {
-//     pub fn new(map: &mut Map, pos: Position, building: Building) -> Self {
-//         let pos = pos.round_to(2);
-//         let building_id = map.reserve_building_id();
-//         Self {
-//             road_actions: BuildActionList::new_from_vec(
-//                 Direction::SQUARE
-//                     .iter()
-//                     .map(|dir| -> Box<dyn BuildAction> {
-//                         Box::new(BuildRoad::new_station(
-//                             pos + *dir,
-//                             Direction::NONE,
-//                             Some(building_id),
-//                         ))
-//                     })
-//                     .collect(),
-//             ),
-//             building,
-//             building_id,
-//         }
-//     }
-// }
+impl BuildActionStation {
+    pub fn new(map: &mut Map, pos: Position, building: Building) -> Self {
+        Self {
+            pos,
+            building,
+            building_id:  map.reserve_building_id(),
+        }
+    }
+}
 
-// impl BuildAction for BuildActionStation {
-//     fn execute(&mut self, map: &mut Map) -> BuildResult {
-//         map.insert_building(self.building_id, self.building);
+impl BuildAction for BuildActionStation {
+    fn execute(&mut self, map: &mut Map) -> BuildResult {
+        if let Tile::Road(road) = map.grid.get_tile_build(&self.pos)? {
+            if road.station.is_some() {
+                return Err(BuildError::OccupiedTile);
+            }
+            road.station = Some(self.building_id);
+            map.insert_building(self.building_id, self.building);
+            Ok(())
+        } else {
+            Err(BuildError::InvalidTile)
+        }
+    }
 
-//         // hack for spawners
-
-//         self.road_actions.execute(map)
-//     }
-
-//     fn undo(&mut self, map: &mut Map) -> BuildResult {
-//         map.remove_building(&self.building_id);
-//         self.road_actions.undo(map)
-//     }
-// }
+    fn undo(&mut self, map: &mut Map) -> BuildResult {
+        map.remove_building(&self.building_id);
+        if let Tile::Road(road) = map.grid.get_tile_build(&self.pos)? {
+            road.station = None;
+        }
+        Ok(())
+    }
+}
 
 pub struct BuildActionBuilding {
     building: Building,

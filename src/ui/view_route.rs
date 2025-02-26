@@ -1,6 +1,15 @@
-use macroquad::window::{screen_height, screen_width};
+use macroquad::{
+    math::Rect,
+    shapes::draw_line,
+    window::{screen_height, screen_width},
+};
 
-use crate::{context::Context, map::{Map, Position}, tileset::Sprite};
+use crate::{
+    consts::SpawnerColors,
+    context::Context,
+    map::{tile::Tile, Map, Position},
+    tileset::Sprite,
+};
 
 use super::toolbar::{Toolbar, ToolbarItem, TOOLBAR_SPACE};
 
@@ -32,6 +41,38 @@ impl ViewRoute {
     }
 
     pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
-        self.route_toolbar.draw(ctx, screen_width() / 2.0, screen_height() - TOOLBAR_SPACE);
+        self.route_toolbar
+            .draw(ctx, screen_width() / 2.0, screen_height() - TOOLBAR_SPACE);
+
+        if let Some(route_numer) = self.route_toolbar.get_selected() {
+            if let Some(mouse_coords) = ctx.mouse_pos {
+                let pos = Position::from_screen(mouse_coords, ctx.tileset.camera, ctx.tileset.zoom);
+                if let Some(mouse_down_pos) = self.mouse_down_pos {
+                    let start: Rect = mouse_down_pos.into();
+                    let end: Rect = pos.into();
+                    ctx.tileset.draw_line(
+                        &start,
+                        &end,
+                        10.,
+                        SpawnerColors::from_number(*route_numer as u64).color(),
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn mouse_button_down_event(&mut self, mouse_pos: Position, _map: &mut Map) {
+        self.mouse_down_pos = Some(mouse_pos);
+    }
+
+    pub fn mouse_button_up_event(&mut self, mouse_pos: Position, map: &mut Map) {
+        if let Some(route_number) = self.route_toolbar.get_selected() {
+            if let Some(Tile::Road(road)) = map.grid.get_tile(&mouse_pos) {
+                if let Some(station) = road.station {
+                    map.routes[*route_number].add_stop(station, 0);
+                }
+            }
+        }
+        self.mouse_down_pos = None;
     }
 }

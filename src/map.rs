@@ -81,7 +81,7 @@ pub struct Map {
     pub grid: Grid,
     pub vehicles: VehicleHashMap,
     cities: CityHashMap,
-    routes: Vec<Route>,
+    pub routes: [Route; 10],
 }
 
 impl Map {

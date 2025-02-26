@@ -1,6 +1,7 @@
 use super::menu::{Menu, MenuItem};
 use super::toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 use super::view_build::ViewBuild;
+use super::view_route::ViewRoute;
 use crate::{
     context::{Context, GameSpeed},
     map::{
@@ -50,6 +51,7 @@ pub struct GameView {
     time_select: Toolbar<TimeSelect>,
     view_toolbar: Toolbar<ViewMode>,
     view_build: ViewBuild,
+    view_route: ViewRoute,
     pause_menu: Menu<PauseMenuSelect>,
 }
 
@@ -82,6 +84,7 @@ impl GameView {
                 ],
             ),
             view_build: ViewBuild::new(unlocked),
+            view_route: ViewRoute::new(),
             pause_menu: Menu::new(vec![
                 MenuItem::new(PauseMenuSelect::Continue, "Close".to_string()),
                 MenuItem::new(PauseMenuSelect::Save, "Save".to_string()),
@@ -110,6 +113,7 @@ impl GameView {
 
         if self.view_build.is_mouse_over(new_mouse_pos)
             || self.time_select.is_mouse_over(new_mouse_pos)
+            || self.view_toolbar.is_mouse_over(new_mouse_pos)
         {
             return;
         }
@@ -124,14 +128,21 @@ impl GameView {
             }
 
             if is_mouse_button_down(MouseButton::Left) {
-                // macroquad::ui::
                 if !self.mouse_pressed {
-                    self.view_build.mouse_button_down_event(pos, map);
+                    match self.view_toolbar.get_selected() {
+                        Some(ViewMode::Build) => self.view_build.mouse_button_down_event(pos, map),
+                        Some(ViewMode::Route) => self.view_route.mouse_button_down_event(pos, map),
+                        None => {},
+                    }
                     self.mouse_pressed = true;
                 }
             } else if self.mouse_pressed {
                 self.mouse_pressed = false;
-                self.view_build.mouse_button_up_event(pos, map);
+                match self.view_toolbar.get_selected() {
+                    Some(ViewMode::Build) => self.view_build.mouse_button_up_event(pos, map),
+                    Some(ViewMode::Route) => self.view_route.mouse_button_up_event(pos, map),
+                    None => {},
+                }
             }
 
             if self
@@ -223,14 +234,19 @@ impl GameView {
             macroquad_profiler::profiler(ProfilerParams {
                 fps_counter_pos: vec2(0., 0.),
             });
-            self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
         }
         if let Some(pos) = self.last_mouse_pos {
             self.draw_tile_details(pos, map, ctx);
         }
         self.time_select
             .draw(ctx, screen_width() - TOOLBAR_SPACE * 1.5, 0.);
-        self.view_build.draw(map, ctx);
+
+        self.view_toolbar.draw(ctx, 0., screen_height() / 2.0);
+        match self.view_toolbar.get_selected() {
+            Some(ViewMode::Build) => self.view_build.draw(map, ctx),
+            Some(ViewMode::Route) => self.view_route.draw(map, ctx),
+            None => {}
+        }
 
         match self.time_select.get_selected() {
             Some(TimeSelect::Pause) => {

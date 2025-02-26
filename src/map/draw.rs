@@ -70,7 +70,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 
     for (index, r) in map.routes.iter().enumerate() {
-        draw_route(r, index, map);
+        draw_route(r, index, map, tileset);
     }
 
     for c in map.cities.hash_map.values() {
@@ -82,24 +82,23 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 }
 
-pub fn draw_route(r: &Route, index: usize, map: &Map) {
+pub fn draw_route(r: &Route, index: usize, map: &Map, tileset: &Tileset) {
     // This should be changed to a path...
-    let prev_pos: Option<Rect> = None;
+    let mut prev_pos: Option<Rect> = None;
     for s in &r.stops {
         if let Some(building) = map.get_building(s) {
             let color = SpawnerColors::from_number(index as u64).color();
             let rect: Rect = building.pos.into();
             if let Some(previous) = prev_pos {
-                draw_line(
-                    previous.x,
-                    previous.y,
-                    rect.x,
-                    rect.y,
+                tileset.draw_line(
+                    &previous,
+                    &rect,
                     10.,
                     color,
                 );
             }
-            draw_circle(rect.x, rect.y, 20., color);
+            prev_pos = Some(rect);
+            tileset.draw_circle(&rect, 20., color);
         }
     }
 }

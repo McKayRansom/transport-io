@@ -1,7 +1,7 @@
 use macroquad::{
     color::{colors, Color, BLACK},
     math::{vec2, Rect},
-    shapes::draw_rectangle,
+    shapes::{draw_circle, draw_line, draw_rectangle},
     text::{draw_text_ex, measure_text, TextParams},
     texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
     window::{screen_height, screen_width},
@@ -102,11 +102,15 @@ impl Tileset {
     //     self.draw_tile_ex(sprite, color, dest, rotation, true);
     // }
 
-    pub fn draw_tile_ex(&self, sprite: Sprite, color: Color, dest: &Rect, rotation: f32, flip: bool) {
-        let dest_size = vec2(
-            dest.w * self.zoom,
-            dest.h * self.zoom,
-        );
+    pub fn draw_tile_ex(
+        &self,
+        sprite: Sprite,
+        color: Color,
+        dest: &Rect,
+        rotation: f32,
+        flip: bool,
+    ) {
+        let dest_size = vec2(dest.w * self.zoom, dest.h * self.zoom);
         let spr_rect = self.sprite_rect(sprite);
 
         draw_texture_ex(
@@ -130,6 +134,26 @@ impl Tileset {
             (rect.y - self.camera.1) * self.zoom,
             rect.w * self.zoom,
             rect.h * self.zoom,
+            color,
+        );
+    }
+
+    pub fn draw_circle(&self, rect: &Rect, radius: f32, color: Color) {
+        draw_circle(
+            ((rect.x + rect.w / 2.) - self.camera.0) * self.zoom,
+            ((rect.y + rect.h / 2.)- self.camera.1) * self.zoom,
+            radius,
+            color,
+        );
+    }
+
+    pub fn draw_line(&self, start: &Rect, end: &Rect, thickness: f32, color: Color) {
+        draw_line(
+            ((start.x + start.w / 2.) - self.camera.0) * self.zoom,
+            ((start.y + start.h / 2.) - self.camera.1) * self.zoom,
+            ((end.x + end.w / 2.) - self.camera.0) * self.zoom,
+            ((end.y + end.h / 2.) - self.camera.1) * self.zoom,
+            thickness,
             color,
         );
     }
