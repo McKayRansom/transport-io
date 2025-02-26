@@ -1,7 +1,7 @@
 use super::{EScene, GameOptions, Scene};
 use crate::consts::{GAME_SPEED_FAST, GAME_SPEED_NORMAL};
 // use crate::audio::play_sfx;
-use crate::context::Context;
+use crate::context::{Context, GameSpeed};
 use crate::map::draw::draw_map;
 use crate::map::levels::{new_level, LEVEL_COUNT};
 // use crate::input::action_pressed;
@@ -11,7 +11,7 @@ use crate::save::LoadResult;
 use crate::ui::popup::{Popup, PopupResult};
 // use crate::menu::MenuSelect;
 // use crate::text::draw_text;
-use crate::ui::{TimeSelect, UiState};
+use crate::ui::UiState;
 use macroquad::time::get_time;
 
 pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
@@ -19,7 +19,6 @@ pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
 pub struct Gameplay {
     map: Box<Map>,
     ui: UiState,
-    last_ui_update: f64,
     last_map_update: f64,
     popup: Option<Popup>,
 }
@@ -39,8 +38,7 @@ impl Gameplay {
         let unlocked = map.metadata.unlocks;
         let gameplay = Gameplay {
             map,
-            ui: UiState::new(unlocked).await,
-            last_ui_update: get_time(),
+            ui: UiState::new(unlocked),
             last_map_update: get_time(),
             popup: None,
         };
@@ -53,22 +51,14 @@ impl Gameplay {
 
 impl Scene for Gameplay {
     fn update(&mut self, ctx: &mut Context) {
-        let speed = 1. / 60.;
 
-        if get_time() - self.last_ui_update > speed {
-            self.ui.update(ctx, &mut self.map);
-            self.last_ui_update = get_time();
-        }
-
-        let time_select = self.ui.time_select.get_selected();
-        let map_speed = if time_select == Some(&TimeSelect::FastForward) {
-            GAME_SPEED_FAST
-        } else {
-            GAME_SPEED_NORMAL
+        let map_speed = match ctx.game_speed {
+            GameSpeed::Paused => return,
+            GameSpeed::Normal => GAME_SPEED_NORMAL,
+            GameSpeed::FastForward => GAME_SPEED_FAST,
         };
 
-        if (time_select != Some(&TimeSelect::Pause) && time_select != Some(&TimeSelect::Menu))
-            && get_time() - self.last_map_update > map_speed
+        if get_time() - self.last_map_update > map_speed
         {
             if self.map.update() {
                 self.popup = Some(Popup::new(format!(
@@ -83,7 +73,7 @@ impl Scene for Gameplay {
     fn draw(&mut self, ctx: &mut Context) {
         draw_map(&self.map, &ctx.tileset);
 
-        self.ui.draw(&self.map, ctx);
+        self.ui.draw(&mut self.map, ctx);
 
         if let Some(popup) = &self.popup {
             match popup.draw() {

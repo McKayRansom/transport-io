@@ -1,4 +1,5 @@
 use macroquad::text::Font;
+use macroquad::time::get_time;
 
 // use crate::assets_path::determine_asset_path;
 // use crate::audio;
@@ -14,9 +15,19 @@ use crate::ui::skin;
 // use macroquad::texture::render_target;
 // use macroquad::camera::Camera2D;
 
+pub enum GameSpeed {
+    Paused,
+    Normal,
+    FastForward,
+}
+
 /// game-wide data and resources
 pub struct Context {
     pub request_quit: bool,
+    pub key_pressed: Option<char>,
+    pub mouse_pos: Option<(f32, f32)>,
+    pub time: f64,
+    pub game_speed: GameSpeed,
     // pub gamepads: Gamepads,
     // pub textures: texture::TextureAtlas,
     pub tileset: Tileset,
@@ -35,6 +46,10 @@ impl Context {
 
         Self {
             // gamepads: Gamepads::new(),
+            game_speed: GameSpeed::Paused,
+            key_pressed: None,
+            mouse_pos: None,
+            time: get_time(),
             request_quit: false,
             tileset: Tileset::new().await,
             font: skin::init().await,
