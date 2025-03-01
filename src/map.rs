@@ -13,8 +13,8 @@ pub mod tile;
 
 pub mod draw;
 pub mod levels;
-pub mod vehicle;
 mod route;
+pub mod vehicle;
 use route::Route;
 
 pub mod position;
@@ -274,15 +274,31 @@ impl Map {
 
         all_goals_met
     }
+    fn update_routes(&mut self) {
+        for (i, route) in self.routes.iter_mut().enumerate() {
+            let _ = route.update(i, &mut self.grid, &mut self.vehicles, self.tick);
+        }
+    }
 
-    pub fn update(&mut self) -> bool {
-        self.tick += 1;
-
+    fn update_vehicles(&mut self) {
         let mut to_remove: Vec<(Id, Status)> = Vec::new();
-        for s in self.vehicles.hash_map.iter_mut() {
-            let status = s.1.update(&mut self.grid, self.tick);
+        for (id, vehicle) in self.vehicles.hash_map.iter_mut() {
+            let status = vehicle.update(&mut self.grid, self.tick);
             if status != Status::EnRoute {
-                to_remove.push((*s.0, status));
+                if let Some((route_id, dir)) = vehicle.route_info {
+                    if let Some(route) = self.routes.get(route_id) {
+                        if let Some((next_station, dir)) =
+                            route.get_next_stop(vehicle.destination, dir)
+                        {
+                            vehicle.destination = next_station;
+                            vehicle.route_info = Some((route_id, dir));
+                            // feels like this should be private...
+                            vehicle.find_path(&self.grid);
+                        }
+                    }
+                } else {
+                    to_remove.push((*id, status));
+                }
             }
         }
         for (id, status) in to_remove {
@@ -296,6 +312,12 @@ impl Map {
 
             // self.update_rating(id.1 == Status::ReachedDestination);
         }
+    }
+
+    pub fn update(&mut self) -> bool {
+        self.tick += 1;
+
+        self.update_vehicles();
 
         let all_goals_met = self.update_buildings();
 
@@ -311,6 +333,8 @@ impl Map {
                 let _ = BuildActionBuilding::new(self, building).execute(self);
             }
         }
+
+        self.update_routes();
 
         all_goals_met && !self.metadata.level_complete
     }

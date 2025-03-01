@@ -5,11 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{consts::SpawnerColors, hash_map_id::Id};
 
 use super::{
-    grid::Grid,
-    path::Path,
-    position::GRID_CELL_SIZE,
-    tile::{Reservation, ReservationError, RoadPosition, Tick, Tile},
-    Direction,
+    grid::Grid, path::Path, position::GRID_CELL_SIZE, route::{RouteDir, RouteId}, tile::{Reservation, ReservationError, RoadPosition, Tick, Tile}, Direction
 };
 
 pub enum ReservePathError {
@@ -50,6 +46,7 @@ pub struct Vehicle {
     path_time_ticks: Tick,
     elapsed_ticks: Tick,
     pub destination: Id,
+    pub route_info: Option<(RouteId, RouteDir)>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd)]
@@ -94,6 +91,7 @@ impl Vehicle {
             destination,
             elapsed_ticks: 0,
             reserved: VecDeque::from([reservation]),
+            route_info: None,
         };
 
         vehicle.find_path(grid);
@@ -282,7 +280,7 @@ impl Vehicle {
         Ok(())
     }
 
-    fn find_path(&mut self, grid: &mut Grid) -> bool {
+    pub fn find_path(&mut self, grid: &Grid) -> bool {
         self.grid_path = grid.find_path((self.pos.pos, self.dir), &self.destination);
 
         if let Some(path) = &self.grid_path {

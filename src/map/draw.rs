@@ -1,7 +1,6 @@
 use macroquad::{
     color::{Color, BLUE, RED, WHITE},
     math::Rect,
-    shapes::{draw_circle, draw_line},
 };
 
 use crate::{

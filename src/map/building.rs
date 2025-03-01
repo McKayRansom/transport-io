@@ -49,17 +49,17 @@ impl Building {
         }
     }
 
-    pub fn _new_station(pos: Position, city_id: Id) -> Self {
+    pub fn new_station(pos: Position) -> Self {
         Building {
             pos,
             dir: None,
             color: SpawnerColors::Red,
-            city_id,
+            city_id: 0,
             vehicle_on_the_way: None,
             arrived_count: 0,
             production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
             production_rate: SPAWNER_UPDATE_TICKS,
-            building_type: BuildingType::Spawner,
+            building_type: BuildingType::Station,
         }
     }
 

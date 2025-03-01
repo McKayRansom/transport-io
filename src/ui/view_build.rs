@@ -173,7 +173,7 @@ impl ViewBuild {
                 Some(Box::new(BuildActionStation::new(
                     map,
                     pos,
-                    Building::_new_station(pos, /* TODO */ 1),
+                    Building::new_station(pos),
                 )))
             }
             BuildMode::Bridge => Some(Box::new(action_build_road(
