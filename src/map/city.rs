@@ -22,6 +22,7 @@ pub struct City {
     id: Id,
     pub houses: Vec<Id>,
     // vehicle_on_the_way: Option<Id>,
+    pub houses_goal_met: usize,
 }
 
 impl City {
@@ -33,6 +34,7 @@ impl City {
             grow_rate: CITY_GROW_TICKS,
             id,
             houses: Vec::new(),
+            houses_goal_met: 0,
         }
     }
 
@@ -59,6 +61,22 @@ impl City {
 
 
     pub fn update(&mut self, grid: &mut Grid) -> Option<Building> {
+        // let 
+        self.houses_goal_met = 0;
+        for (_i, building_id) in self.houses.iter().enumerate() {
+            if let Some(buliding) = grid.buildings.hash_map.get(building_id) {
+                if buliding.arrived_count > 0 {
+                    self.houses_goal_met += 1;
+                }
+            } else {
+                // old building :(
+                self.houses.swap_remove(_i);
+                return None;
+            }
+        }
+        if self.houses.len() != self.houses_goal_met {
+            return None;
+        }
         self.grow_ticks += 1;
         if self.grow_ticks > self.grow_rate {
             self.grow_ticks = 0;
