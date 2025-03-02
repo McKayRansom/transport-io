@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     grid::Grid,
-    tile::{RoadPosition, Tile},
+    tile::Tile,
     Direction, Position,
 };
 
@@ -88,16 +88,17 @@ impl Building {
         }
     }
 
-    pub fn spawn_pos(&self, grid: &Grid) -> Option<(RoadPosition, Direction)> {
-        if let Some(dir) = self.dir {
-            let dir = dir.inverse();
-            return Some((RoadPosition::corner_pos(self.pos, dir), dir.inverse()));
-        }
+    // ONLY FOR HOUSES!!!
+    pub fn driveway_pos(pos: Position, grid: &Grid) -> Option<(Position, Direction)> {
+        // if let Some(dir) = self.dir {
+            // let dir = dir.inverse();
+            // return Some((RoadPosition::corner_pos(self.pos, dir), dir.inverse()));
+        // }
         for dir in Direction::ALL {
             // let dir = pos.default_connections()[1];
-            let pos_adj = self.pos + dir;
+            let pos_adj = pos + dir;
             if let Some(Tile::Road(_)) = grid.get_tile(&pos_adj) {
-                return Some((RoadPosition::corner_pos(self.pos, dir.inverse()), dir));
+                return Some((pos_adj, dir));
             }
         }
         // should there be a default?

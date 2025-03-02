@@ -2,33 +2,27 @@ use building::BuildingType;
 use pathfinding::prelude::{astar, bfs_reach};
 use tile::Tile;
 
-use super::*;
+use super::{tile::DEFAULT_COST, *};
 
 type PathCost = u32;
 pub type Path = Option<(Vec<Position>, PathCost)>;
 
 impl Grid {
-    pub fn find_path(&self, start: (Position, Direction), end: &Id) -> Path {
-        let path_start = start.0 + start.1;
-
-        if !self.get_tile(&path_start)?.is_road() {
-            return None;
-        }
+    pub fn find_path(&self, start: Position, end: &Id) -> Path {
 
         let end_building = self.buildings.hash_map.get(end)?;
         if matches!(end_building.building_type, BuildingType::House) {
             // append destination pos (this is already checked to be a road)
             let end_pos_dir = end_building.destination_pos(self)?;
             let end_pos = end_pos_dir.0 + end_pos_dir.1;
-            if let Some(mut path) = self.find_road_path(&path_start, &end_pos) {
-                path.0.push(end_pos_dir.0);
-                path.1 += 1;
-                Some(path)
-            } else {
-                None
-            }
+            let mut path = self.find_road_path(&start, &end_pos)?;
+            path.0.push(end_pos_dir.0);
+            path.1 += 1;
+            Some(path)
         } else {
-            self.find_path_to_building(&path_start, end, &end_building.pos)
+            // This is here so we can potentially deal with multi-tile stations better
+            // Do we really need this right now??
+            self.find_path_to_building(&start, end, &end_building.pos)
         }
     }
 
@@ -56,17 +50,25 @@ impl Grid {
         )
     }
 
+    // Should this be a tile function?
     pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
-        if let Some(Tile::Road(road)) = self.get_tile(pos) {
-            road.connections
+        match self.get_tile(pos) {
+            Some(Tile::Road(road)) => road
+                .connections
                 .iter()
                 .filter_map(|dir| {
                     let new_pos = *pos + dir;
                     self.get_tile(&new_pos).map(|tile| (new_pos, tile.cost()))
                 })
-                .collect()
-        } else {
-            Vec::new()
+                .collect(),
+            Some(Tile::Building(_)) => {
+                if let Some(driveway) = Building::driveway_pos(*pos, self) {
+                    vec![(driveway.0, DEFAULT_COST)]
+                } else {
+                    Vec::new()
+                }
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -115,19 +117,15 @@ mod path_tests {
     fn test_path() {
         let grid = Grid::new_from_string(">>1");
 
-        let path = grid
-            .find_path(((0, 0).into(), Direction::RIGHT), &1)
-            .unwrap();
-        assert_eq!(path, (vec![(1, 0).into(), (2, 0).into()], 1));
+        let path = grid.find_path((0, 0).into(), &1).unwrap();
+        assert_eq!(path, (vec![(0, 0).into(), (1, 0).into(), (2, 0).into()], 2));
     }
 
     #[test]
     fn test_path_fail() {
         let grid = Grid::new_from_string("<<1");
 
-        assert!(grid
-            .find_path(((0, 0).into(), Direction::RIGHT), &1)
-            .is_none());
+        assert!(grid.find_path((0, 0).into(), &1).is_none());
     }
 
     #[test]
@@ -135,9 +133,8 @@ mod path_tests {
         let grid = Grid::new_from_string("h*h");
 
         assert_eq!(
-            grid.find_path(((0, 0).into(), Direction::RIGHT), &2)
-                .unwrap(),
-            (vec![(1, 0).into(), (2, 0).into()], 1)
+            grid.find_path((0, 0).into(), &2).unwrap(),
+            (vec![(0, 0).into(), (1, 0).into(), (2, 0).into()], 2)
         );
     }
 
@@ -146,23 +143,24 @@ mod path_tests {
         let grid = Grid::new_from_string("h*");
 
         assert_eq!(
-            grid.find_path(((0, 0).into(), Direction::RIGHT), &1)
-                .unwrap(),
-            (vec![(1, 0).into(), (0, 0).into(),], 1)
+            grid.find_path((0, 0).into(), &1).unwrap(),
+            (vec![(0, 0).into(), (1, 0).into(), (0, 0).into(),], 2)
         );
     }
 
     #[test]
-    fn test_path_station() {
+    fn test_path_multiple_station() {
         let grid = Grid::new_from_string(
-            "11<<22
-             11>>22",
+            "________
+             11<<<<22
+             11>>>>22
+             ________",
         );
 
         assert_eq!(
-            grid.find_path(((1, 1).into(), Direction::RIGHT), &2)
-                .unwrap(),
-            ((2..5).map(|i| (i, 1).into()).collect(), 2)
+            grid.find_path((0, 2).into(), &2).unwrap(),
+            // TODO: should we skip the first tile of the station?
+            ((0..7).map(|i| (i, 2).into()).collect(), 6)
         );
     }
 

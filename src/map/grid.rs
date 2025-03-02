@@ -134,10 +134,10 @@ impl Grid {
                     if let Some(station) = road.station {
                         let dir = if pos.x < size.0 / 4 {
                             Direction::RIGHT
+                        } else if pos.x >= (size.0 * 3) / 4 {
+                            Direction::LEFT
                         } else if pos.y < size.1 / 4 {
                             Direction::DOWN
-                        } else if pos.x > (size.0 * 3) / 4 {
-                            Direction::LEFT
                         } else {
                             Direction::UP
                         };

@@ -103,7 +103,18 @@ pub fn draw_city(city: &City, tileset: &Tileset) {
     let mut rect: Rect = city.pos.round_to(2).into();
     rect.w *= 2.;
     rect.h *= 2.;
-    tileset.draw_text(format!("{} {}/{}", city.name, city.houses_goal_met, city.houses.len()).as_str(), 32., WHITE, &rect);
+    tileset.draw_text(
+        format!(
+            "{} {}/{}",
+            city.name,
+            city.houses_goal_met,
+            city.houses.len()
+        )
+        .as_str(),
+        32.,
+        WHITE,
+        &rect,
+    );
 }
 
 pub fn draw_grid_tiles(grid: &Grid, tileset: &Tileset) {
@@ -279,7 +290,7 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
     } else {
         tileset.draw_tile(PROGRESS_BOX, color, &rect, 0.0);
 
-        let progrewss: f32 = if matches!(building.building_type, BuildingType::Spawner)  {
+        let progrewss: f32 = if matches!(building.building_type, BuildingType::Spawner) {
             building.arrived_count.min(10) as f32
         } else {
             building.cargo_count.min(10) as f32

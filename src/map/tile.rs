@@ -9,7 +9,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use crate::hash_map_id::Id;
 
-const DEFAULT_COST: u32 = 1;
+pub const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,10 +76,6 @@ impl Tile {
             // we run into this for dead-end turn around
             _ => DEFAULT_COST,
         }
-    }
-
-    pub fn is_road(&self) -> bool {
-        matches!(self, Tile::Road(_))
     }
 
     pub fn is_blockable(&self) -> bool {

@@ -102,7 +102,7 @@ impl Route {
 
         let (next_stop, dir) = self.get_next_stop(stop_id, RouteDir::Forward)?;
 
-        let mut vehicle = Vehicle::new(vehicles.id, building.spawn_pos(grid)?, next_stop, grid, tick).ok()?;
+        let mut vehicle = Vehicle::new(vehicles.id, building.pos, next_stop, grid, tick).ok()?;
 
         vehicle.route_info = Some((index, dir));
         vehicle.color = SpawnerColors::from_number(index as u64);

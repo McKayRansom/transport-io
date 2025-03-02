@@ -21,7 +21,7 @@ pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
-use tile::{RoadPosition, Tick};
+use tile::Tick;
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -183,13 +183,13 @@ impl Map {
 
     pub fn add_vehicle(
         &mut self,
-        start: Option<(RoadPosition, Direction)>,
+        start: Position,
         end: Id,
         color: SpawnerColors,
         tick: Tick,
     ) -> Option<Id> {
         let id = self.vehicles.id;
-        if let Ok(mut vehicle) = Vehicle::new(id, start?, end, &mut self.grid, tick) {
+        if let Ok(mut vehicle) = Vehicle::new(id, start, end, &mut self.grid, tick) {
             vehicle.color = color;
             Some(self.vehicles.insert(vehicle))
         } else {
@@ -264,7 +264,7 @@ impl Map {
                     // spawn car
                     if self
                         .add_vehicle(
-                            start_building.spawn_pos(&self.grid),
+                            start_building.pos,
                             end_building_id,
                             destination_building.color,
                             self.tick,

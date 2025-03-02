@@ -28,12 +28,13 @@ impl RoadPosition {
         (self.off.0 + self.off.1 * 2) as usize
     }
 
-    pub fn corner_pos(pos: Position, dir: Direction) -> Self {
+    // TODO: RENAME TO SOMETHING REASONABLE!!
+    pub fn default_pos(pos: Position, dir: Direction) -> Self {
         match dir {
-            Direction::LEFT => Self { pos, off: (1, 1) },
-            Direction::RIGHT => Self { pos, off: (0, 0) },
-            Direction::DOWN => Self { pos, off: (1, 0) },
-            Direction::UP => Self { pos, off: (0, 1) },
+            Direction::RIGHT => Self { pos, off: (1, 1) },
+            Direction::LEFT => Self { pos, off: (0, 0) },
+            Direction::UP => Self { pos, off: (1, 0) },
+            Direction::DOWN => Self { pos, off: (0, 1) },
             // Direction::NONE => pos,
             _ => Self { pos, off: (0, 0) },
         }
