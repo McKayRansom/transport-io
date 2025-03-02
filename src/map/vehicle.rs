@@ -47,6 +47,7 @@ pub struct Vehicle {
     elapsed_ticks: Tick,
     pub destination: Id,
     pub route_info: Option<(RouteId, RouteDir)>,
+    pub cargo: Option<u32>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd)]
@@ -92,6 +93,7 @@ impl Vehicle {
             elapsed_ticks: 0,
             reserved: VecDeque::from([reservation]),
             route_info: None,
+            cargo: None,
         };
 
         vehicle.find_path(grid);

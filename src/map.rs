@@ -251,24 +251,36 @@ impl Map {
             }
 
             if let Some(destination_building) = self.grid.buildings.hash_map.get(&end_building_id) {
-                if self
-                    .add_vehicle(
-                        start_building.spawn_pos(&self.grid),
-                        end_building_id,
-                        destination_building.color,
-                        self.tick,
-                    )
-                    .is_none()
-                {
-                    self.grid
-                        .buildings
-                        .hash_map
-                        .get_mut(&end_building_id)
-                        .unwrap()
-                        .update_arrived(false);
-                };
+                if start_building.routes.len() > 0 {
+                    // try transit
+                    let station_id = start_building.routes[0];
+                    // cargos_to_add.push(start_building.routes[0]);
+                    if let Some(building_station) =
+                        self.grid.buildings.hash_map.get_mut(&station_id)
+                    {
+                        building_station.add_cargo();
+                    }
+                } else {
+                    // spawn car
+                    if self
+                        .add_vehicle(
+                            start_building.spawn_pos(&self.grid),
+                            end_building_id,
+                            destination_building.color,
+                            self.tick,
+                        )
+                        .is_none()
+                    {
+                        self.grid
+                            .buildings
+                            .hash_map
+                            .get_mut(&end_building_id)
+                            .unwrap()
+                            .update_arrived(false);
+                    };
 
-                // destination_building.vehicle_on_the_way = _vehicle;
+                    // destination_building.vehicle_on_the_way = _vehicle;
+                }
             }
         }
 
@@ -285,11 +297,18 @@ impl Map {
         for (id, vehicle) in self.vehicles.hash_map.iter_mut() {
             let status = vehicle.update(&mut self.grid, self.tick);
             if status != Status::EnRoute {
+                // TODO: Should busses still be delted if they are hopelessly late?
                 if let Some((route_id, dir)) = vehicle.route_info {
                     if let Some(route) = self.routes.get(route_id) {
                         if let Some((next_station, dir)) =
                             route.get_next_stop(vehicle.destination, dir)
                         {
+                            vehicle.cargo = self
+                                .grid
+                                .buildings
+                                .hash_map
+                                .get_mut(&vehicle.destination)
+                                .map(|building| building.pickup_cargo());
                             vehicle.destination = next_station;
                             vehicle.route_info = Some((route_id, dir));
                             // feels like this should be private...

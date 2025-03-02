@@ -33,7 +33,9 @@ const _ROAD_ONE_WAY_BRIDGE_SPRITE: Sprite = Sprite::new_size(4, 14, BUILDING_SIZ
 const SHADOW_COLOR: Color = Color::new(0., 0., 0., 0.3);
 
 const CAR_SPRITE: Sprite = Sprite::new(0, 1);
-const CAR_SHADOW_SPRITE: Sprite = Sprite::new(0, 2);
+const CAR_SHADOW_SPRITE: Sprite = Sprite::new(1, 1);
+const BUS_SPRITE: Sprite = Sprite::new(0, 2);
+const BUS_SHADOW_SPRITE: Sprite = Sprite::new(1, 2);
 const CAR_NO_PATH_SPRITE: Sprite = Sprite::new(12, 0);
 const CAR_VERY_LATE_SPRITE: Sprite = Sprite::new(12, 1);
 
@@ -89,12 +91,7 @@ pub fn draw_route(r: &Route, index: usize, map: &Map, tileset: &Tileset) {
             let color = SpawnerColors::from_number(index as u64).color();
             let rect: Rect = building.pos.into();
             if let Some(previous) = prev_pos {
-                tileset.draw_line(
-                    &previous,
-                    &rect,
-                    10.,
-                    color,
-                );
+                tileset.draw_line(&previous, &rect, 10., color);
             }
             prev_pos = Some(rect);
             tileset.draw_circle(&rect, 20., color);
@@ -282,10 +279,16 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
     } else {
         tileset.draw_tile(PROGRESS_BOX, color, &rect, 0.0);
 
+        let progrewss: f32 = if matches!(building.building_type, BuildingType::Spawner)  {
+            building.arrived_count.min(10) as f32
+        } else {
+            building.cargo_count.min(10) as f32
+        };
+
         let rect = Rect::new(
             rect.x + PIXEL_SIZE * 3. - 0.1,
             rect.y + PIXEL_SIZE * 4. - 0.1,
-            PIXEL_SIZE * 1. * building.arrived_count.min(10) as f32 + 0.2,
+            PIXEL_SIZE * 1. * progrewss + 0.2,
             PIXEL_SIZE * 8. + 0.2,
         );
 
@@ -323,9 +326,16 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, tick: Tick) {
     shadow_rect.x += 2.;
     shadow_rect.y += 2.;
     let rotation = vehicle.dir.to_radians();
-    tileset.draw_tile(CAR_SHADOW_SPRITE, WHITE, &shadow_rect, rotation);
 
-    tileset.draw_tile(CAR_SPRITE, vehicle.color.color(), &rect, rotation);
+    let (sprite, shadow_sprite) = if vehicle.route_info.is_none() {
+        (CAR_SPRITE, CAR_SHADOW_SPRITE)
+    } else {
+        (BUS_SPRITE, BUS_SHADOW_SPRITE)
+    };
+
+    tileset.draw_tile(shadow_sprite, WHITE, &shadow_rect, rotation);
+
+    tileset.draw_tile(sprite, vehicle.color.color(), &rect, rotation);
 
     if vehicle.grid_path.is_none() {
         tileset.draw_icon(CAR_NO_PATH_SPRITE, &rect, rotation);

@@ -44,6 +44,7 @@ impl Direction {
     pub const UP_DOWN: Direction = Direction::new(0, -1, -1);
     pub const DOWN_DOWN: Direction = Direction::new(0, 1, -1);
 
+    pub const UP_LEFT: Direction = Direction::new(-1, -1, 0);
     pub const DOWN_RIGHT: Direction = Direction::new(1, 1, 0);
 
     pub const LAYER_UP: Direction = Direction::new(0, 0, 1);

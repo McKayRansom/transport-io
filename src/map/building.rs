@@ -14,6 +14,8 @@ pub const BUILDING_SIZE: Direction = Direction::new(2, 2, 0);
 const HOUSE_UPDATE_TICKS: i32 = 10 * 16;
 const SPAWNER_UPDATE_TICKS: i32 = 16;
 
+const CARGO_MAX: u32 = 10;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum BuildingType {
     House,
@@ -21,7 +23,7 @@ pub enum BuildingType {
     Spawner,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub pos: Position,
     pub dir: Option<Direction>,
@@ -32,7 +34,10 @@ pub struct Building {
     production_tics: i32,
     production_rate: i32,
     pub building_type: BuildingType,
+    pub routes: Vec<Id>,
+    pub cargo_count: u32,
 }
+
 
 impl Building {
     pub fn new_house(pos: Position, city_id: Id) -> Self {
@@ -46,6 +51,8 @@ impl Building {
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
             production_rate: HOUSE_UPDATE_TICKS,
             building_type: BuildingType::House,
+            routes: Vec::new(),
+            cargo_count: 0,
         }
     }
 
@@ -60,6 +67,8 @@ impl Building {
             production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
             production_rate: SPAWNER_UPDATE_TICKS,
             building_type: BuildingType::Station,
+            routes: Vec::new(),
+            cargo_count: 0,
         }
     }
 
@@ -74,6 +83,8 @@ impl Building {
             production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
             production_rate: SPAWNER_UPDATE_TICKS,
             building_type: BuildingType::Spawner,
+            routes: Vec::new(),
+            cargo_count: 0,
         }
     }
 
@@ -133,5 +144,20 @@ impl Building {
         } else {
             false
         }
+    }
+
+    // TODO: for stations only!
+    // TODO: return false if over max?
+    pub fn add_cargo(&mut self) {
+        self.cargo_count += 1;
+        if self.cargo_count > CARGO_MAX {
+            self.cargo_count = CARGO_MAX;
+        }
+    }
+
+    pub fn pickup_cargo(&mut self) -> u32 {
+        let amount = self.cargo_count.min(10);
+        self.cargo_count -= amount;
+        amount
     }
 }
