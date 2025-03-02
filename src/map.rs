@@ -251,7 +251,7 @@ impl Map {
             }
 
             if let Some(destination_building) = self.grid.buildings.hash_map.get(&end_building_id) {
-                if start_building.routes.len() > 0 {
+                if !start_building.routes.is_empty() {
                     // try transit
                     let station_id = start_building.routes[0];
                     // cargos_to_add.push(start_building.routes[0]);

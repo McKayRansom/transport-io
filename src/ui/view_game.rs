@@ -97,7 +97,7 @@ impl GameView {
     fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) {
         let new_mouse_wheel = mouse_wheel();
 
-        if ctx.mouse_pos == None {
+        if ctx.mouse_pos.is_none() {
             return;
         }
 

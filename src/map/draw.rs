@@ -169,7 +169,7 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
         }
     }
 
-    let mut first_dir = connections.get(0).unwrap_or(&Direction::NONE);
+    let mut first_dir = connections.first().unwrap_or(&Direction::NONE);
 
     let connection_count = connections.len();
 
@@ -184,10 +184,9 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
     } else if connection_count == 3 {
         // find the one connection we aren't
         for dir in &Direction::ALL {
-            if connections
+            if !connections
                 .iter()
-                .find(|con_dir| con_dir.flatten() == *dir)
-                .is_none()
+                .any(|con_dir| con_dir.flatten() == *dir)
             {
                 first_dir = dir;
             }

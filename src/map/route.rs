@@ -27,7 +27,7 @@ pub enum RouteDir {
 }
 
 impl RouteDir {
-    pub fn to_index(&self) -> i32 {
+    pub fn index(&self) -> i32 {
         match self {
             RouteDir::Forward => 1,
             RouteDir::Backward => -1,
@@ -68,11 +68,11 @@ impl Route {
         };
         while let Some(stop) = self.stops.get(i as usize) {
             if stop == &current_stop {
-                if let Some(stop) = self.stops.get((i + route_dir.to_index()) as usize) {
+                if let Some(stop) = self.stops.get((i + route_dir.index()) as usize) {
                     return Some((*stop, route_dir));
                 } else if let Some(stop) = self
                     .stops
-                    .get((i + route_dir.inverse().to_index()) as usize)
+                    .get((i + route_dir.inverse().index()) as usize)
                 {
                     return Some((*stop, route_dir.inverse()));
                 } else {
@@ -80,7 +80,7 @@ impl Route {
                     return None;
                 }
             }
-            i += route_dir.to_index();
+            i += route_dir.index();
         }
 
         None

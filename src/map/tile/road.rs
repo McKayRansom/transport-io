@@ -393,7 +393,7 @@ impl Connections {
 
     pub fn iter(&self) -> ConnectionsIter {
         ConnectionsIter {
-            cons: self.clone(),
+            cons: *self,
             i: 0,
         }
     }
@@ -581,7 +581,7 @@ impl std::fmt::Debug for Road {
                     return false;
                 }
             }
-            return true;
+            true
         }) {
             write!(f, "{}", elem.0)
         } else {

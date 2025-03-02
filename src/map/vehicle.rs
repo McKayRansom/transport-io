@@ -477,8 +477,8 @@ mod vehicle_tests {
         assert_eq!(
             vehicle.reserved,
             [
-                Reservation::new(((1, 0), (0, 1)).into(), SPEED_TICKS * 1, Tick::MAX),
-                Reservation::new(((0, 0), (1, 1)).into(), 0, SPEED_TICKS * 1),
+                Reservation::new(((1, 0), (0, 1)).into(), SPEED_TICKS, Tick::MAX),
+                Reservation::new(((0, 0), (1, 1)).into(), 0, SPEED_TICKS),
             ]
         );
 
@@ -492,7 +492,7 @@ mod vehicle_tests {
             vehicle.reserved,
             [
                 Reservation::new(((1, 0), (1, 1)).into(), SPEED_TICKS * 3, Tick::MAX),
-                Reservation::new(((1, 0), (0, 1)).into(), SPEED_TICKS * 1, SPEED_TICKS * 3),
+                Reservation::new(((1, 0), (0, 1)).into(), SPEED_TICKS, SPEED_TICKS * 3),
             ]
         );
     }
