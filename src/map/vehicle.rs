@@ -30,7 +30,7 @@ impl From<ReservationError> for ReservePathError {
 
 const SPEED_PIXELS: i32 = 4;
 pub const SPEED_TICKS: Tick = ((GRID_CELL_SIZE.0 as Tick) / 2) / SPEED_PIXELS as Tick;
-const HOPELESSLY_LATE_PERCENT: f32 = 0.1;
+const HOPELESSLY_LATE_PERCENT: f32 = 0.01; // TODO: change path calc to account for busy streets...
 const PATH_TIMEOUT: Tick = 8 * 20;
 
 const RESERVE_AHEAD_MIN: usize = 8; // current tile + next tile
@@ -148,11 +148,11 @@ impl Vehicle {
 
     pub fn update(&mut self, grid: &mut Grid, tick: Tick) -> Status {
         self.update_trip();
-        if self.trip_late() < HOPELESSLY_LATE_PERCENT
-            || self.grid_path.is_none() && self.elapsed_ticks > PATH_TIMEOUT
-        {
-            return Status::HopelesslyLate;
-        }
+        // if self.trip_late() < HOPELESSLY_LATE_PERCENT
+        //     || self.grid_path.is_none() && self.elapsed_ticks > PATH_TIMEOUT
+        // {
+        //     return Status::HopelesslyLate;
+        // }
         if let Some(res) = self.reserved.back() {
             if res.end > tick && res.end != Tick::MAX {
                 return Status::EnRoute;
@@ -498,18 +498,20 @@ mod vehicle_tests {
     }
 
     #[test]
-    #[ignore = "reason"]
+    // #[ignore = "reason"]
     fn test_late() {
         let mut grid = Grid::new_from_string(">>>1");
         let mut vehicle = Vehicle::new(1, (0, 0).into(), 1, &mut grid, 0).unwrap();
 
         vehicle.update(&mut grid, 0);
 
-        vehicle.elapsed_ticks = SPEED_TICKS * 4 + 1;
-        assert_eq!(vehicle.trip_late(), 0.6666666);
+        vehicle.elapsed_ticks = SPEED_TICKS + 1;
+        assert_eq!(vehicle.trip_late(), 1.0);
+        vehicle.elapsed_ticks = SPEED_TICKS * 2 + 1;
+        assert_eq!(vehicle.trip_late(), 0.76);
 
         vehicle.elapsed_ticks = (SPEED_TICKS * 4) + 1;
-        assert_eq!(vehicle.trip_late(), 0.33333337);
+        assert_eq!(vehicle.trip_late(), 0.5);
     }
 
     #[test]

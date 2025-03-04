@@ -186,10 +186,7 @@ pub fn draw_road(road: &Road, pos: Position, tileset: &Tileset, grid: &Grid) {
     } else if connection_count == 3 {
         // find the one connection we aren't
         for dir in &Direction::ALL {
-            if !connections
-                .iter()
-                .any(|con_dir| con_dir.flatten() == *dir)
-            {
+            if !connections.iter().any(|con_dir| con_dir.flatten() == *dir) {
                 first_dir = dir;
             }
         }
@@ -263,7 +260,14 @@ pub fn draw_road_bridge(road: &Road, pos: &Position, tileset: &Tileset) {
 
 pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
     let (sprite, color): (&Sprite, Color) = match building.building_type {
-        BuildingType::House => (&HOUSE_SPRITE, WHITE),
+        BuildingType::House => (
+            &HOUSE_SPRITE,
+            if building.arrived_goal_met() {
+                WHITE
+            } else {
+                RED
+            },
+        ),
         BuildingType::Station => (&STATION_SPRITE, WHITE),
         BuildingType::Spawner => (&SPAWNER_SPRITE, {
             let mut color = building.color.color();

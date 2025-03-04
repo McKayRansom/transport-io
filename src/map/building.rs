@@ -47,7 +47,7 @@ impl Building {
             color: SpawnerColors::Blue,
             city_id,
             vehicle_on_the_way: None,
-            arrived_count: 0,
+            arrived_count: 1, // Spawn with conditions met for now...
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
             production_rate: HOUSE_UPDATE_TICKS,
             building_type: BuildingType::House,
@@ -119,10 +119,21 @@ impl Building {
         None
     }
 
+    fn arrived_max(&self) -> i32 {
+        match self.building_type {
+            BuildingType::House => 1,
+            BuildingType::Station => 10, // This makes no sense...
+            BuildingType::Spawner => 10,
+        }
+    }
+
     pub fn update_arrived(&mut self, success: bool) {
         if success {
-            if self.arrived_count < 10 {
+            if self.arrived_count < self.arrived_max() {
                 self.arrived_count += 1;
+            } else {
+                // Temp: to fix save games in progress
+                self.arrived_count = self.arrived_max();
             }
         } else if self.arrived_count > 0 {
             self.arrived_count -= 1;
@@ -130,7 +141,7 @@ impl Building {
     }
 
     pub fn arrived_goal_met(&self) -> bool {
-        self.arrived_count >= 10
+        self.arrived_count >= self.arrived_max()
     }
 
     pub fn update(&mut self) -> bool {
