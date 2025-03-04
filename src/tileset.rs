@@ -11,7 +11,7 @@ use crate::map::Direction;
 
 const TILE_SIZE: u32 = 16;
 
-const MIN_ZOOM: f32 = 0.4;
+const MIN_ZOOM: f32 = 0.1;
 const MAX_ZOOM: f32 = 4.;
 
 const SHADOW_OFFSET: f32 = 1.;

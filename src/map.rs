@@ -2,6 +2,7 @@ use build::{BuildAction, BuildActionBuilding, BuildResult};
 use building::Building;
 use city::City;
 use grid::Grid;
+use noise::NoiseFn;
 use serde::{Deserialize, Serialize};
 
 pub mod build;
@@ -21,7 +22,7 @@ pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
-use tile::Tick;
+use tile::{Tick, Tile};
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -108,7 +109,7 @@ impl Map {
         };
 
         let city_id = map.new_city(
-            (map.grid.size().0 / 2, map.grid.size().1 / 2).into(),
+            Position::new(0, 0) + map.grid.size() / 2,
             "default city".into(),
         );
 
@@ -176,9 +177,28 @@ impl Map {
     }
 
     fn generate(&mut self) -> BuildResult {
-        let size: Position = self.grid.size().into();
+        let size: Position = Position::new(0, 0) + self.grid.size();
         let grid_center: Position = size / 2;
-        self.new_city_generate(grid_center, "CityVille".to_string())
+        self.new_city_generate(grid_center, "CityVille".to_string())?;
+
+        let perlin_noise = noise::Perlin::new(1234);
+
+        let size = self.grid.size();
+        for pos in Position::new(0, 0).iter_area(size) {
+            let noise =
+                perlin_noise.get([pos.x as f64 / size.x as f64, pos.y as f64 / size.y as f64]);
+            if noise < 0.1333 {
+                // Tile::Water
+                *self.grid.get_tile_mut(&pos).unwrap() = Tile::Water;
+            } else if noise < 0.59999 {
+                // Tile::Empty
+            } else {
+                
+                *self.grid.get_tile_mut(&pos).unwrap() = Tile::Mountain;
+            };
+        }
+
+        Ok(())
     }
 
     pub fn add_vehicle(

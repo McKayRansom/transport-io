@@ -200,6 +200,9 @@ impl GameView {
             Tile::Water => {
                 // ui.label(None, "Water");
             }
+            Tile::Mountain => {
+
+            }
             Tile::Building(building) => {
                 if let Some(building) = map.get_building(building) {
                     // ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));

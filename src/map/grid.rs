@@ -94,8 +94,8 @@ impl Grid {
         }
     }
 
-    pub fn size(&self) -> (i16, i16) {
-        (self.tiles[0].len() as i16, self.tiles.len() as i16)
+    pub fn size(&self) -> Direction {
+        Direction::new(self.tiles[0].len() as i8, self.tiles.len() as i8, 0)
     }
 
     pub fn size_px(&self) -> (f32, f32) {
@@ -121,7 +121,7 @@ impl Grid {
 
     fn fixup_from_string(&mut self) {
         let size = self.size();
-        for pos in Position::new(0, 0).iter_area(Direction::new(size.0 as i8, size.1 as i8, 0)) {
+        for pos in Position::new(0, 0).iter_area(size) {
             match self.get_tile_mut(&pos).unwrap() {
                 Tile::Building(_) => {
                     let building_id = self
@@ -132,11 +132,11 @@ impl Grid {
                 }
                 Tile::Road(road) => {
                     if let Some(station) = road.station {
-                        let dir = if pos.x < size.0 / 4 {
+                        let dir = if pos.x < size.x as i16 / 4 {
                             Direction::RIGHT
-                        } else if pos.x >= (size.0 * 3) / 4 {
+                        } else if pos.x >= (size.x as i16 * 3) / 4 {
                             Direction::LEFT
-                        } else if pos.y < size.1 / 4 {
+                        } else if pos.y < size.y as i16 / 4 {
                             Direction::DOWN
                         } else {
                             Direction::UP
@@ -203,7 +203,7 @@ mod grid_tests {
         let grid = Grid::new((3, 1));
         assert_eq!(*grid.get_tile(&(0, 0).into()).unwrap(), Tile::Empty);
 
-        assert_eq!(grid.size(), (3, 1));
+        assert_eq!(grid.size(), (3, 1).into());
 
         assert!(grid.get_tile(&(3, 0).into()).is_none());
         assert!(grid.get_tile(&(0, 1).into()).is_none());

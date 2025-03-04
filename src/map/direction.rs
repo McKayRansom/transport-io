@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, ops::{Add, Mul}};
+use std::{f32::consts::PI, ops::{Add, Div, Mul}};
 
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
@@ -148,7 +148,20 @@ impl Mul<i8> for Direction {
         Self {
             x: self.x * other,
             y: self.y * other,
-            z: self.z * other,
+            z: self.z,
+            f: self.f,
+        }
+    }
+}
+
+impl Div<i8> for Direction {
+    type Output = Self;
+
+    fn div(self, other: i8) -> Self {
+        Self {
+            x: self.x / other,
+            y: self.y / other,
+            z: self.z,
             f: self.f,
         }
     }

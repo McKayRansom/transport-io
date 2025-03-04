@@ -14,7 +14,7 @@ use crate::ui::popup::{Popup, PopupResult};
 use crate::ui::UiState;
 use macroquad::time::get_time;
 
-pub const DEFAULT_MAP_SIZE: (i16, i16) = (64, 64);
+pub const DEFAULT_MAP_SIZE: (i16, i16) = (127, 127);
 
 pub struct Gameplay {
     map: Box<Map>,

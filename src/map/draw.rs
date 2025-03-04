@@ -40,6 +40,7 @@ const CAR_NO_PATH_SPRITE: Sprite = Sprite::new(12, 0);
 const CAR_VERY_LATE_SPRITE: Sprite = Sprite::new(12, 1);
 
 const WATER_SPRITE: Sprite = Sprite::new(4, 0);
+const MOUNTAIN_SPRITE: Sprite = Sprite::new(4, 2);
 
 const HOUSE_SPRITE: Sprite = Sprite::new_size(6, 0, BUILDING_SIZE);
 const DRIVEWAY_SPRITE: Sprite = Sprite::new(4, 4);
@@ -78,7 +79,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
         draw_city(c, tileset);
     }
     if let Some(hint) = &map.metadata.level_hint {
-        let pos: Position = (map.grid.size().0 / 2, map.grid.size().1 / 2 + 2).into();
+        let pos: Position = Position::new(0, 0) + map.grid.size() / 2 + (Direction::DOWN * 2);
         tileset.draw_text(hint.as_str(), 16., WHITE, &pos.into());
     }
 }
@@ -143,6 +144,7 @@ pub fn draw_tile(tile: &Tile, pos: Position, tileset: &Tileset, grid: &Grid) {
     match tile {
         Tile::Road(road) => draw_road(road, pos, tileset, grid),
         Tile::Water => tileset.draw_tile(WATER_SPRITE, WHITE, &pos.into(), 0.),
+        Tile::Mountain => tileset.draw_tile(MOUNTAIN_SPRITE, WHITE, &pos.into(), 0.),
         // Tile::Empty => tileset.draw_rect(&rect, LIGHTGRAY),
         _ => {}
     }

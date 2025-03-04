@@ -18,6 +18,7 @@ pub enum Tile {
     Building(Id),
     Road(Road),
     Water,
+    Mountain,
 }
 
 impl Tile {
@@ -122,6 +123,7 @@ impl fmt::Debug for Tile {
             Tile::Road(road) => road.fmt(f),
             Tile::Building(_) => write!(f, "h"),
             Tile::Water => write!(f, "w"),
+            Tile::Mountain => write!(f, "m"),
         }
     }
 }
