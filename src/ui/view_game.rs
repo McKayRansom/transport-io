@@ -157,6 +157,7 @@ impl GameView {
 
     pub fn update(&mut self, ctx: &mut Context, map: &mut Map) {
         if let Some(key) = ctx.key_pressed {
+            self.view_toolbar.key_down(key);
             self.key_down_event(ctx, key);
         }
 

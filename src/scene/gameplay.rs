@@ -60,7 +60,7 @@ impl Scene for Gameplay {
 
         if get_time() - self.last_map_update > map_speed
         {
-            if self.map.update() {
+            if self.map.update() && self.map.metadata.is_level {
                 self.popup = Some(Popup::new(format!(
                     "Level {} completed!",
                     self.map.metadata.level_number

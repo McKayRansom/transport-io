@@ -66,7 +66,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     draw_bridges(&map.grid, tileset);
 
     for s in map.vehicles.hash_map.values() {
-        if s.pos.pos.z == 1 || s.pos.pos.z + s.dir.z as i16 == 1 {
+        if s.pos.pos.z == 1 || s.dir.z as i16 == -1 {
             draw_vehicle(s, tileset, map.tick);
         }
     }

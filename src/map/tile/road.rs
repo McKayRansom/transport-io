@@ -474,10 +474,10 @@ mod road_connections_tests {
 #[derive(Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub station: Option<Id>,
+    pub connections: Connections,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub reservations: [Reserved; 4],
-    pub connections: Connections,
 }
 
 impl Road {
@@ -501,10 +501,6 @@ impl Road {
         }
     }
 
-    // pub fn unreserve(&mut self, id: Id, road_pos: RoadPosition) {
-    //     self.reservations[road_pos.index()].unreserve(id);
-    // }
-
     pub fn try_reserve(
         &mut self,
         id: Id,
@@ -518,13 +514,14 @@ impl Road {
     }
 
     pub fn cost(&self) -> u32 {
-        // let mut cost: u32 = 1;
-        // for resers in &self.reservations {
-        //     cost += (resers.list.len() as u32) / 2;
-        // }
+        let mut cost: u32 = DEFAULT_COST;
+        for resers in &self.reservations {
+            if resers.is_reserved() {
+                cost += 1;
+            }
+        }
 
-        // cost
-        DEFAULT_COST
+        cost
     }
 }
 
