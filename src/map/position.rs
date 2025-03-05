@@ -223,9 +223,13 @@ mod position_tests {
 
     #[test]
     fn test_init() {
-        assert_eq!(pos(0, 0), Position { x: 0, y: 0, z: 0 });
+        assert_eq!(pos(12, 12), Position { x: 12, y: 12, z: 0 });
+    }
 
-        // assert!(directions::EAST.x == 1);
+    #[test]
+    fn test_from_screen() {
+        assert_eq!(Position::from_screen((64., 64.), (128., 128.), 1.0), pos(3, 3));
+        assert_eq!(Position::from_screen((64., 64.), (128., 128.), 0.5), pos(4, 4));
     }
 
     #[test]

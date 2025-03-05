@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 use crate::{consts::SpawnerColors, hash_map_id::Id};
@@ -197,7 +196,6 @@ impl Vehicle {
     }
 
     fn try_reserve_path(&mut self, grid: &mut Grid) -> Result<Vec<Reservation>, ReservePathError> {
-
         let mut to_reserve: Vec<Reservation> = Vec::new();
         let mut last_road_pos = self.pos;
 
@@ -312,20 +310,20 @@ impl Vehicle {
     // 1 = on time exactly
     // 1.5 = 50% early
     pub fn trip_late(&self) -> f32 {
-        if let Some(path) = &self.grid_path {
-            let tiles_elapsed = (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS) / 2 + 1;
-            let tiles_expected = path.1 + 1;
+        let Some(path) = &self.grid_path else {
+            return 1.;
+        };
 
-            let elapsed_percent = tiles_elapsed as f32 / tiles_expected as f32;
+        let tiles_elapsed = (self.elapsed_ticks.saturating_sub(1) / SPEED_TICKS) / 2 + 1;
+        let tiles_expected = path.1 + 1;
 
-            let completed_percent = self.trip_completed_percent();
-            // println!("elapsed: {tiles_elapsed}, expected: {} percent: {completed_percent}", tiles_expected);
+        let elapsed_percent = tiles_elapsed as f32 / tiles_expected as f32;
 
-            if completed_percent > 0. {
-                1. - (elapsed_percent - completed_percent)
-            } else {
-                1.
-            }
+        let completed_percent = self.trip_completed_percent();
+        // println!("elapsed: {tiles_elapsed}, expected: {} percent: {completed_percent}", tiles_expected);
+
+        if completed_percent > 0. {
+            1. - (elapsed_percent - completed_percent)
         } else {
             1.
         }
@@ -504,7 +502,6 @@ mod vehicle_tests {
         for _ in 0..128 {
             vehicle.update(&mut grid, 0);
         }
-
     }
 
     // #[test]
