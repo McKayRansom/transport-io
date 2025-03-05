@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{consts::SpawnerColors, hash_map_id::Id};
 
-use super::{grid::Grid, tile::Tick, vehicle::Vehicle, VehicleHashMap};
+use super::{grid::Grid, vehicle::Vehicle, VehicleHashMap};
 
 // pub struct Passenger {
 //     destination: Id,
@@ -91,7 +91,6 @@ impl Route {
         index: usize,
         grid: &mut Grid,
         vehicles: &mut VehicleHashMap,
-        tick: Tick,
     ) -> Option<()> {
         if self.desired_vehicles <= self.vehicles.len() {
             return None;
@@ -102,7 +101,7 @@ impl Route {
 
         let (next_stop, dir) = self.get_next_stop(stop_id, RouteDir::Forward)?;
 
-        let mut vehicle = Vehicle::new(vehicles.id, building.pos, next_stop, grid, tick).ok()?;
+        let mut vehicle = Vehicle::new(vehicles.id, building.pos, next_stop, grid).ok()?;
 
         vehicle.route_info = Some((index, dir));
         vehicle.color = SpawnerColors::from_number(index as u64);

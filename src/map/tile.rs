@@ -1,13 +1,12 @@
-
 mod road;
 pub use road::*;
 
 mod reservation;
 pub use reservation::*;
 
-use std::fmt;
-use serde::{Deserialize, Serialize};
 use crate::hash_map_id::Id;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 pub const DEFAULT_COST: u32 = 1;
 const _OCCUPIED_COST: u32 = 2;
@@ -21,44 +20,37 @@ pub enum Tile {
     Mountain,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ReservationError {
+    TileInvalid,
+    TileReserved,
+}
+
 impl Tile {
     pub fn new() -> Self {
         Tile::Empty
     }
 
-
-    // TODO: Inline this into Reservation
-    pub fn reserve(
-        &mut self,
-        id: Id,
-        current: Tick,
-        reservation: &Reservation,
-    ) -> Result<(), ReservationError> {
+    pub fn reserve(&mut self, id: Id, pos: RoadPosition) -> Result<Reservation, ReservationError> {
         // TEST: allow vehicles to cross in intersections...
         // if !self.is_blockable() {
         //     return Ok(());
         // }
         match self {
-            Tile::Road(road) => road.try_reserve(id, current, reservation),
+            Tile::Road(road) => road
+                .try_reserve(id, pos)
+                .ok_or(ReservationError::TileReserved),
 
-            Tile::Building(_) => Ok(()),
+            Tile::Building(_) => Ok(Reservation::new_for_building(pos)),
             _ => Err(ReservationError::TileInvalid),
         }
     }
 
-    #[allow(clippy::single_match)]
-    pub fn unreserve(&mut self, id: Id, pos: RoadPosition) {
-        match self {
-            Tile::Road(road) => road.unreserve(id, pos),
-
-            _ => {}
-        }
-    }
-
-    pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> Result<(), ReservationError> {
+    #[allow(unused)]
+    pub fn is_reserved(&self, pos: RoadPosition) -> Result<(), ReservationError> {
         match self {
             Tile::Road(road) => {
-                if road.is_reserved(id, pos, start, end) {
+                if road.is_reserved(pos) {
                     Err(ReservationError::TileReserved)
                 } else {
                     Ok(())
@@ -102,9 +94,7 @@ impl From<char> for Tile {
             'h' => Tile::Building(0),
             '_' => Tile::Empty,
             'w' => Tile::Water,
-            '1'..'9' => Tile::Road(Road::new_station(
-                Some(ch as Id - '0' as Id),
-            )),
+            '1'..'9' => Tile::Road(Road::new_station(Some(ch as Id - '0' as Id))),
             _ => {
                 if let Ok(road) = ch.try_into() {
                     Tile::Road(road)

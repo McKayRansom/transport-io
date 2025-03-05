@@ -22,7 +22,7 @@ pub mod position;
 pub use position::Position;
 mod direction;
 pub use direction::Direction;
-use tile::{Tick, Tile};
+use tile::{ReservationError, Tile};
 use vehicle::{Status, Vehicle};
 
 use crate::{
@@ -38,6 +38,10 @@ pub const DEFAULT_CITY_ID: Id = 1;
 type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
 type CityHashMap = HashMapId<City>;
+
+// #[derive(Clone, Debug, Default)]
+pub type Tick = u32;
+
 
 // pub struct VehicleId(Id);
 // pub struct BuildingId(Id);
@@ -100,6 +104,15 @@ impl Map {
         map.generate().expect("Error generating map");
 
         map
+    }
+
+    pub fn fixup(&mut self) -> Result<(), ReservationError> {
+        // Any way to not allow this to be called twice?
+        for vehicle in &mut self.vehicles.values_mut() {
+            vehicle.fixup(&mut self.grid)?
+        }
+
+        Ok(())
     }
 
     pub fn new_from_string(string: &str) -> Self {
@@ -206,10 +219,9 @@ impl Map {
         start: Position,
         end: Id,
         color: SpawnerColors,
-        tick: Tick,
     ) -> Option<Id> {
         let id = self.vehicles.id;
-        if let Ok(mut vehicle) = Vehicle::new(id, start, end, &mut self.grid, tick) {
+        if let Ok(mut vehicle) = Vehicle::new(id, start, end, &mut self.grid) {
             vehicle.color = color;
             Some(self.vehicles.insert(vehicle))
         } else {
@@ -287,7 +299,6 @@ impl Map {
                             start_building.pos,
                             end_building_id,
                             destination_building.color,
-                            self.tick,
                         )
                         .is_none()
                     {
@@ -308,7 +319,7 @@ impl Map {
     }
     fn update_routes(&mut self) {
         for (i, route) in self.routes.iter_mut().enumerate() {
-            let _ = route.update(i, &mut self.grid, &mut self.vehicles, self.tick);
+            let _ = route.update(i, &mut self.grid, &mut self.vehicles);
         }
     }
 
@@ -342,7 +353,6 @@ impl Map {
         }
         for (id, status) in to_remove {
             let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
-            vehicle.cleanup(&mut self.grid);
             // let building_id = tile.get_building_id()
             if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.destination) {
                 building.update_arrived(status == Status::ReachedDestination);

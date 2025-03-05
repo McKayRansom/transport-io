@@ -8,7 +8,7 @@ use crate::{
     map::{position::GRID_CELL_SIZE, Direction, Position},
 };
 
-use super::{Reservation, ReservationError, ReservedList, Tick, DEFAULT_COST};
+use super::{Reservation, Reserved, DEFAULT_COST};
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub struct RoadPosition {
@@ -474,7 +474,9 @@ mod road_connections_tests {
 #[derive(Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Road {
     pub station: Option<Id>,
-    pub reservations: [ReservedList; 4],
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub reservations: [Reserved; 4],
     pub connections: Connections,
 }
 
@@ -499,21 +501,20 @@ impl Road {
         }
     }
 
-    pub fn unreserve(&mut self, id: Id, road_pos: RoadPosition) {
-        self.reservations[road_pos.index()].unreserve(id);
-    }
+    // pub fn unreserve(&mut self, id: Id, road_pos: RoadPosition) {
+    //     self.reservations[road_pos.index()].unreserve(id);
+    // }
 
     pub fn try_reserve(
         &mut self,
         id: Id,
-        current: Tick,
-        reservation: &Reservation,
-    ) -> Result<(), ReservationError> {
-        self.reservations[reservation.pos.index()].try_reserve(id, current, reservation)
+        pos: RoadPosition
+    ) -> Option<Reservation> {
+        self.reservations[pos.index()].try_reserve(id, pos)
     }
 
-    pub fn is_reserved(&self, id: Id, pos: RoadPosition, start: Tick, end: Tick) -> bool {
-        self.reservations[pos.index()].is_reserved(id, start, end)
+    pub fn is_reserved(&self, pos: RoadPosition) -> bool {
+        self.reservations[pos.index()].is_reserved()
     }
 
     pub fn cost(&self) -> u32 {

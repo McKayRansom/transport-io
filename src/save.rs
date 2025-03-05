@@ -71,12 +71,13 @@ impl Map {
 
     pub fn load() -> LoadResult {
         #[cfg(not(target_family = "wasm"))]
-        let map = Self::load_desktop();
+        let mut map = Self::load_desktop();
         #[cfg(target_family = "wasm")]
-        let map = Self::load_wasm();
+        let mut map = Self::load_wasm();
 
-        if let Err(err) = &map {
-            println!("Error loading save: {:?}", *err);
+        match &mut map {
+            Err(err) => println!("Error loading save: {:?}", *err),
+            Ok(map) => map.fixup().expect("Error fixing save!"),
         }
 
         map
@@ -146,22 +147,16 @@ mod save_tests {
 
         let mut map = Map::new_from_string(">>>>1");
 
-        map.add_vehicle(
-            (0, 0).into(),
-            1,
-            crate::consts::SpawnerColors::Blue,
-            0,
-        );
+        map.add_vehicle((0, 0).into(), 1, crate::consts::SpawnerColors::Blue);
 
         map.save().unwrap();
 
         assert!(Map::save_exists());
 
-        let deserialized: Map = Map::load().unwrap();
+        let mut deserialized: Map = Map::load().unwrap();
 
-        assert_eq!(
-            deserialized,
-            map
-        );
+        deserialized.fixup().unwrap();
+
+        assert_eq!(deserialized, map);
     }
 }

@@ -14,9 +14,9 @@ use super::{
     grid::Grid,
     position::PIXEL_SIZE,
     route::Route,
-    tile::{Road, Tick, Tile},
+    tile::{Road, Tile},
     vehicle::Vehicle,
-    Direction, Map, Position,
+    Direction, Map, Position, Tick,
 };
 
 const ROAD_INTERSECTION_SPRITE: Sprite = Sprite::new_size(2, 0, BUILDING_SIZE);
@@ -324,12 +324,12 @@ pub fn draw_building(building: &Building, tileset: &Tileset, grid: &Grid) {
     // );
 }
 
-pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, tick: Tick) {
+pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, _tick: Tick) {
     let mut rect = Rect::from(vehicle.pos);
-    let dir = vehicle.dir * vehicle.lead_pos(tick) as i8;
+    let dir = vehicle.dir * vehicle.lag_pos as i8;
 
-    rect.x += dir.x as f32;
-    rect.y += dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
+    rect.x -= dir.x as f32;
+    rect.y -= dir.y as f32; // - (self.lag_pos_pixels.z as f32) / (GRID_CELL_SIZE.0 / 10.);
 
     // let vehicle_red = Color::from_hex(0xf9524c);
     // let vehicle_blue = Color::from_hex(0xa0dae8);
@@ -366,19 +366,20 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
     let mut reserved_path_color = RED;
     reserved_path_color.a = 0.3;
 
-    for (i, res) in vehicle.reserved.iter().enumerate() {
-        let start = res.start.saturating_sub(map.tick);
-        let end: String = if res.end != Tick::MAX {
-            format!("{}", res.end.saturating_sub(map.tick))
-        } else {
-            "M".into()
-        };
-        tileset.draw_text(
-            format!("{i}:{start}-{end}").as_str(),
-            12.,
-            WHITE,
-            &res.pos.into(),
-        )
+    for  res in vehicle.reserved.iter() {
+        // let start = res.start.saturating_sub(map.tick);
+        // let end: String = if res.end != Tick::MAX {
+        //     format!("{}", res.end.saturating_sub(map.tick))
+        // } else {
+        //     "M".into()
+        // };
+        // tileset.draw_text(
+        //     format!("{i}:{start}-{end}").as_str(),
+        //     12.,
+        //     WHITE,
+        //     &res.pos.into(),
+        // )
+        tileset.draw_rect(&res.pos.pos.into(), reserved_path_color);
     }
 
     let mut path_color = BLUE;
