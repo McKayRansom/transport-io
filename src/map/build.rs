@@ -14,6 +14,7 @@ pub enum BuildError {
 
 pub type BuildResult = Result<(), BuildError>;
 
+// TODO: Replace with Something simpler?
 pub trait BuildAction {
     fn execute(&mut self, map: &mut Map) -> BuildResult;
     fn undo(&mut self, map: &mut Map) -> BuildResult;
@@ -60,6 +61,14 @@ impl BuildRoad {
         Self {
             pos,
             road: Road::new_connected(dirs),
+            old: Tile::Empty,
+        }
+    }
+
+    pub fn new_from_road(pos: Position, road: Road) -> Self {
+        Self {
+            pos,
+            road,
             old: Tile::Empty,
         }
     }
@@ -280,6 +289,14 @@ impl BuildAction for BuildActionList {
     }
 }
 
+impl FromIterator<Box<dyn BuildAction>> for BuildActionList {
+    fn from_iter<I: IntoIterator<Item = Box<dyn BuildAction>>>(iter: I) -> Self {
+        Self {
+            list: Vec::from_iter(iter),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum BuildRoadHeight {
     Level,
@@ -341,7 +358,7 @@ fn build_lane(
                             dir + Direction::LAYER_DOWN
                         } else {
                             dir
-                        }
+                        },
                     ]
                 }
             }
@@ -407,7 +424,7 @@ impl BuildActionStation {
         Self {
             pos,
             building,
-            building_id:  map.reserve_building_id(),
+            building_id: map.reserve_building_id(),
         }
     }
 }
@@ -465,7 +482,8 @@ impl BuildAction for BuildActionBuilding {
         // }
 
         let mut building = self.building.clone();
-        for pos in (self.building.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5) {
+        for pos in (self.building.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5)
+        {
             if let Some(Tile::Road(road)) = map.grid.get_tile(&pos) {
                 if let Some(station_id) = road.station {
                     building.routes.push(station_id);
@@ -489,22 +507,32 @@ impl BuildAction for BuildActionBuilding {
     }
 }
 
-// pub struct Clipboard {
-//     grid: Grid,
-// }
+pub struct Clipboard {
+    tiles: Vec<(Direction, Road)>,
+}
 
-// impl Clipboard {
-//     pub fn new(grid_from: Grid, pos: Position, area: Direction) -> Self {
-//         Self {
-//             // grid: grid_from.slice(pos, area)
-//             grid: Grid::new((3, 3))
-//         }
-//     }
+impl Clipboard {
+    pub fn new(map: &Map, start_pos: Position, area: Direction) -> Self {
+        Self {
+            tiles: start_pos
+                .iter_area(area)
+                .filter_map(|pos| match map.grid.get_tile(&pos)? {
+                    Tile::Road(road) => Some((pos - start_pos, road.clone())),
+                    _ => None,
+                })
+                .collect(),
+        }
+    }
 
-//     pub fn action(&self, pos: Position) -> BuildActionList {
-//         BuildActionList::new()
-//     }
-// }
+    pub fn paste(&self, pos: Position) -> BuildActionList {
+        self.tiles
+            .iter()
+            .map(|(dir, road)| -> Box<dyn BuildAction> {
+                Box::new(BuildRoad::new_from_road(pos + *dir, road.clone()))
+            })
+            .collect()
+    }
+}
 
 impl Grid {
     pub fn is_pos_clear(&self, pos: &Position) -> BuildResult {
@@ -532,9 +560,7 @@ impl Grid {
 #[cfg(test)]
 mod grid_build_tests {
     use crate::hash_map_id::HashMapId;
-
     use super::Direction;
-
     use super::*;
 
     #[test]
@@ -798,6 +824,22 @@ mod grid_build_tests {
         // Undo clear
         clear_action.undo(&mut map).unwrap();
         assert_eq!(map.grid.get_tile(&pos).unwrap(), &Tile::Building(1));
+    }
+
+    #[test]
+    fn test_clipboard() {
+        let mut map = Map::new_from_string("><__");
+
+        let clipboard = Clipboard::new(&map, (1, 0).into(), (1, 0).into());
+
+        let mut paste_action = clipboard.paste((2, 0).into());
+
+        paste_action.execute(&mut map).unwrap();
+
+        assert_eq!(map.grid, Grid::new_from_string("><<_"));
+        paste_action.undo(&mut map).unwrap();
+
+        assert_eq!(map.grid, Grid::new_from_string("><__"));
     }
 
     // TODO: Test case for reversing BuildList in correct order

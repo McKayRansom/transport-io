@@ -24,7 +24,6 @@ enum BuildMode {
     OneWayRoad,
     Bridge,
     Station,
-    Clear,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -52,6 +51,7 @@ pub struct ViewBuild {
     edit_action_bar: Toolbar<BuildActions>,
     build_err: Option<BuildErrorMsg>,
     build_history: BuildHistory,
+    clipboard: Option<Clipboard>,
 }
 
 impl ViewBuild {
@@ -90,13 +90,6 @@ impl ViewBuild {
             ));
         }
 
-        build_toolbar.push(ToolbarItem::new(
-            BuildMode::Clear,
-            "Delete",
-            '5',
-            Sprite::new(8, 3),
-        ));
-
         Self {
             mouse_pos: Position::new(0, 0),
             mouse_down_pos: None,
@@ -114,6 +107,7 @@ impl ViewBuild {
             ),
             build_err: None,
             build_history: BuildHistory::new(),
+            clipboard: None,
         }
     }
 
@@ -156,28 +150,49 @@ impl ViewBuild {
         pos: Position,
         map: &mut Map,
     ) -> Option<Box<dyn BuildAction>> {
-        match self.build_toolbar.get_selected()? {
-            BuildMode::TwoWayRoad => Some(Box::new(action_two_way_road(self.mouse_down_pos?, pos))),
-            BuildMode::OneWayRoad => Some(Box::new(action_one_way_road(self.mouse_down_pos?, pos))),
-            BuildMode::Clear => {
-                let start_pos = self.mouse_down_pos?;
-                let end_pos = pos + Direction::new(1, 1, 0);
-                let area: Direction = end_pos - start_pos;
+
+        let start_pos = self.mouse_down_pos?;
+        let end_pos = pos + Direction::new(1, 1, 0);
+        let area: Direction = end_pos - start_pos;
+
+        match self.edit_action_bar.get_selected() {
+            Some(BuildActions::Clear) => {
                 if map.grid.is_area_clear(&start_pos, area).is_err() {
-                    Some(Box::new(BuildActionClearArea::new(start_pos, area)))
+                    return Some(Box::new(BuildActionClearArea::new(start_pos, area)));
                 } else {
-                    None
+                    return None;
+                }
+            },
+            Some(BuildActions::Copy) => {
+                self.clipboard = Some(Clipboard::new(map, start_pos, area));
+                self.edit_action_bar.clear_selected();
+                return None;
+            },
+            Some(BuildActions::Cut) => {
+                self.clipboard = Some(Clipboard::new(map, start_pos, area));
+                self.edit_action_bar.clear_selected();
+                return Some(Box::new(BuildActionClearArea::new(start_pos, area)));
+            }
+            Some(BuildActions::Paste) => {
+                self.edit_action_bar.clear_selected();
+                if let Some(clipboard) = &self.clipboard {
+                    return Some(Box::new(clipboard.paste(start_pos)));
+                } else {
+                    return None;
                 }
             }
-            BuildMode::Station => {
-                Some(Box::new(BuildActionStation::new(
-                    map,
-                    pos,
-                    Building::new_station(pos),
-                )))
-            }
+            _ => {}
+        }
+        match self.build_toolbar.get_selected()? {
+            BuildMode::TwoWayRoad => Some(Box::new(action_two_way_road(start_pos, pos))),
+            BuildMode::OneWayRoad => Some(Box::new(action_one_way_road(start_pos, pos))),
+            BuildMode::Station => Some(Box::new(BuildActionStation::new(
+                map,
+                pos,
+                Building::new_station(pos),
+            ))),
             BuildMode::Bridge => Some(Box::new(action_build_road(
-                self.mouse_down_pos?,
+                start_pos,
                 pos,
                 RoadBuildOption {
                     height: crate::map::build::BuildRoadHeight::Bridge,
@@ -227,13 +242,17 @@ impl ViewBuild {
     fn draw_selected(&self, mouse_down_pos: Position, _map: &Map, tileset: &Tileset) {
         let start_pos = mouse_down_pos;
         let end_pos = self.mouse_pos;
-        match self.build_toolbar.get_selected() {
-            Some(BuildMode::Clear) => {
+        match self.edit_action_bar.get_selected() {
+            Some(_) => {
                 let end_pos = end_pos + Direction::new(1, 1, 0);
                 for pos in start_pos.iter_area(end_pos - start_pos) {
                     tileset.draw_rect(&pos.into(), SELECTED_DELETE);
                 }
+                return;
             }
+            _ => {}
+        }
+        match self.build_toolbar.get_selected() {
             Some(_) => {
                 let (pos_iter, _) = start_pos.iter_line_to(end_pos);
                 for pos in pos_iter {
@@ -261,7 +280,7 @@ impl ViewBuild {
 
         self.edit_action_bar.draw(
             ctx,
-            screen_width() - (TOOLBAR_SPACE * 2.),
+            screen_width() - (TOOLBAR_SPACE * 3.),
             screen_height() - TOOLBAR_SPACE,
         );
     }
@@ -276,10 +295,8 @@ impl ViewBuild {
                 self.edit_action_bar.clear_selected();
                 self.build_history.redo_action(map)
             }
-            BuildActions::Clear => todo!(),
-            BuildActions::Copy => todo!(),
-            BuildActions::Cut => todo!(),
-            BuildActions::Paste => todo!(),
+            // Clear/cut/copy/paste will be handled later
+            _ => {Ok(())}, 
         }
     }
 
