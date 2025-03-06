@@ -23,8 +23,8 @@ use macroquad::prelude::*;
 fn window_conf() -> Conf {
     Conf {
         fullscreen: false,
-        // high-dpi doesn't seem to work on Mac Native :(
-        high_dpi: false,
+        // high-dpi seems to change the zoom on webassembly??
+        high_dpi: true,
         icon: Some(Icon {
             small: include_bytes!("../icons/16x16.rgba").to_owned(),
             medium: include_bytes!("../icons/32x32.rgba").to_owned(),

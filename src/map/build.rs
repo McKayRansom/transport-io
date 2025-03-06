@@ -516,6 +516,7 @@ impl Clipboard {
         Self {
             tiles: start_pos
                 .iter_area(area)
+                // TODO: Copy Bridges!
                 .filter_map(|pos| match map.grid.get_tile(&pos)? {
                     Tile::Road(road) => Some((pos - start_pos, road.clone())),
                     _ => None,

@@ -106,7 +106,6 @@ impl GameView {
         if new_mouse_wheel.1 != 0. {
             ctx.tileset
                 .change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
-            println!("Zoom + {} = {}", new_mouse_wheel.1, ctx.tileset.zoom);
         }
 
         self.view_build.update(map);
@@ -132,7 +131,7 @@ impl GameView {
                     match self.view_toolbar.get_selected() {
                         Some(ViewMode::Build) => self.view_build.mouse_button_down_event(pos, map),
                         Some(ViewMode::Route) => self.view_route.mouse_button_down_event(pos, map),
-                        None => {},
+                        None => {}
                     }
                     self.mouse_pressed = true;
                 }
@@ -141,7 +140,7 @@ impl GameView {
                 match self.view_toolbar.get_selected() {
                     Some(ViewMode::Build) => self.view_build.mouse_button_up_event(pos, map),
                     Some(ViewMode::Route) => self.view_route.mouse_button_up_event(pos, map),
-                    None => {},
+                    None => {}
                 }
             }
 
@@ -201,9 +200,7 @@ impl GameView {
             Tile::Water => {
                 // ui.label(None, "Water");
             }
-            Tile::Mountain => {
-
-            }
+            Tile::Mountain => {}
             Tile::Building(building) => {
                 if let Some(building) = map.get_building(building) {
                     // ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
@@ -296,8 +293,8 @@ impl GameView {
             // ' ' => self.paused = !self.paused,
             'p' => self.draw_profiler = !self.draw_profiler,
 
-            '-' => ctx.tileset.zoom *= PLUS_MINUS_SENSITVITY,
-            '=' => ctx.tileset.zoom /= PLUS_MINUS_SENSITVITY,
+            '-' => ctx.tileset.change_zoom(-PLUS_MINUS_SENSITVITY),
+            '=' => ctx.tileset.change_zoom(PLUS_MINUS_SENSITVITY),
 
             _ => {
                 self.time_select.key_down(ch);

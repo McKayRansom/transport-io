@@ -79,6 +79,7 @@ impl Tileset {
         self.camera.1 += screen_height() * (old_screen_zoom - new_screen_zoom) / 2.;
 
         self.zoom += amount;
+        // println!("Zoom + {} = {}", amount, self.zoom);
         // let self.zoom = self.zoom.round();
     }
 

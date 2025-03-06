@@ -66,12 +66,13 @@ pub enum Status {
 #[derive(Debug)]
 pub enum VehicleError {
     InvalidTile,
+    OccupiedTile,
     NoPath,
 }
 
 impl From<ReservationError> for VehicleError {
     fn from(_value: ReservationError) -> Self {
-        VehicleError::InvalidTile
+        VehicleError::OccupiedTile
     }
 }
 
@@ -95,32 +96,29 @@ impl Vehicle {
         let start_tile = grid
             .get_tile_mut(&start_road_pos.pos)
             .ok_or(VehicleError::InvalidTile)?;
+
         let reservation = start_tile.reserve(id, start_road_pos)?;
 
         // TODO: TRY ROAD_POS ALT IF ONE_WAY DIR
 
-        let mut vehicle = Self {
+        let path_time_ticks =(path.1 + 1) * SPEED_TICKS; // TODO :De-dup this
+
+        Ok(Self {
             pos: start_road_pos,
             dir: start_dir,
             lag_pos: 0,
             color: SpawnerColors::Blue,
 
             id,
-            grid_path: None,
-            path_time_ticks: 0,
+            grid_path: Some(path),
+            path_time_ticks,
             path_index: 0,
             destination,
             elapsed_ticks: 0,
             reserved: Vec::from([reservation]),
             route_info: None,
             cargo: None,
-        };
-
-        vehicle.find_path(grid);
-        // Err(VehicleError::NoPath)
-        // } else {
-        Ok(vehicle)
-        // }
+        })
     }
 
     pub fn fixup(&mut self, grid: &mut Grid) -> Result<(), ReservationError> {
@@ -198,8 +196,11 @@ impl Vehicle {
     fn try_reserve_path(&mut self, grid: &mut Grid) -> Result<Vec<Reservation>, ReservePathError> {
         let mut to_reserve: Vec<Reservation> = Vec::new();
         let mut last_road_pos = self.pos;
+        let mut start_house = false;
+        let mut end_house = false;
 
         // TODO: convert path to VecDequeue
+        // TODO: Is there a path_index off-by-one error?
         'outer: for pos in &self
             .grid_path
             .as_ref()
@@ -208,9 +209,24 @@ impl Vehicle {
         {
             let dir = *pos - last_road_pos.pos;
             let mut one_way = false;
-            if let Some(Tile::Road(road)) = grid.get_tile(&last_road_pos.pos) {
-                if road.connections.is_one_way(dir) {
-                    one_way = true;
+            match grid.get_tile(&last_road_pos.pos) {
+                Some(Tile::Road(road)) => {
+                    if road.connections.is_one_way(dir) {
+                        one_way = true;
+                    }
+                }
+                Some(Tile::Building(_)) => {
+                    if self.path_index == 0 {
+                        start_house = true;
+                    }
+                }
+                _ => {}
+            }
+
+            // TODO: Check if end of path
+            if self.path_index > 0 {
+                if let Some(Tile::Building(_)) = grid.get_tile(pos) {
+                    end_house = true;
                 }
             }
 
@@ -225,7 +241,9 @@ impl Vehicle {
                 match tile.reserve(self.id, road_pos) {
                     Ok(res) => to_reserve.push(res),
                     Err(err) => {
-                        if one_way {
+                        if end_house {
+                            to_reserve.push(Reservation::new_for_building(road_pos));
+                        } else if one_way {
                             road_pos = road_pos.one_way_alt(*pos - last_road_pos.pos);
                             to_reserve.push(tile.reserve(self.id, road_pos)?);
                         } else {
@@ -234,12 +252,14 @@ impl Vehicle {
                     }
                 }
 
-                if tile.is_blockable() {
+                if tile.is_blockable() && !start_house {
                     break 'outer;
                 }
 
+                start_house = false;
                 last_road_pos = road_pos;
             }
+            end_house = false;
         }
 
         Ok(to_reserve)
@@ -583,7 +603,6 @@ mod vehicle_tests {
             vehicle_left.update(&mut grid, tick);
         }
 
-        dbg!(&vehicle_top);
         assert_eq!(vehicle_top.update(&mut grid, 0), Status::ReachedDestination);
         // assert_eq!(
         //     vehicle_right.update(&mut grid, 0),
@@ -598,29 +617,53 @@ mod vehicle_tests {
         // assert_eq!(vehicle_top.reserved.first().unwrap().pos, vehicle_top.pos);
     }
 
-    // #[test]
-    // fn house_yield() {
-    //     let mut grid = Grid::new_from_string(
-    //         ">>>2
-    //          _h__", // house is id 1
-    //     );
+    #[test]
+    fn house_yield() {
+        let mut grid = Grid::new_from_string(
+            ">>>2
+             _h__", // house is id 1
+        );
 
-    //     let mut vehicle_priority = Vehicle::new(42, (1, 0).into(), 2, &mut grid, 0).unwrap();
+        let res_pos = RoadPosition::new((1, 0), (1, 1));
+        let reservation = grid
+            .get_tile_mut(&res_pos.pos)
+            .unwrap()
+            .reserve(1234, res_pos);
 
-    //     vehicle_priority.update(&mut grid, 0);
+        let mut vehicle_yield =
+            Vehicle::new(2, RoadPosition::new((1, 1), (1, 0)).into(), 2, &mut grid).unwrap();
 
-    //     assert_eq!(
-    //         vehicle_priority.reserved,
-    //         [
-    //             Reservation::new(((2, 0), (0, 1)).into(), SPEED_TICKS, Tick::MAX),
-    //             Reservation::new(((1, 0), (1, 1)).into(), 0, SPEED_TICKS),
-    //         ]
-    //     );
+        vehicle_yield.update(&mut grid, 0);
+        assert_eq!(vehicle_yield.path_index, 0);
 
-    //     let mut vehicle_yield = Vehicle::new(2, (1, 1).into(), 2, &mut grid, 0).unwrap();
+        drop(reservation);
 
-    //     vehicle_yield.update(&mut grid, 0);
+        vehicle_yield.update(&mut grid, 0);
+        assert_eq!(vehicle_yield.path_index, 1);
+    }
 
-    //     assert_eq!(vehicle_yield.path_index, 0);
-    // }
+    #[test]
+    fn house_left_turn() {
+        let mut grid = Grid::new_from_string(
+            "<<<
+             _h_", // house is id 1
+        );
+
+        let res_pos = RoadPosition::new((1, 0), (0, 1));
+        let reservation = grid
+            .get_tile_mut(&res_pos.pos)
+            .unwrap()
+            .reserve(1234, res_pos);
+
+        let mut vehicle_priority =
+            Vehicle::new(2, RoadPosition::new((2, 0), (0, 0)).into(), 1, &mut grid).unwrap();
+
+        for _ in 0..32 {
+            vehicle_priority.update(&mut grid, 0);
+        }
+        assert_eq!(vehicle_priority.update(&mut grid, 0), Status::ReachedDestination);
+        assert_eq!(vehicle_priority.path_index, 2);
+
+        drop(reservation);
+    }
 }
