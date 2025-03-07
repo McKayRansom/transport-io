@@ -101,7 +101,7 @@ impl Vehicle {
 
         // TODO: TRY ROAD_POS ALT IF ONE_WAY DIR
 
-        let path_time_ticks =(path.1 + 1) * SPEED_TICKS; // TODO :De-dup this
+        let path_time_ticks = (path.1 + 1) * SPEED_TICKS; // TODO :De-dup this
 
         Ok(Self {
             pos: start_road_pos,
@@ -123,11 +123,15 @@ impl Vehicle {
 
     pub fn fixup(&mut self, grid: &mut Grid) -> Result<(), ReservationError> {
         // Fix serialization
+        // BUG: When reserializing, we fd this up when we allowed left turns to get BuildingReservations...
+        // For now we can create a building reservation but this is not deterministic...
         for reservation in &mut self.reserved {
+            // if reservation.
             *reservation = grid
                 .get_tile_mut(&reservation.pos.pos)
                 .ok_or(ReservationError::TileInvalid)?
-                .reserve(self.id, reservation.pos)?
+                .reserve(self.id, reservation.pos)
+                .unwrap_or_else(|_err| Reservation::new_for_building(reservation.pos));
         }
         Ok(())
     }
@@ -232,7 +236,7 @@ impl Vehicle {
 
             assert!(dir.x.abs() < 2 && dir.y.abs() < 2, "vehicle: {self:?}");
 
-            for mut road_pos in last_road_pos.iter_succ(*pos, one_way) {
+            for road_pos in last_road_pos.iter_succ(*pos, one_way) {
                 let tile = grid
                     .get_tile_mut(&road_pos.pos)
                     .ok_or(ReservePathError::InvalidPath)?;
@@ -243,9 +247,16 @@ impl Vehicle {
                     Err(err) => {
                         if end_house {
                             to_reserve.push(Reservation::new_for_building(road_pos));
-                        } else if one_way {
-                            road_pos = road_pos.one_way_alt(*pos - last_road_pos.pos);
-                            to_reserve.push(tile.reserve(self.id, road_pos)?);
+                        } else if one_way && tile.is_blockable() {
+                            if let Some(alt_pos) = road_pos.one_way_alt(dir) {
+                                println!("Found one-way alt: {alt_pos:?} for: {road_pos:?} dir: {dir:?}");
+                                // NOTE: adding intermediate pos doesn't work because we re-reserve every tile...
+                                // In general I'm not convinced it would work well but I'm not sure...
+                                // to_reserve.push(Reservation::new_for_building(road_pos));
+                                to_reserve.push(tile.reserve(self.id, alt_pos)?);
+                            } else {
+                                return Err(err.into());
+                            }
                         } else {
                             return Err(err.into());
                         }
@@ -585,7 +596,7 @@ mod vehicle_tests {
         vehicle_top.update(&mut grid, 0);
         assert_eq!(vehicle_top.path_index, 1);
         vehicle_right.update(&mut grid, 1);
-        assert_eq!(vehicle_right.path_index, 0);
+        assert_eq!(vehicle_right.path_index, 1);
         vehicle_bottom.update(&mut grid, 2);
         assert_eq!(vehicle_bottom.path_index, 1);
 
@@ -594,7 +605,7 @@ mod vehicle_tests {
         // Think of it like a garlic knot, in order for each peice to fit perfectly, there can't be any overlap
         // That's also why the update ticks above have to be incrementing.
         vehicle_left.update(&mut grid, 1);
-        assert_eq!(vehicle_left.path_index, 0);
+        assert_eq!(vehicle_left.path_index, 1);
 
         for tick in 0..SPEED_TICKS * 6 {
             vehicle_top.update(&mut grid, tick);
@@ -661,7 +672,10 @@ mod vehicle_tests {
         for _ in 0..32 {
             vehicle_priority.update(&mut grid, 0);
         }
-        assert_eq!(vehicle_priority.update(&mut grid, 0), Status::ReachedDestination);
+        assert_eq!(
+            vehicle_priority.update(&mut grid, 0),
+            Status::ReachedDestination
+        );
         assert_eq!(vehicle_priority.path_index, 2);
 
         drop(reservation);

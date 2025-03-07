@@ -223,4 +223,12 @@ mod grid_tests {
             Tile::Road(Road::new_connected(&[Direction::RIGHT]))
         );
     }
+
+    #[test]
+    fn test_byte_size() {
+        assert_eq!(
+            size_of::<GridTile>() * 2048 * 2048,
+            469_762_048
+        );
+    }
 }

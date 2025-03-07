@@ -33,9 +33,9 @@ impl Tile {
 
     pub fn reserve(&mut self, id: Id, pos: RoadPosition) -> Result<Reservation, ReservationError> {
         // TEST: allow vehicles to cross in intersections...
-        // if !self.is_blockable() {
-        //     return Ok(());
-        // }
+        if !self.is_blockable() {
+            return Ok(Reservation::new_for_building(pos));
+        }
         match self {
             Tile::Road(road) => road
                 .try_reserve(id, pos)

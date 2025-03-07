@@ -7,6 +7,7 @@ use crate::hash_map_id::Id;
 use super::RoadPosition;
 
 /*
+ * IDEA!!!!
  * Deadlock avoidance algorithm:
  * Each reservation has a NextPosition attached.
  * Before we grant a reservation:
@@ -25,6 +26,9 @@ use super::RoadPosition;
 
 #[derive(Clone, Debug, Default)]
 pub struct Reserved {
+    /*
+     * OPTIMIZATION: The Weak thing makes sure we don't leak memory, but we could compress it to 1 byte without it...
+     */
     weak_id: Weak<Id>,
 }
 

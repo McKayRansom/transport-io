@@ -79,17 +79,20 @@ impl RoadPosition {
         }
     }
 
-    pub fn one_way_alt(&self, dir: Direction) -> RoadPosition {
+    pub fn one_way_alt(&self, dir: Direction) -> Option<RoadPosition> {
 
         // TODO: THIS IS DEF WRONG, BUT I LIKE THAT IT POPS ENTERING VEHICLES OVER
+        if dir.x == 0 && dir.y == 0 {
+            return None;
+        }
         let mut new_pos = *self;
         if dir.x == 0 {
-            new_pos.off.1 ^= 1;
-        } else if dir.y == 0 {
             new_pos.off.0 ^= 1;
+        } else if dir.y == 0 {
+            new_pos.off.1 ^= 1;
         }
 
-        new_pos
+        Some(new_pos)
     } 
 }
 
@@ -162,6 +165,7 @@ impl Sub<RoadPosition> for RoadPosition {
     fn sub(self, rhs: RoadPosition) -> Self::Output {
         let dir = self.pos - rhs.pos;
         if dir != Direction::NONE {
+            // TODO: This doesn't support diagonal dirs between tiles, do we need it to?
             dir
         } else {
             Direction::new(self.off.0 - rhs.off.0, self.off.1 - rhs.off.1, 0)
@@ -210,7 +214,7 @@ mod road_pos_tests {
     use super::*;
 
     #[test]
-    fn test_new() {
+    fn test_add() {
         assert_eq!(
             RoadPosition::new((0, 0), (0, 0)) + Direction::RIGHT,
             RoadPosition::new((0, 0), (1, 0))
@@ -231,6 +235,18 @@ mod road_pos_tests {
         //     RoadPosition::new((1, 1), (0, 0)) + Direction::UP_LEFT,
         //     RoadPosition::new((0, 0), (1, 1))
         // );
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(
+            RoadPosition::new((0, 0), (1, 0)) - RoadPosition::new((0, 0), (0, 0)),
+            Direction::RIGHT,
+        );
+        assert_eq!(
+            RoadPosition::new((1, 0), (0, 0)) - RoadPosition::new((0, 0), (1, 0)),
+            Direction::RIGHT,
+        );
     }
 
     #[test]
@@ -272,13 +288,17 @@ mod road_pos_tests {
     #[test]
     fn test_pos_alt() {
         assert_eq!(
-            RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::RIGHT),
-            RoadPosition::new((0, 0), (0, 0))
+            RoadPosition::new((0, 0), (1, 1)).one_way_alt(Direction::RIGHT).unwrap(),
+            RoadPosition::new((0, 0), (1, 0))
         );
         assert_eq!(
-            RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::UP),
-            RoadPosition::new((0, 0), (1, 1))
+            RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::UP).unwrap(),
+            RoadPosition::new((0, 0), (0, 0))
         );
+        // assert_eq!(
+        //     RoadPosition::new((0, 0), (1, 0)).one_way_alt(Direction::UP),
+        //     None
+        // );
     }
 }
 

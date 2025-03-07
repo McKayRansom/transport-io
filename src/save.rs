@@ -77,7 +77,7 @@ impl Map {
 
         match &mut map {
             Err(err) => println!("Error loading save: {:?}", *err),
-            Ok(map) => map.fixup().expect("Error fixing save!"),
+            Ok(map) => map.fixup().unwrap_or_else(|err| {println!("Error fixing save! {err:?}")}),
         }
 
         map
