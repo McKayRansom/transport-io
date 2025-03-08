@@ -24,6 +24,7 @@ pub enum RouteDir {
     #[default]
     Forward,
     Backward,
+    HouseHackWhy,
 }
 
 impl RouteDir {
@@ -31,6 +32,7 @@ impl RouteDir {
         match self {
             RouteDir::Forward => 1,
             RouteDir::Backward => -1,
+            _ => 0,
         }
     }
 
@@ -38,6 +40,7 @@ impl RouteDir {
         match self {
             RouteDir::Forward => RouteDir::Backward,
             RouteDir::Backward => RouteDir::Forward,
+            _ => RouteDir::HouseHackWhy,
         }
     }
 }

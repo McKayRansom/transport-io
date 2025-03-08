@@ -16,7 +16,7 @@ pub mod draw;
 pub mod levels;
 mod route;
 pub mod vehicle;
-use route::Route;
+use route::{Route, RouteDir};
 
 pub mod position;
 pub use position::Position;
@@ -41,7 +41,6 @@ type CityHashMap = HashMapId<City>;
 
 // #[derive(Clone, Debug, Default)]
 pub type Tick = u32;
-
 
 // pub struct VehicleId(Id);
 // pub struct BuildingId(Id);
@@ -206,7 +205,6 @@ impl Map {
             } else if noise < 0.59999 {
                 // Tile::Empty
             } else {
-                
                 *self.grid.get_tile_mut(&pos).unwrap() = Tile::Mountain;
             };
         }
@@ -219,10 +217,14 @@ impl Map {
         start: Position,
         end: Id,
         color: SpawnerColors,
+        home_id: Option<Id>,
     ) -> Option<Id> {
         let id = self.vehicles.id;
         if let Ok(mut vehicle) = Vehicle::new(id, start, end, &mut self.grid) {
             vehicle.color = color;
+            if let Some(id) = home_id {
+                vehicle.route_info = Some((id as usize, RouteDir::HouseHackWhy))
+            }
             Some(self.vehicles.insert(vehicle))
         } else {
             None
@@ -294,23 +296,16 @@ impl Map {
                     }
                 } else {
                     // spawn car
-                    if self
-                        .add_vehicle(
-                            start_building.pos,
-                            end_building_id,
-                            destination_building.color,
-                        )
-                        .is_none()
-                    {
-                        self.grid
-                            .buildings
-                            .hash_map
-                            .get_mut(&end_building_id)
-                            .unwrap()
-                            .update_arrived(false);
-                    };
+                    let vehicle_id = self.add_vehicle(
+                        start_building.pos,
+                        end_building_id,
+                        destination_building.color,
+                        Some(building_id),
+                    );
 
-                    // destination_building.vehicle_on_the_way = _vehicle;
+                    let start_building_again =
+                        self.grid.buildings.hash_map.get_mut(&building_id).unwrap();
+                    start_building_again.my_vehicle = vehicle_id;
                 }
             }
         }
@@ -330,6 +325,9 @@ impl Map {
             if status != Status::EnRoute {
                 // TODO: Should busses still be delted if they are hopelessly late?
                 if let Some((route_id, dir)) = vehicle.route_info {
+                    if dir == RouteDir::HouseHackWhy {
+                        to_remove.push((*id, status));
+                    }
                     if let Some(route) = self.routes.get(route_id) {
                         if let Some((next_station, dir)) =
                             route.get_next_stop(vehicle.destination, dir)
@@ -354,11 +352,17 @@ impl Map {
         for (id, status) in to_remove {
             let vehicle = self.vehicles.hash_map.get_mut(&id).unwrap();
             // let building_id = tile.get_building_id()
-            if let Some(building) = self.grid.buildings.hash_map.get_mut(&vehicle.destination) {
-                building.update_arrived(status == Status::ReachedDestination);
+            if let Some(route_info) = vehicle.route_info {
+                if route_info.1 == RouteDir::HouseHackWhy {
+                    if let Some(building) =
+                        self.grid.buildings.hash_map.get_mut(&(route_info.0 as u64))
+                    {
+                        building.update_arrived(status == Status::ReachedDestination);
+                        building.my_vehicle = None;
+                    }
+                }
             }
             self.vehicles.hash_map.remove(&id);
-
             // self.update_rating(id.1 == Status::ReachedDestination);
         }
     }

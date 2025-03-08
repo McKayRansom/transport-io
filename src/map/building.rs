@@ -29,7 +29,7 @@ pub struct Building {
     pub dir: Option<Direction>,
     pub color: SpawnerColors,
     pub city_id: Id,
-    pub vehicle_on_the_way: Option<Id>,
+    pub my_vehicle: Option<Id>,
     pub arrived_count: i32,
     production_tics: i32,
     production_rate: i32,
@@ -46,7 +46,7 @@ impl Building {
             dir: None,
             color: SpawnerColors::Blue,
             city_id,
-            vehicle_on_the_way: None,
+            my_vehicle: None,
             arrived_count: 1, // Spawn with conditions met for now...
             production_tics: rand::gen_range(0, HOUSE_UPDATE_TICKS),
             production_rate: HOUSE_UPDATE_TICKS,
@@ -62,7 +62,7 @@ impl Building {
             dir: None,
             color: SpawnerColors::Red,
             city_id: 0,
-            vehicle_on_the_way: None,
+            my_vehicle: None,
             arrived_count: 0,
             production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
             production_rate: SPAWNER_UPDATE_TICKS,
@@ -78,7 +78,7 @@ impl Building {
             dir: Some(dir),
             color,
             city_id,
-            vehicle_on_the_way: None,
+            my_vehicle: None,
             arrived_count: 0,
             production_tics: rand::gen_range(0, SPAWNER_UPDATE_TICKS),
             production_rate: SPAWNER_UPDATE_TICKS,
@@ -145,7 +145,7 @@ impl Building {
     }
 
     pub fn update(&mut self) -> bool {
-        if self.building_type != BuildingType::Station {
+        if self.building_type != BuildingType::Station && self.my_vehicle.is_none() {
             self.production_tics += 1;
             if self.production_tics >= self.production_rate {
                 self.production_tics = 0;

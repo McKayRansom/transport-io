@@ -161,6 +161,7 @@ impl GameView {
         }
 
         // check WASD
+        // TODO: Right click PAN
         if is_key_down(KeyCode::W) {
             ctx.tileset.camera.1 -= WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
@@ -204,7 +205,7 @@ impl GameView {
             Tile::Building(building) => {
                 if let Some(building) = map.get_building(building) {
                     // ui.label(None, &format!("Building {:?}", building.vehicle_on_the_way));
-                    if let Some(vehicle_id) = building.vehicle_on_the_way {
+                    if let Some(vehicle_id) = building.my_vehicle {
                         if let Some(vehicle) = map.vehicles.hash_map.get(&vehicle_id) {
                             // vehicle.draw_detail(tileset);
                             self.draw_vehicle_details(map, &ctx.tileset, vehicle);
@@ -268,6 +269,7 @@ impl GameView {
                         }
                         PauseMenuSelect::Save => {
                             map.save().expect("Failed to save!");
+                            println!("SAVED GAME");
                         }
                         PauseMenuSelect::Quit => {
                             ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)

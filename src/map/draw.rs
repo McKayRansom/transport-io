@@ -13,7 +13,7 @@ use super::{
     city::City,
     grid::Grid,
     position::PIXEL_SIZE,
-    route::Route,
+    route::{Route, RouteDir},
     tile::{Road, Tile},
     vehicle::Vehicle,
     Direction, Map, Position, Tick,
@@ -89,13 +89,14 @@ pub fn draw_route(r: &Route, index: usize, map: &Map, tileset: &Tileset) {
     let mut prev_pos: Option<Rect> = None;
     for s in &r.stops {
         if let Some(building) = map.get_building(s) {
-            let color = SpawnerColors::from_number(index as u64).color();
+            let mut color = SpawnerColors::from_number(index as u64).color();
+            color.a = 0.7;
             let rect: Rect = building.pos.into();
             if let Some(previous) = prev_pos {
-                tileset.draw_line(&previous, &rect, 10., color);
+                tileset.draw_line(&previous, &rect, 9., color);
             }
             prev_pos = Some(rect);
-            tileset.draw_circle(&rect, 20., color);
+            // tileset.draw_circle(&rect, 15., color);
         }
     }
 }
@@ -343,10 +344,13 @@ pub fn draw_vehicle(vehicle: &Vehicle, tileset: &Tileset, _tick: Tick) {
     shadow_rect.y += 2.;
     let rotation = vehicle.dir.to_radians();
 
-    let (sprite, shadow_sprite) = if vehicle.route_info.is_none() {
-        (CAR_SPRITE, CAR_SHADOW_SPRITE)
-    } else {
+    let (sprite, shadow_sprite) = if vehicle
+        .route_info
+        .is_some_and(|route_info| route_info.1 != RouteDir::HouseHackWhy)
+    {
         (BUS_SPRITE, BUS_SHADOW_SPRITE)
+    } else {
+        (CAR_SPRITE, CAR_SHADOW_SPRITE)
     };
 
     tileset.draw_tile(shadow_sprite, WHITE, &shadow_rect, rotation);
@@ -366,7 +370,7 @@ pub fn draw_vehicle_detail(map: &Map, vehicle: &Vehicle, tileset: &Tileset) {
     let mut reserved_path_color = RED;
     reserved_path_color.a = 0.3;
 
-    for  res in vehicle.reserved.iter() {
+    for res in vehicle.reserved.iter() {
         // let start = res.start.saturating_sub(map.tick);
         // let end: String = if res.end != Tick::MAX {
         //     format!("{}", res.end.saturating_sub(map.tick))

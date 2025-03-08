@@ -143,7 +143,7 @@ impl Tileset {
         draw_circle(
             ((rect.x + rect.w / 2.) - self.camera.0) * self.zoom,
             ((rect.y + rect.h / 2.)- self.camera.1) * self.zoom,
-            radius,
+            radius * self.zoom,
             color,
         );
     }
@@ -154,7 +154,7 @@ impl Tileset {
             ((start.y + start.h / 2.) - self.camera.1) * self.zoom,
             ((end.x + end.w / 2.) - self.camera.0) * self.zoom,
             ((end.y + end.h / 2.) - self.camera.1) * self.zoom,
-            thickness,
+            thickness * self.zoom,
             color,
         );
     }

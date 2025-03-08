@@ -52,6 +52,7 @@ pub struct Vehicle {
     path_time_ticks: Tick,
     elapsed_ticks: Tick,
     pub destination: Id,
+    // TEMP: HACK USE RouteId as Starting building ID!
     pub route_info: Option<(RouteId, RouteDir)>,
     pub cargo: Option<u32>,
 }
@@ -249,7 +250,7 @@ impl Vehicle {
                             to_reserve.push(Reservation::new_for_building(road_pos));
                         } else if one_way && tile.is_blockable() {
                             if let Some(alt_pos) = road_pos.one_way_alt(dir) {
-                                println!("Found one-way alt: {alt_pos:?} for: {road_pos:?} dir: {dir:?}");
+                                // println!("Found one-way alt: {alt_pos:?} for: {road_pos:?} dir: {dir:?}");
                                 // NOTE: adding intermediate pos doesn't work because we re-reserve every tile...
                                 // In general I'm not convinced it would work well but I'm not sure...
                                 // to_reserve.push(Reservation::new_for_building(road_pos));

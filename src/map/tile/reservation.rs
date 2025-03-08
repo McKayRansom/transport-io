@@ -23,13 +23,15 @@ use super::RoadPosition;
  * Complexity: O(n^2) unless we fully cache NextPosition
  *
  */
-
 #[derive(Clone, Debug, Default)]
 pub struct Reserved {
     /*
      * OPTIMIZATION: The Weak thing makes sure we don't leak memory, but we could compress it to 1 byte without it...
      */
     weak_id: Weak<Id>,
+
+    // priority: u8,
+    // ticks_waiting: u8,
 }
 
 impl Reserved {

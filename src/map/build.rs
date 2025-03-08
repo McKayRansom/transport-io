@@ -513,15 +513,19 @@ pub struct Clipboard {
 
 impl Clipboard {
     pub fn new(map: &Map, start_pos: Position, area: Direction) -> Self {
+        let mut tiles: Vec<(Direction, Road)> = Vec::new();
+        for pos in start_pos.iter_area(area) {
+            match map.grid.get_tile(&pos) {
+                Some(Tile::Road(road)) => tiles.push((pos - start_pos, road.clone())),
+                _ => {},
+            }
+            match map.grid.get_tile(&(pos + Direction::LAYER_UP)) {
+                Some(Tile::Road(road)) => tiles.push(((pos - start_pos) + Direction::LAYER_UP, road.clone())),
+                _ => {},
+            }
+        }
         Self {
-            tiles: start_pos
-                .iter_area(area)
-                // TODO: Copy Bridges!
-                .filter_map(|pos| match map.grid.get_tile(&pos)? {
-                    Tile::Road(road) => Some((pos - start_pos, road.clone())),
-                    _ => None,
-                })
-                .collect(),
+            tiles
         }
     }
 
