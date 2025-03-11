@@ -1,23 +1,13 @@
-#![feature(test)]
 
+use transport_io::consts::PKG_NAME;
+use transport_io::context::Context;
+use transport_io::map;
+use transport_io::scene::gameplay::Gameplay;
+use transport_io::scene::level_select::LevelSelect;
+use transport_io::scene::main_menu::MainMenu;
+use transport_io::scene::{EScene, GameOptions, Scene};
 
-mod consts;
-mod context;
-mod hash_map_id;
-mod map;
-mod save;
-mod scene;
-mod tileset;
-mod ui;
-
-use consts::PKG_NAME;
-use context::Context;
 use miniquad::conf::Icon;
-use scene::gameplay::Gameplay;
-use scene::level_select::LevelSelect;
-use scene::main_menu::MainMenu;
-use scene::{EScene, Scene};
-
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
@@ -52,7 +42,7 @@ async fn main() {
         Some(level) => Box::new(
             Gameplay::new(
                 &mut ctx,
-                Box::new(scene::GameOptions::Level(level).create().unwrap()),
+                Box::new(GameOptions::Level(level).create().unwrap()),
             )
             .await,
         ),

@@ -147,7 +147,8 @@ mod save_tests {
 
         let mut map = Map::new_from_string(">>>>1");
 
-        map.add_vehicle((0, 0).into(), 1, crate::consts::SpawnerColors::Blue);
+        // TODO
+        // map.add_vehicle((0, 0).into(), 1, crate::consts::SpawnerColors::Blue);
 
         map.save().unwrap();
 

@@ -2,6 +2,7 @@ use super::menu::{Menu, MenuItem};
 use super::toolbar::{Toolbar, ToolbarItem, ToolbarType, TOOLBAR_SPACE};
 use super::view_build::ViewBuild;
 use super::view_route::ViewRoute;
+use crate::hash_map_id::Id;
 use crate::{
     context::{Context, GameSpeed},
     map::{
@@ -44,6 +45,12 @@ enum PauseMenuSelect {
     Restart,
 }
 
+enum SelectedEntity {
+    Building(Id),
+    // Road(Position),
+    Vehicle(Id),
+}
+
 pub struct GameView {
     draw_profiler: bool,
     mouse_pressed: bool,
@@ -53,6 +60,7 @@ pub struct GameView {
     view_build: ViewBuild,
     view_route: ViewRoute,
     pause_menu: Menu<PauseMenuSelect>,
+    selected: Option<SelectedEntity>,
 }
 
 impl GameView {
@@ -91,6 +99,7 @@ impl GameView {
                 MenuItem::new(PauseMenuSelect::Quit, "Menu".to_string()),
                 MenuItem::new(PauseMenuSelect::Restart, "Restart".to_string()),
             ]),
+            selected: None,
         }
     }
 
@@ -140,7 +149,7 @@ impl GameView {
                 match self.view_toolbar.get_selected() {
                     Some(ViewMode::Build) => self.view_build.mouse_button_up_event(pos, map),
                     Some(ViewMode::Route) => self.view_route.mouse_button_up_event(pos, map),
-                    None => {}
+                    None => {},
                 }
             }
 
@@ -275,7 +284,7 @@ impl GameView {
                             ctx.switch_scene_to = Some(crate::scene::EScene::MainMenu)
                         }
                         PauseMenuSelect::Restart => {
-                            ctx.switch_scene_to = Some(crate::EScene::Gameplay(Box::new(
+                            ctx.switch_scene_to = Some(crate::scene::EScene::Gameplay(Box::new(
                                 new_level(map.metadata.level_number),
                             )))
                         }
