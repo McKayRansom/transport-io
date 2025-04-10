@@ -1,3 +1,4 @@
+use macroquad::math::Vec2;
 use macroquad::text::Font;
 use macroquad::time::get_time;
 
@@ -25,7 +26,7 @@ pub enum GameSpeed {
 pub struct Context {
     pub request_quit: bool,
     pub key_pressed: Option<char>,
-    pub mouse_pos: Option<(f32, f32)>,
+    pub mouse_pos: Option<Vec2>,
     pub _time: f64,
     pub game_speed: GameSpeed,
     // pub gamepads: Gamepads,

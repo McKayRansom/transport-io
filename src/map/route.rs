@@ -45,8 +45,9 @@ impl RouteDir {
     }
 }
 
-#[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Route {
+    pub company: Id,
     pub stops: Vec<Id>,
     pub vehicles: Vec<Id>,
     pub desired_vehicles: usize,
@@ -73,9 +74,8 @@ impl Route {
             if stop == &current_stop {
                 if let Some(stop) = self.stops.get((i + route_dir.index()) as usize) {
                     return Some((*stop, route_dir));
-                } else if let Some(stop) = self
-                    .stops
-                    .get((i + route_dir.inverse().index()) as usize)
+                } else if let Some(stop) =
+                    self.stops.get((i + route_dir.inverse().index()) as usize)
                 {
                     return Some((*stop, route_dir.inverse()));
                 } else {
@@ -106,14 +106,26 @@ impl Route {
 
         let mut vehicle = Vehicle::new(vehicles.id, building.pos, next_stop, grid).ok()?;
 
+        vehicle.company = self.company;
         vehicle.route_info = Some((index, dir));
         vehicle.color = SpawnerColors::from_number(index as u64);
 
         let id = vehicles.insert(vehicle);
 
         self.vehicles.push(id);
-        
+
         Some(())
+    }
+}
+
+impl Default for Route {
+    fn default() -> Self {
+        Self {
+            company: 1,
+            stops: Default::default(),
+            vehicles: Default::default(),
+            desired_vehicles: Default::default(),
+        }
     }
 }
 

@@ -25,12 +25,13 @@ impl ViewRoute {
                 super::toolbar::ToolbarType::Horizontal,
                 (1..5)
                     .map(|i| {
-                        ToolbarItem::new(
-                            i as usize,
-                            "",
-                            char::from_digit(i - 1, 10).unwrap(),
-                            Sprite::new(8, 3),
-                        )
+                        ToolbarItem {
+                            value: i as usize,
+                            shortcut: char::from_digit(i - 1, 10).unwrap(),
+                            sprite: Sprite::new(13, 0),
+                            color: SpawnerColors::from_number(i as u64).color(),
+                            ..Default::default()
+                        }
                     })
                     .collect(),
             ),
@@ -43,7 +44,7 @@ impl ViewRoute {
 
         if let Some(route_numer) = self.route_toolbar.get_selected() {
             if let Some(mouse_coords) = ctx.mouse_pos {
-                let pos = Position::from_screen(mouse_coords, ctx.tileset.camera, ctx.tileset.zoom);
+                let pos = Position::from_screen(mouse_coords.into(), ctx.tileset.camera, ctx.tileset.zoom);
                 if let Some(mouse_down_pos) = self.mouse_down_pos {
                     let start: Rect = mouse_down_pos.into();
                     let end: Rect = pos.into();

@@ -35,7 +35,7 @@ impl UiState {
         if root_ui().is_mouse_over(vec2(mouse_pos.0, mouse_pos.1)) {
             ctx.mouse_pos = None;
         } else {
-            ctx.mouse_pos = Some(mouse_pos)
+            ctx.mouse_pos = Some(mouse_pos.into())
         }
 
         ctx.key_pressed = get_char_pressed();

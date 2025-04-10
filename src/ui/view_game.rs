@@ -11,6 +11,10 @@ use crate::{
     },
     tileset::{Sprite, Tileset},
 };
+use macroquad::color::{Color, WHITE};
+use macroquad::math::Vec2;
+use macroquad::shapes::draw_rectangle;
+use macroquad::text::draw_text;
 use macroquad::{
     input::{is_key_down, is_mouse_button_down, mouse_wheel, KeyCode, MouseButton},
     math::vec2,
@@ -119,14 +123,14 @@ impl GameView {
 
         self.view_build.update(map);
 
-        if self.view_build.is_mouse_over(new_mouse_pos)
-            || self.time_select.is_mouse_over(new_mouse_pos)
-            || self.view_toolbar.is_mouse_over(new_mouse_pos)
+        if self.view_build.is_mouse_over(new_mouse_pos.into())
+            || self.time_select.is_mouse_over(new_mouse_pos.into())
+            || self.view_toolbar.is_mouse_over(new_mouse_pos.into())
         {
             return;
         }
 
-        let pos = Position::from_screen(new_mouse_pos, ctx.tileset.camera, ctx.tileset.zoom);
+        let pos = Position::from_screen(new_mouse_pos.into(), ctx.tileset.camera, ctx.tileset.zoom);
         {
             if map.grid.get_tile(&pos).is_none() {
                 self.view_build.mouse_clear();
@@ -149,7 +153,7 @@ impl GameView {
                 match self.view_toolbar.get_selected() {
                     Some(ViewMode::Build) => self.view_build.mouse_button_up_event(pos, map),
                     Some(ViewMode::Route) => self.view_route.mouse_button_up_event(pos, map),
-                    None => {},
+                    None => {}
                 }
             }
 
@@ -239,11 +243,26 @@ impl GameView {
         Some(())
     }
 
+    const COMPANY_SIZE: Vec2 = Vec2::new(200., 50.);
+
+    fn draw_company(&mut self, map: &Map, ctx: &mut Context) {
+        let color = Color::from_hex(0x181818);
+        draw_rectangle(0., 0., Self::COMPANY_SIZE.x, Self::COMPANY_SIZE.y, color);
+        draw_text(
+            format!("${}", map.companies.hash_map.get(&1).unwrap().get_money()).as_str(),
+            Self::COMPANY_SIZE.x / 2.,
+            Self::COMPANY_SIZE.y / 2.,
+            24.,
+            WHITE,
+        );
+    }
+
     pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
         // profiler
+        self.draw_company(map, ctx);
         if self.draw_profiler {
             macroquad_profiler::profiler(ProfilerParams {
-                fps_counter_pos: vec2(0., 0.),
+                fps_counter_pos: vec2(0., Self::COMPANY_SIZE.y),
             });
         }
         if let Some(pos) = self.last_mouse_pos {

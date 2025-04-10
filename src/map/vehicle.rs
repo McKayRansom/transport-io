@@ -55,6 +55,7 @@ pub struct Vehicle {
     // TEMP: HACK USE RouteId as Starting building ID!
     pub route_info: Option<(RouteId, RouteDir)>,
     pub cargo: Option<u32>,
+    pub company: Id,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd)]
@@ -119,6 +120,7 @@ impl Vehicle {
             reserved: Vec::from([reservation]),
             route_info: None,
             cargo: None,
+            company: 0,
         })
     }
 

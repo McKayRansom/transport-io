@@ -1,6 +1,7 @@
 use build::{BuildAction, BuildActionBuilding, BuildResult};
 use building::Building;
 use city::City;
+use company::Company;
 use grid::Grid;
 use noise::NoiseFn;
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,8 @@ pub mod tile;
 pub mod draw;
 pub mod levels;
 mod route;
+mod company;
+pub use company::Money;
 pub mod vehicle;
 use route::{Route, RouteDir};
 
@@ -38,6 +41,7 @@ pub const DEFAULT_CITY_ID: Id = 1;
 type VehicleHashMap = HashMapId<Vehicle>;
 type BuildingHashMap = HashMapId<Building>;
 type CityHashMap = HashMapId<City>;
+type CompanyHashMap = HashMapId<Company>;
 
 // #[derive(Clone, Debug, Default)]
 pub type Tick = u32;
@@ -78,6 +82,12 @@ impl Default for MapMetadata {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub struct RecentTransactions {
+    pub cost: Money,
+    pub pos: Position,
+}
+
 #[derive(Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Map {
     pub metadata: MapMetadata,
@@ -86,6 +96,9 @@ pub struct Map {
     pub vehicles: VehicleHashMap,
     cities: CityHashMap,
     pub routes: [Route; 10],
+    pub companies: CompanyHashMap,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub recent_transactions: Vec<RecentTransactions>,
 }
 
 impl Map {
@@ -101,6 +114,8 @@ impl Map {
         let mut map = Self::new_empty(size);
 
         map.generate().expect("Error generating map");
+
+        map.companies.insert(Company::new());
 
         map
     }
@@ -332,6 +347,11 @@ impl Map {
                         if let Some((next_station, dir)) =
                             route.get_next_stop(vehicle.destination, dir)
                         {
+                            if let Some(cargo) = vehicle.cargo {
+                                if let Some(company) = self.companies.hash_map.get_mut(&vehicle.company) {
+                                    company.deposit(cargo);
+                                }
+                            }
                             vehicle.cargo = self
                                 .grid
                                 .buildings

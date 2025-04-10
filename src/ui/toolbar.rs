@@ -1,8 +1,9 @@
 use macroquad::{
-    color::{Color, WHITE},
+    color::{self, Color, WHITE},
     input::{is_mouse_button_down, mouse_position},
     math::{vec2, Rect},
     shapes::draw_rectangle,
+    text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
 };
 
@@ -10,19 +11,36 @@ use crate::{context::Context, tileset::Sprite};
 
 #[derive(Clone, Copy)]
 pub struct ToolbarItem<V> {
-    value: V,
-    _tooltip: &'static str,
-    shortcut: char,
+    pub value: V,
+    pub tooltip: &'static str,
+    pub shortcut: char,
     pub sprite: Sprite,
+    pub color: Color,
 }
 
 impl<V> ToolbarItem<V> {
-    pub fn new(value: V, _tooltip: &'static str, shortcut: char, sprite: Sprite) -> Self {
+    pub fn new(value: V, tooltip: &'static str, shortcut: char, sprite: Sprite) -> Self {
         Self {
             value,
-            _tooltip,
+            tooltip,
             shortcut,
             sprite,
+            color: color::WHITE,
+        }
+    }
+}
+
+impl<V> Default for ToolbarItem<V>
+where
+    V: Default,
+{
+    fn default() -> Self {
+        Self {
+            value: Default::default(),
+            tooltip: "",
+            shortcut: Default::default(),
+            sprite: Sprite::new(0, 0),
+            color: color::WHITE,
         }
     }
 }
@@ -113,7 +131,7 @@ impl<V> Toolbar<V> {
                 &ctx.tileset.texture,
                 item_rect.x,
                 item_rect.y,
-                WHITE,
+                toolbar_item.color,
                 DrawTextureParams {
                     dest_size: Some(vec2(item_rect.w, item_rect.h)),
                     source: Some(spr_rect),
@@ -131,22 +149,32 @@ impl<V> Toolbar<V> {
                 );
             }
 
-            if item_rect.contains(mouse_position().into()) {
-                draw_rectangle(
-                    item_rect.x - 5.,
-                    item_rect.y - 5.,
-                    item_rect.w + 10.,
-                    item_rect.h + 10.,
-                    Color::new(1.0, 1.0, 1.0, 0.1),
-                );
+            if let Some(mouse_pos) = ctx.mouse_pos {
+                if item_rect.contains(mouse_pos) {
+                    draw_text(
+                        toolbar_item.tooltip,
+                        mouse_pos.x,
+                        mouse_pos.y,
+                        24.,
+                        color::WHITE,
+                    );
 
-                if mouse_down && self.mouse_down.is_none() {
-                    if self.selected.is_none() || self.selected != Some(i) {
-                        self.selected = Some(i);
-                    } else {
-                        self.selected = None;
+                    draw_rectangle(
+                        item_rect.x - 5.,
+                        item_rect.y - 5.,
+                        item_rect.w + 10.,
+                        item_rect.h + 10.,
+                        Color::new(1.0, 1.0, 1.0, 0.1),
+                    );
+
+                    if mouse_down && self.mouse_down.is_none() {
+                        if self.selected.is_none() || self.selected != Some(i) {
+                            self.selected = Some(i);
+                        } else {
+                            self.selected = None;
+                        }
+                        self.mouse_down = Some(i);
                     }
-                    self.mouse_down = Some(i);
                 }
             }
 
