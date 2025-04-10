@@ -145,7 +145,7 @@ mod save_tests {
 
         assert!(!Map::save_exists());
 
-        let mut map = Map::new_from_string(">>>>1");
+        let map = Map::new_from_string(">>>>1");
 
         // TODO
         // map.add_vehicle((0, 0).into(), 1, crate::consts::SpawnerColors::Blue);

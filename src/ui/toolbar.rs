@@ -1,6 +1,6 @@
 use macroquad::{
-    color::{self, Color, WHITE},
-    input::{is_mouse_button_down, mouse_position},
+    color::{self, Color},
+    input::is_mouse_button_down,
     math::{vec2, Rect},
     shapes::draw_rectangle,
     text::draw_text,

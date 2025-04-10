@@ -50,8 +50,10 @@ enum PauseMenuSelect {
 }
 
 enum SelectedEntity {
+    #[allow(unused)]
     Building(Id),
     // Road(Position),
+    #[allow(unused)]
     Vehicle(Id),
 }
 
@@ -64,6 +66,7 @@ pub struct GameView {
     view_build: ViewBuild,
     view_route: ViewRoute,
     pause_menu: Menu<PauseMenuSelect>,
+    #[allow(unused)]
     selected: Option<SelectedEntity>,
 }
 
@@ -245,7 +248,7 @@ impl GameView {
 
     const COMPANY_SIZE: Vec2 = Vec2::new(200., 50.);
 
-    fn draw_company(&mut self, map: &Map, ctx: &mut Context) {
+    fn draw_company(&mut self, map: &Map, _ctx: &mut Context) {
         let color = Color::from_hex(0x181818);
         draw_rectangle(0., 0., Self::COMPANY_SIZE.x, Self::COMPANY_SIZE.y, color);
         draw_text(
