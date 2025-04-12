@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use macroquad::{
     color::{Color, BLUE, RED, WHITE},
     math::Rect,
@@ -71,9 +73,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
         }
     }
 
-    for (index, r) in map.routes.iter().enumerate() {
-        draw_route(r, index, map, tileset);
-    }
+    draw_routes(map, tileset);
 
     for c in map.cities.hash_map.values() {
         draw_city(c, tileset);
@@ -84,21 +84,106 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 }
 
-pub fn draw_route(r: &Route, index: usize, map: &Map, tileset: &Tileset) {
-    // This should be changed to a path...
-    let mut prev_pos: Option<Rect> = None;
-    for s in &r.stops {
-        if let Some(building) = map.get_building(s) {
-            let mut color = SpawnerColors::from_number(index as u64).color();
-            color.a = 0.7;
-            let rect: Rect = building.pos.into();
-            if let Some(previous) = prev_pos {
-                tileset.draw_line(&previous, &rect, 9., color);
+type RouteCache = HashMap<Position, usize>;
+
+fn draw_routes(map: &Map, tileset: &Tileset) {
+    let mut route_cache: RouteCache = HashMap::new();
+    for (index, r) in map.routes.iter().enumerate() {
+        draw_route(r, index, map, tileset, &mut route_cache);
+    }
+}
+
+/*
+ * Theory of route drawing:
+ * - Dependent on number of routes passing through an station (known)
+ * - Dependent on number of routes previously drawn? (maybe)
+ * - Figure this out lol
+ */
+pub fn draw_route(
+    r: &Route,
+    index: usize,
+    map: &Map,
+    tileset: &Tileset,
+    route_cache: &mut RouteCache,
+) {
+    let mut prev_pos: Option<Position> = None;
+    let mut have_drawn_segment: bool = false;
+    for stop_id in &r.stops {
+        draw_route_segment(
+            *stop_id,
+            index,
+            map,
+            tileset,
+            route_cache,
+            &mut prev_pos,
+            &mut have_drawn_segment,
+        );
+    }
+}
+
+const ROUTE_THICKNESS: f32 = 9.;
+const ROUTE_SPACING: f32 = 10.;
+const ROUTE_STOP_THICKNESS: f32 = 8.;
+
+fn draw_route_segment(
+    stop_id: u64,
+    index: usize,
+    map: &Map,
+    tileset: &Tileset,
+    route_cache: &mut RouteCache,
+    prev_pos: &mut Option<Position>,
+    have_drawn_segment: &mut bool,
+) -> Option<()> {
+    let building = map.get_building(&stop_id)?;
+
+    if let Some(previous_position) = prev_pos {
+        let mut color = SpawnerColors::from_number(index as u64).color();
+        color.a = 0.7;
+        let path = map.grid.find_path(*previous_position, &stop_id);
+        if path.is_none() {
+            tileset.draw_line(
+                &(*previous_position).into(),
+                &(building.pos.into()),
+                ROUTE_THICKNESS,
+                color,
+            );
+        } else {
+            let (path, _cost) = path?;
+            let mut previous: Option<(Rect, usize)> = None;
+            if let Some(pos) = path.first() {
+                if let Some(entry) = route_cache.get_mut(pos) {
+                    if *have_drawn_segment == true {
+                        *entry -= 1;
+                    }
+                }
             }
-            prev_pos = Some(rect);
-            // tileset.draw_circle(&rect, 15., color);
+            for pos in path.iter() {
+                let rect: Rect = (*pos).into();
+                let entry = route_cache.entry(*pos).or_insert(0);
+                if let Some((mut previous, prev_entry)) = previous {
+                    let spacing = *entry as f32 * ROUTE_SPACING;
+                    let prev_spacing: f32 = prev_entry as f32 * ROUTE_SPACING;
+                    let mut adjusted_rect = rect;
+                    if previous.y == rect.y {
+                        adjusted_rect.y += spacing;
+                        previous.y += prev_spacing;
+                    } else {
+                        adjusted_rect.x += spacing;
+                        previous.x += prev_spacing;
+                    }
+                    tileset.draw_line(&previous, &adjusted_rect, ROUTE_THICKNESS, color);
+                    *have_drawn_segment = true;
+                }
+                previous = Some((rect, *entry));
+                *entry += 1;
+
+            }
+            // tileset.draw_circle(&previous.unwrap().0, ROUTE_STOP_THICKNESS, color);
         }
     }
+    *prev_pos = Some(building.pos);
+    // tileset.draw_circle(&rect, 15., color);
+    Some(())
 }
 
 pub fn draw_city(city: &City, tileset: &Tileset) {

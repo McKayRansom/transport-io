@@ -342,6 +342,7 @@ impl Map {
                 if let Some((route_id, dir)) = vehicle.route_info {
                     if dir == RouteDir::HouseHackWhy {
                         to_remove.push((*id, status));
+                        continue;
                     }
                     if let Some(route) = self.routes.get(route_id) {
                         if let Some((next_station, dir)) =
