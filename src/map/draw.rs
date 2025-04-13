@@ -123,7 +123,7 @@ pub fn draw_route(
 
 const ROUTE_THICKNESS: f32 = 9.;
 const ROUTE_SPACING: f32 = 10.;
-const ROUTE_STOP_THICKNESS: f32 = 8.;
+const _ROUTE_STOP_THICKNESS: f32 = 8.;
 
 fn draw_route_segment(
     stop_id: u64,

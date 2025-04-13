@@ -1,4 +1,3 @@
-use macroquad::{input::{get_char_pressed, mouse_position}, math::vec2, ui::root_ui};
 use view_game::GameView;
 
 use crate::{
@@ -30,16 +29,7 @@ impl UiState {
     }
 
     pub fn draw(&mut self, map: &mut Map, ctx: &mut Context) {
-        let mouse_pos = mouse_position();
        
-        if root_ui().is_mouse_over(vec2(mouse_pos.0, mouse_pos.1)) {
-            ctx.mouse_pos = None;
-        } else {
-            ctx.mouse_pos = Some(mouse_pos.into())
-        }
-
-        ctx.key_pressed = get_char_pressed();
-
         self.game_view.update(ctx, map);
         self.game_view.draw(map, ctx);
     }

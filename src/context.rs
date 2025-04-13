@@ -1,6 +1,8 @@
-use macroquad::math::Vec2;
+use macroquad::input::{get_char_pressed, mouse_position};
+use macroquad::math::{vec2, Vec2};
 use macroquad::text::Font;
 use macroquad::time::get_time;
+use macroquad::ui::root_ui;
 
 // use crate::assets_path::determine_asset_path;
 // use crate::audio;
@@ -62,5 +64,18 @@ impl Context {
             // settings: Settings::load(),
             // save: Save::load(),
         }
+    }
+
+    pub fn update(&mut self)  {
+        let mouse_pos = mouse_position();
+       
+        if root_ui().is_mouse_over(vec2(mouse_pos.0, mouse_pos.1)) {
+            self.mouse_pos = None;
+        } else {
+            self.mouse_pos = Some(mouse_pos.into())
+        }
+
+        self.key_pressed = get_char_pressed();
+
     }
 }

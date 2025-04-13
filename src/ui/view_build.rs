@@ -137,10 +137,6 @@ impl ViewBuild {
         }
     }
 
-    pub fn is_mouse_over(&self, mouse_pos: (f32, f32)) -> bool {
-        self.build_toolbar.is_mouse_over(mouse_pos) || self.edit_action_bar.is_mouse_over(mouse_pos)
-    }
-
     pub fn mouse_clear(&mut self) {
         self.mouse_down_pos = None;
     }
@@ -234,11 +230,6 @@ impl ViewBuild {
         self.mouse_pos = pos;
     }
 
-    pub fn key_down(&mut self, ch: char) {
-        self.build_toolbar.key_down(ch);
-        self.edit_action_bar.key_down(ch);
-    }
-
     fn draw_selected(&self, mouse_down_pos: Position, _map: &Map, tileset: &Tileset) {
         let start_pos = mouse_down_pos;
         let end_pos = self.mouse_pos;
@@ -265,7 +256,7 @@ impl ViewBuild {
         }
     }
 
-    pub fn draw(&mut self, map: &Map, ctx: &Context) {
+    pub fn draw(&mut self, map: &mut Map, ctx: &mut Context) {
         if let Some(mouse_down_pos) = self.mouse_down_pos {
             self.draw_selected(mouse_down_pos, map, &ctx.tileset);
         } else {

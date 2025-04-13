@@ -86,7 +86,7 @@ impl<V> Toolbar<V> {
         self.selected = None;
     }
 
-    pub fn draw(&mut self, ctx: &Context, x: f32, y: f32) {
+    pub fn draw(&mut self, ctx: &mut Context, x: f32, y: f32) {
         if self.kind == ToolbarType::Veritcal {
             self.rect.w = TOOLBAR_SPACE;
             self.rect.h = self.items.len() as f32 * TOOLBAR_SPACE;
@@ -139,6 +139,19 @@ impl<V> Toolbar<V> {
                 },
             );
 
+            if ctx.key_pressed == Some(toolbar_item.shortcut) {
+                if let Some(selected) = self.selected {
+                    if selected == i {
+                        self.selected = None;
+                    } else {
+                        self.selected = Some(i);
+                    }
+                } else {
+                    self.selected = Some(i);
+                }
+                ctx.key_pressed = None;
+            }
+
             if self.selected == Some(i) {
                 draw_rectangle(
                     item_rect.x - 5.,
@@ -184,26 +197,11 @@ impl<V> Toolbar<V> {
                 item_rect.y += TOOLBAR_ITEM_WIDTH + TOOLBAR_ITEM_PAD;
             }
         }
-    }
 
-    pub fn key_down(&mut self, key: char) {
-        for (i, item) in self.items.iter().enumerate() {
-            if key == item.shortcut {
-                if let Some(selected) = self.selected {
-                    if selected == i {
-                        self.selected = None;
-                    } else {
-                        self.selected = Some(i);
-                    }
-                } else {
-                    self.selected = Some(i);
-                }
-                return;
+        if let Some(mouse_pos) = ctx.mouse_pos {
+            if self.rect.contains(mouse_pos) {
+                ctx.mouse_pos = None;
             }
         }
-    }
-
-    pub fn is_mouse_over(&self, mouse_pos: (f32, f32)) -> bool {
-        self.rect.contains(mouse_pos.into())
     }
 }

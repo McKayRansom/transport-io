@@ -50,6 +50,8 @@ async fn main() {
     };
 
     loop {
+        ctx.update();
+
         current_scene.update(&mut ctx);
 
         clear_background(BLACK);

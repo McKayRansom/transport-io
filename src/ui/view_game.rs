@@ -110,14 +110,9 @@ impl GameView {
         }
     }
 
-    fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) {
+    fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) -> Option<()> {
         let new_mouse_wheel = mouse_wheel();
-
-        if ctx.mouse_pos.is_none() {
-            return;
-        }
-
-        let new_mouse_pos = ctx.mouse_pos.unwrap();
+        let new_mouse_pos = ctx.mouse_pos?;
 
         if new_mouse_wheel.1 != 0. {
             ctx.tileset
@@ -126,20 +121,13 @@ impl GameView {
 
         self.view_build.update(map);
 
-        if self.view_build.is_mouse_over(new_mouse_pos.into())
-            || self.time_select.is_mouse_over(new_mouse_pos.into())
-            || self.view_toolbar.is_mouse_over(new_mouse_pos.into())
-        {
-            return;
-        }
-
         let pos = Position::from_screen(new_mouse_pos.into(), ctx.tileset.camera, ctx.tileset.zoom);
         {
             if map.grid.get_tile(&pos).is_none() {
                 self.view_build.mouse_clear();
                 self.last_mouse_pos = None;
                 self.mouse_pressed = false;
-                return;
+                return Some(());
             }
 
             if is_mouse_button_down(MouseButton::Left) {
@@ -167,14 +155,11 @@ impl GameView {
                 self.view_build.mouse_motion_event(pos, map);
                 self.last_mouse_pos = Some(pos);
             }
+            Some(())
         }
     }
 
-    pub fn update(&mut self, ctx: &mut Context, map: &mut Map) {
-        if let Some(key) = ctx.key_pressed {
-            self.view_toolbar.key_down(key);
-            self.key_down_event(ctx, key);
-        }
+    pub fn update(&mut self, ctx: &mut Context, _map: &mut Map) {
 
         // check WASD
         // TODO: Right click PAN
@@ -190,8 +175,6 @@ impl GameView {
         if is_key_down(KeyCode::D) {
             ctx.tileset.camera.0 += WASD_MOVE_SENSITIVITY / ctx.tileset.zoom;
         }
-
-        self.update_mouse(ctx, map);
     }
 
     fn draw_vehicle_details(&self, map: &Map, tileset: &Tileset, vehicle: &Vehicle) {
@@ -260,7 +243,18 @@ impl GameView {
         );
     }
 
-    pub fn draw(&mut self, map: &Map, ctx: &mut Context) {
+    pub fn draw(&mut self, map: &mut Map, ctx: &mut Context) {
+        if let Some(ch) = ctx.key_pressed {
+            match ch {
+                'q' => ctx.request_quit = true,
+                // ' ' => self.paused = !self.paused,
+                'p' => self.draw_profiler = !self.draw_profiler,
+
+                '-' => ctx.tileset.change_zoom(-PLUS_MINUS_SENSITVITY),
+                '=' => ctx.tileset.change_zoom(PLUS_MINUS_SENSITVITY),
+                _ => {},
+            }
+        }
         // profiler
         self.draw_company(map, ctx);
         if self.draw_profiler {
@@ -318,21 +312,7 @@ impl GameView {
                 self.time_select.items[0].sprite = Sprite::new(10, 0);
             }
         }
-    }
 
-    fn key_down_event(&mut self, ctx: &mut Context, ch: char) {
-        match ch {
-            'q' => ctx.request_quit = true,
-            // ' ' => self.paused = !self.paused,
-            'p' => self.draw_profiler = !self.draw_profiler,
-
-            '-' => ctx.tileset.change_zoom(-PLUS_MINUS_SENSITVITY),
-            '=' => ctx.tileset.change_zoom(PLUS_MINUS_SENSITVITY),
-
-            _ => {
-                self.time_select.key_down(ch);
-                self.view_build.key_down(ch);
-            } // }
-        }
+        self.update_mouse(ctx, map);
     }
 }
