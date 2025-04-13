@@ -274,6 +274,18 @@ impl ViewBuild {
             screen_width() - (TOOLBAR_SPACE * 3.),
             screen_height() - TOOLBAR_SPACE,
         );
+
+        self.update_build_err();
+
+        if let Some(action) = self.edit_action_bar.get_selected().cloned() {
+            if let Err(err) = self.do_edit_action(map, action) {
+                self.build_err = Some(BuildErrorMsg {
+                    pos: self.mouse_down_pos.unwrap_or((0, 0).into()),
+                    err,
+                    time: BUILD_ERROR_TIME,
+                })
+            }
+        }
     }
 
     fn do_edit_action(&mut self, map: &mut Map, action: BuildActions) -> BuildResult {
@@ -288,21 +300,6 @@ impl ViewBuild {
             }
             // Clear/cut/copy/paste will be handled later
             _ => {Ok(())}, 
-        }
-    }
-
-    // This is our chance to edit the map outside of an mouse handler...
-    pub fn update(&mut self, map: &mut Map) {
-        self.update_build_err();
-
-        if let Some(action) = self.edit_action_bar.get_selected().cloned() {
-            if let Err(err) = self.do_edit_action(map, action) {
-                self.build_err = Some(BuildErrorMsg {
-                    pos: self.mouse_down_pos.unwrap_or((0, 0).into()),
-                    err,
-                    time: BUILD_ERROR_TIME,
-                })
-            }
         }
     }
 }

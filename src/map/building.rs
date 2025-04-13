@@ -26,7 +26,7 @@ pub enum BuildingType {
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub pos: Position,
-    pub dir: Option<Direction>,
+    // pub dir: Option<Direction>,
     pub color: SpawnerColors,
     pub city_id: Id,
     pub my_vehicle: Option<Id>,
@@ -43,7 +43,6 @@ impl Building {
     pub fn new_house(pos: Position, city_id: Id) -> Self {
         Building {
             pos,
-            dir: None,
             color: SpawnerColors::Blue,
             city_id,
             my_vehicle: None,
@@ -59,7 +58,6 @@ impl Building {
     pub fn new_station(pos: Position) -> Self {
         Building {
             pos,
-            dir: None,
             color: SpawnerColors::Red,
             city_id: 0,
             my_vehicle: None,
@@ -72,10 +70,9 @@ impl Building {
         }
     }
 
-    pub fn new_spawner(pos: Position, dir: Direction, color: SpawnerColors, city_id: Id) -> Self {
+    pub fn new_spawner(pos: Position, color: SpawnerColors, city_id: Id) -> Self {
         Building {
             pos,
-            dir: Some(dir),
             color,
             city_id,
             my_vehicle: None,
@@ -106,9 +103,9 @@ impl Building {
     }
 
     pub fn destination_pos(&self, grid: &Grid) -> Option<(Position, Direction)> {
-        if let Some(dir) = self.dir {
-            return Some((self.pos, dir.inverse()));
-        }
+        // if let Some(dir) = self.dir {
+        //     return Some((self.pos, dir.inverse()));
+        // }
         for dir in Direction::ALL {
             // let dir = pos.default_connections()[0].inverse();
             let pos_adj = self.pos + dir;

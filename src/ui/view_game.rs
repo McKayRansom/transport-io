@@ -119,8 +119,6 @@ impl GameView {
                 .change_zoom(SCROLL_SENSITIVITY * new_mouse_wheel.1);
         }
 
-        self.view_build.update(map);
-
         let pos = Position::from_screen(new_mouse_pos.into(), ctx.tileset.camera, ctx.tileset.zoom);
         {
             if map.grid.get_tile(&pos).is_none() {

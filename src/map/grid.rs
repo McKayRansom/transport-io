@@ -145,7 +145,6 @@ impl Grid {
                         self.buildings.hash_map.entry(station).or_insert_with(|| {
                             Building::new_spawner(
                                 pos,
-                                dir,
                                 SpawnerColors::from_number(station),
                                 DEFAULT_CITY_ID,
                             )
