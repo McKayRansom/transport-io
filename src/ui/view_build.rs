@@ -299,7 +299,7 @@ impl ViewBuild {
                 self.build_history.redo_action(map)
             }
             // Clear/cut/copy/paste will be handled later
-            _ => {Ok(())}, 
+            _ => {Ok(0)}, 
         }
     }
 }

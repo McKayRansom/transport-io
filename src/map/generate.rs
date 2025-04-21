@@ -25,7 +25,7 @@ impl Map {
             .execute(self)
             .unwrap();
 
-        Ok(())
+        Ok(0)
     }
 
     fn new_city_generate(&mut self, pos: Position, name: String) -> BuildResult {
@@ -49,7 +49,7 @@ impl Map {
             let _ = BuildActionBuilding::new(self, building).execute(self);
         }
 
-        Ok(())
+        Ok(0)
     }
 
     fn generate(&mut self) -> BuildResult {
@@ -73,6 +73,6 @@ impl Map {
             };
         }
 
-        Ok(())
+        Ok(0)
     }
 }

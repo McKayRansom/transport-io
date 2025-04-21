@@ -10,9 +10,19 @@ use super::{
 pub enum BuildError {
     InvalidTile,
     OccupiedTile,
+    InsufficientFunds,
 }
 
-pub type BuildResult = Result<(), BuildError>;
+pub type BuildCost = u32;
+pub type BuildResult = Result<BuildCost, BuildError>;
+
+const BUILD_TILE_COST: BuildCost = 100;
+const CLEAR_TILE_COST: BuildCost = 100;
+const BUILD_ROAD_COST: BuildCost = 100;
+const CLEAR_ROAD_COST: BuildCost = 100;
+const BUILD_STATION_COST: BuildCost = 200;
+const BUILD_FREE: BuildCost = 0;
+// const BUILD_ROAD_COST: Buidl
 
 // TODO: Replace with Something simpler?
 pub trait BuildAction {
@@ -37,7 +47,7 @@ impl BuildAction for BuildTile {
 
         if matches!(tile, Tile::Empty) {
             *tile = self.tile.clone();
-            Ok(())
+            Ok(BUILD_TILE_COST)
         } else {
             Err(BuildError::OccupiedTile)
         }
@@ -46,7 +56,7 @@ impl BuildAction for BuildTile {
     fn undo(&mut self, map: &mut Map) -> BuildResult {
         *map.grid.get_tile_build(&self.pos)? = Tile::Empty;
 
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -92,7 +102,7 @@ impl BuildAction for BuildRoad {
         match tile {
             Tile::Empty => {
                 *tile = Tile::Road(self.road.clone());
-                Ok(())
+                Ok(BUILD_ROAD_COST)
             }
             Tile::Road(road) => {
                 // don't allow bridges to cross for now
@@ -112,7 +122,7 @@ impl BuildAction for BuildRoad {
                     }
                 }
 
-                Ok(())
+                Ok(BUILD_FREE)
             }
             _ => Err(BuildError::OccupiedTile),
         }
@@ -122,7 +132,7 @@ impl BuildAction for BuildRoad {
         let tile = map.grid.get_tile_build(&self.pos)?;
         *tile = self.old.clone();
 
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -144,21 +154,24 @@ impl BuildActionClearArea {
     }
 
     fn clear_tile(&mut self, map: &mut Map, pos: Position) -> BuildResult {
+        let mut cost: BuildCost = 0;
         match map.grid.get_tile_build(&pos)? {
             Tile::Building(_) if map.metadata.is_level => {
                 // do not allow destroying buildings in level mode
                 return Err(BuildError::OccupiedTile);
             }
             Tile::Building(building_id) => {
+                cost += CLEAR_TILE_COST;
                 let building_id = *building_id;
                 if let Some(building) = map.remove_building(&building_id) {
                     self.old_buildings.push((building_id, building));
                 }
             }
             Tile::Road(road) => {
+                cost += CLEAR_ROAD_COST;
                 for dir in road.connections.iter() {
                     if dir.z == 1 {
-                        self.clear_bridge(map, pos, dir)?;
+                        cost += self.clear_bridge(map, pos, dir)?;
                     }
                 }
                 for dir in Direction::ALL {
@@ -183,23 +196,27 @@ impl BuildActionClearArea {
                     }
                 }
             }
-            _ => {}
+            _ => {
+                // do nothing for Empty, MOUNTAIN, or WATER
+                return Ok(BUILD_FREE);
+            }
         }
 
         let tile = map.grid.get_tile_build(&pos)?;
         self.old_tiles.push((pos, tile.clone()));
         *tile = Tile::Empty;
-        Ok(())
+        Ok(cost)
     }
 
     fn clear_bridge(&mut self, map: &mut Map, pos: Position, dir: Direction) -> BuildResult {
         let mut bridge_pos = pos + dir;
+        let mut cost = BUILD_FREE;
         let dir = dir.flatten();
 
         println!("Clearing bridge at {:?} in dir {:?}", pos, dir);
 
         while let Some(Tile::Road(_road)) = map.grid.get_tile_mut(&bridge_pos) {
-            self.clear_tile(map, bridge_pos)?;
+            cost += self.clear_tile(map, bridge_pos)?;
 
             bridge_pos += dir;
         }
@@ -207,18 +224,21 @@ impl BuildActionClearArea {
         // clear up ramp
         println!("End clearing bridge at {:?}", bridge_pos);
 
-        Ok(())
+        Ok(cost)
     }
 }
 
 impl BuildAction for BuildActionClearArea {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
+        let mut build_cost = BUILD_FREE;
         for pos in self.pos.iter_area(self.area) {
             // we're not going to stop here...
-            let _ = self.clear_tile(map, pos);
+            if let Ok(cost) = self.clear_tile(map, pos) {
+                build_cost += cost;
+            }
         }
 
-        Ok(())
+        Ok(build_cost)
     }
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
@@ -233,7 +253,7 @@ impl BuildAction for BuildActionClearArea {
         }
         self.old_buildings.clear();
 
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -267,14 +287,18 @@ impl BuildActionList {
 
 impl BuildAction for BuildActionList {
     fn execute(&mut self, map: &mut Map) -> BuildResult {
+        let mut build_cost = BUILD_FREE;
         for (pos, item) in self.list.iter_mut().enumerate() {
-            if let Err(err) = item.execute(map) {
-                self.rollback(map, pos);
-                return Err(err);
+            match item.execute(map) {
+                Err(err) => {
+                    self.rollback(map, pos);
+                    return Err(err);
+                }
+                Ok(cost) => build_cost += cost,
             }
         }
 
-        Ok(())
+        Ok(build_cost)
     }
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
@@ -285,7 +309,7 @@ impl BuildAction for BuildActionList {
             }
         }
 
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -446,7 +470,7 @@ impl BuildAction for BuildActionStation {
                     }
                 }
             }
-            Ok(())
+            Ok(BUILD_STATION_COST)
         } else {
             Err(BuildError::InvalidTile)
         }
@@ -457,7 +481,7 @@ impl BuildAction for BuildActionStation {
         if let Tile::Road(road) = map.grid.get_tile_build(&self.pos)? {
             road.station = None;
         }
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -493,7 +517,7 @@ impl BuildAction for BuildActionBuilding {
 
         map.insert_building(self.building_id, building);
 
-        Ok(())
+        Ok(BUILD_TILE_COST)
     }
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
@@ -503,7 +527,7 @@ impl BuildAction for BuildActionBuilding {
         BuildTile::new(self.building.pos, Tile::Building(self.building_id)).undo(map)?;
         // }
 
-        Ok(())
+        Ok(BUILD_FREE)
     }
 }
 
@@ -517,16 +541,16 @@ impl Clipboard {
         for pos in start_pos.iter_area(area) {
             match map.grid.get_tile(&pos) {
                 Some(Tile::Road(road)) => tiles.push((pos - start_pos, road.clone())),
-                _ => {},
+                _ => {}
             }
             match map.grid.get_tile(&(pos + Direction::LAYER_UP)) {
-                Some(Tile::Road(road)) => tiles.push(((pos - start_pos) + Direction::LAYER_UP, road.clone())),
-                _ => {},
+                Some(Tile::Road(road)) => {
+                    tiles.push(((pos - start_pos) + Direction::LAYER_UP, road.clone()))
+                }
+                _ => {}
             }
         }
-        Self {
-            tiles
-        }
+        Self { tiles }
     }
 
     pub fn paste(&self, pos: Position) -> BuildActionList {
@@ -542,7 +566,7 @@ impl Clipboard {
 impl Grid {
     pub fn is_pos_clear(&self, pos: &Position) -> BuildResult {
         if self.get_tile(pos).ok_or(BuildError::InvalidTile)? == &Tile::Empty {
-            Ok(())
+            Ok(BUILD_FREE)
         } else {
             Err(BuildError::OccupiedTile)
         }
@@ -554,7 +578,7 @@ impl Grid {
                 self.is_pos_clear(&(*pos + (x, y).into()))?;
             }
         }
-        Ok(())
+        Ok(BUILD_FREE)
     }
 
     fn get_tile_build(&mut self, pos: &Position) -> Result<&mut Tile, BuildError> {
@@ -564,9 +588,9 @@ impl Grid {
 
 #[cfg(test)]
 mod grid_build_tests {
-    use crate::hash_map_id::HashMapId;
     use super::Direction;
     use super::*;
+    use crate::hash_map_id::HashMapId;
 
     #[test]
     fn test_build() {

@@ -1,4 +1,4 @@
-use super::{Map, Unlocked, DEFAULT_CITY_ID};
+use super::{company::Company, Map, Unlocked, DEFAULT_CITY_ID};
 
 // pub const TEST_LEVEL: Option<usize> = Some(1);
 pub const TEST_LEVEL: Option<usize> = None;
@@ -99,6 +99,8 @@ pub fn new_level(level_number: usize) -> Map {
     map.metadata.level_hint = Some(level.hint.into());
 
     map.get_city_mut(DEFAULT_CITY_ID).unwrap().name = level.name.into();
+
+    map.companies.insert(Company::new());
 
     map
 }

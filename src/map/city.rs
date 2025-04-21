@@ -50,6 +50,7 @@ impl City {
                     Ok(_) => return Some(Building::new_house(pos, self.id)),
                     Err(BuildError::OccupiedTile) => continue,
                     Err(BuildError::InvalidTile) => break,
+                    Err(BuildError::InsufficientFunds) => unreachable!(),
                 }
             }
         } else {

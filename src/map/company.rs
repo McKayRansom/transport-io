@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::hash_map_id::Id;
+
 pub type Money = u32;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -8,6 +10,7 @@ pub struct Company {
 }
 
 pub const STARTING_MONEY: Money = 1000;
+pub const DEFAULT_COMPANY: Id = 1;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum MoneyError {
