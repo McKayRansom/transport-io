@@ -84,7 +84,7 @@ pub fn draw_map(map: &Map, tileset: &Tileset) {
     }
 }
 
-type RouteCache = HashMap<Position, usize>;
+type RouteCache = HashMap<(Position, Position), usize>;
 
 fn draw_routes(map: &Map, tileset: &Tileset) {
     let mut route_cache: RouteCache = HashMap::new();
@@ -107,7 +107,7 @@ pub fn draw_route(
     route_cache: &mut RouteCache,
 ) {
     let mut prev_pos: Option<Position> = None;
-    let mut have_drawn_segment: bool = false;
+    // let mut have_drawn_segment: bool = false;
     for stop_id in &r.stops {
         draw_route_segment(
             *stop_id,
@@ -116,7 +116,7 @@ pub fn draw_route(
             tileset,
             route_cache,
             &mut prev_pos,
-            &mut have_drawn_segment,
+            // &mut have_drawn_segment,
         );
     }
 }
@@ -125,6 +125,14 @@ const ROUTE_THICKNESS: f32 = 9.;
 const ROUTE_SPACING: f32 = 10.;
 const _ROUTE_STOP_THICKNESS: f32 = 8.;
 
+fn sort_pos(pos1: &Position, pos2: &Position) -> (Position, Position) {
+    if pos1.x < pos2.x || pos1.y < pos2.y {
+        (*pos1, *pos2)
+    } else {
+        (*pos2, *pos1)
+    }
+}
+
 fn draw_route_segment(
     stop_id: u64,
     index: usize,
@@ -132,7 +140,6 @@ fn draw_route_segment(
     tileset: &Tileset,
     route_cache: &mut RouteCache,
     prev_pos: &mut Option<Position>,
-    have_drawn_segment: &mut bool,
 ) -> Option<()> {
     let building = map.get_building(&stop_id)?;
 
@@ -150,33 +157,44 @@ fn draw_route_segment(
         } else {
             let (path, _cost) = path?;
             let mut previous: Option<(Rect, usize)> = None;
-            if let Some(pos) = path.first() {
-                if let Some(entry) = route_cache.get_mut(pos) {
-                    if *have_drawn_segment == true {
-                        *entry -= 1;
-                    }
-                }
-            }
+            let mut previous_path_pos: Option<Position> = None;
+            let mut have_drawn = false;
+            // if let Some(pos) = path.first() {
+                // if let Some(entry) = route_cache.get_mut(&sort_pos(&previous_position, pos)) {
+                //     if *have_drawn_segment == true {
+                //         *entry -= 1;
+                //     }
+                // }
+            // }
             for pos in path.iter() {
-                let rect: Rect = (*pos).into();
-                let entry = route_cache.entry(*pos).or_insert(0);
+                let mut rect: Rect = (*pos).into();
+                let entry = route_cache
+                    .entry(sort_pos(&previous_path_pos.unwrap_or(*pos), pos))
+                    .or_insert(0);
                 if let Some((mut previous, prev_entry)) = previous {
                     let spacing = *entry as f32 * ROUTE_SPACING;
-                    let prev_spacing: f32 = prev_entry as f32 * ROUTE_SPACING;
                     let mut adjusted_rect = rect;
-                    if previous.y == rect.y {
+                    if previous_path_pos.unwrap().y == pos.y {
                         adjusted_rect.y += spacing;
-                        previous.y += prev_spacing;
+                        // if !have_drawn {
+                            previous.y += spacing;
+                        // }
                     } else {
                         adjusted_rect.x += spacing;
-                        previous.x += prev_spacing;
+                        // if !have_drawn {
+                            previous.x += spacing;
+                        // }
+                        // previous.x += prev_spacing;
                     }
                     tileset.draw_line(&previous, &adjusted_rect, ROUTE_THICKNESS, color);
-                    *have_drawn_segment = true;
+                    have_drawn = true;
+                    // *have_drawn_segment = true;
+                    // save the adjusted rect to make turns propery
+                    // rect = adjusted_rect;
                 }
                 previous = Some((rect, *entry));
+                previous_path_pos = Some(*pos);
                 *entry += 1;
-
             }
             // tileset.draw_circle(&previous.unwrap().0, ROUTE_STOP_THICKNESS, color);
         }

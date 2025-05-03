@@ -27,7 +27,7 @@ use macroquad_profiler::ProfilerParams;
  * Global game controls for all view modes
  */
 const WASD_MOVE_SENSITIVITY: f32 = 20.;
-const SCROLL_SENSITIVITY: f32 = 0.1;
+const SCROLL_SENSITIVITY: f32 = 0.05;
 const PLUS_MINUS_SENSITVITY: f32 = 0.8; // 20% zoom seems pretty standard (I.E. that is also what VSCode does)
 
 #[derive(PartialEq, Eq)]
