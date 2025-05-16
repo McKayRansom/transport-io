@@ -169,9 +169,24 @@ impl BuildActionClearArea {
             }
             Tile::Road(road) => {
                 cost += CLEAR_ROAD_COST;
+                let station = road.station;
                 for dir in road.connections.iter() {
                     if dir.z == 1 {
                         cost += self.clear_bridge(map, pos, dir)?;
+                    }
+                }
+                // TODO: UNDO THIS
+                if let Some(station_id) = station {
+                    for pos in
+                        (self.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5)
+                    {
+                        if let Some(&Tile::Building(building_id)) = map.grid.get_tile(&pos) {
+                            if let Some(building) =
+                                map.grid.buildings.hash_map.get_mut(&building_id)
+                            {
+                                building.routes.retain(|id| id != &station_id);
+                            }
+                        }
                     }
                 }
                 for dir in Direction::ALL {
@@ -195,6 +210,7 @@ impl BuildActionClearArea {
                         }
                     }
                 }
+                
             }
             _ => {
                 // do nothing for Empty, MOUNTAIN, or WATER
@@ -243,6 +259,7 @@ impl BuildAction for BuildActionClearArea {
 
     fn undo(&mut self, map: &mut Map) -> BuildResult {
         for (pos, tile) in self.old_tiles.iter().rev() {
+            // TODO: Undo clearing station!!
             *map.grid.get_tile_build(pos)? = tile.clone();
         }
 
@@ -462,15 +479,15 @@ impl BuildAction for BuildActionStation {
             road.station = Some(self.building_id);
             map.insert_building(self.building_id, self.building.clone());
 
-            // TODO: Function and undo this...
-            // NOTE: This is an optimization (some would say over-optimization, let's skip for now)
-            // for pos in (self.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5) {
-            //     if let Some(&Tile::Building(building_id)) = map.grid.get_tile(&pos) {
-            //         if let Some(building) = map.grid.buildings.hash_map.get_mut(&building_id) {
-            //             building.routes.push(self.building_id);
-            //         }
-            //     }
-            // }
+            // TODO: Function
+            // NOTE: This is an optimization (some would say over-optimization)
+            for pos in (self.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5) {
+                if let Some(&Tile::Building(building_id)) = map.grid.get_tile(&pos) {
+                    if let Some(building) = map.grid.buildings.hash_map.get_mut(&building_id) {
+                        building.routes.push(self.building_id);
+                    }
+                }
+            }
             Ok(BUILD_STATION_COST)
         } else {
             Err(BuildError::InvalidTile)
