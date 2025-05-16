@@ -463,13 +463,14 @@ impl BuildAction for BuildActionStation {
             map.insert_building(self.building_id, self.building.clone());
 
             // TODO: Function and undo this...
-            for pos in (self.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5) {
-                if let Some(&Tile::Building(building_id)) = map.grid.get_tile(&pos) {
-                    if let Some(building) = map.grid.buildings.hash_map.get_mut(&building_id) {
-                        building.routes.push(self.building_id);
-                    }
-                }
-            }
+            // NOTE: This is an optimization (some would say over-optimization, let's skip for now)
+            // for pos in (self.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5) {
+            //     if let Some(&Tile::Building(building_id)) = map.grid.get_tile(&pos) {
+            //         if let Some(building) = map.grid.buildings.hash_map.get_mut(&building_id) {
+            //             building.routes.push(self.building_id);
+            //         }
+            //     }
+            // }
             Ok(BUILD_STATION_COST)
         } else {
             Err(BuildError::InvalidTile)
@@ -505,17 +506,17 @@ impl BuildAction for BuildActionBuilding {
         BuildTile::new(self.building.pos, Tile::Building(self.building_id)).execute(map)?;
         // }
 
-        let mut building = self.building.clone();
-        for pos in (self.building.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5)
-        {
-            if let Some(Tile::Road(road)) = map.grid.get_tile(&pos) {
-                if let Some(station_id) = road.station {
-                    building.routes.push(station_id);
-                }
-            }
-        }
+        // let mut building = self.building.clone();
+        // for pos in (self.building.pos + Direction::UP_LEFT * 2).iter_area(Direction::DOWN_RIGHT * 5)
+        // {
+        //     if let Some(Tile::Road(road)) = map.grid.get_tile(&pos) {
+        //         if let Some(station_id) = road.station {
+        //             building.routes.push(station_id);
+        //         }
+        //     }
+        // }
 
-        map.insert_building(self.building_id, building);
+        map.insert_building(self.building_id, self.building.clone());
 
         Ok(BUILD_TILE_COST)
     }

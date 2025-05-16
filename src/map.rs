@@ -1,4 +1,3 @@
-use build::{BuildAction, BuildActionBuilding};
 use building::Building;
 use city::City;
 use company::Company;
@@ -12,11 +11,11 @@ pub mod grid;
 pub mod path;
 pub mod tile;
 
+mod company;
 pub mod draw;
+mod generate;
 pub mod levels;
 mod route;
-mod company;
-mod generate;
 pub use {company::Money, company::DEFAULT_COMPANY};
 pub mod vehicle;
 use route::{Route, RouteDir};
@@ -275,7 +274,9 @@ impl Map {
                             route.get_next_stop(vehicle.destination, dir)
                         {
                             if let Some(cargo) = vehicle.cargo {
-                                if let Some(company) = self.companies.hash_map.get_mut(&vehicle.company) {
+                                if let Some(company) =
+                                    self.companies.hash_map.get_mut(&vehicle.company)
+                                {
                                     company.deposit(cargo);
                                 }
                             }
@@ -321,18 +322,16 @@ impl Map {
 
         let all_goals_met = self.update_buildings();
 
-        let mut building_to_add: Vec<Building> = Vec::new();
-        for city in self.cities.values_mut() {
-            if let Some(building) = city.update(&mut self.grid) {
-                building_to_add.push(building);
-            }
-        }
-
         if self.metadata.grow_cities {
-            for building in building_to_add {
-                let _ = BuildActionBuilding::new(self, building).execute(self);
+            for city in self.cities.values_mut() {
+                city.update(&mut self.grid);
             }
         }
+        // if self.metadata.grow_cities {
+        //     for building in building_to_add {
+        //         let _ = BuildActionBuilding::new(self, building).execute(self);
+        //     }
+        // }
 
         self.update_routes();
 

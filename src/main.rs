@@ -34,6 +34,22 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    #[cfg(target_arch = "wasm32")]
+    sapp_console_log::init().unwrap();
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Initialize logging, and log the "info" level for this crate only, unless
+        // the environment contains `RUST_LOG`.
+        let env = env_logger::Env::new().default_filter_or("info");
+        env_logger::Builder::from_env(env)
+            .format_module_path(false)
+            .format_source_path(true)
+            .format_timestamp(None)
+            .format_target(false)
+            .init();
+    }
+
+
     let mut ctx = Context {
         ..Context::default().await
     };

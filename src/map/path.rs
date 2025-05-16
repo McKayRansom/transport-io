@@ -51,6 +51,8 @@ impl Grid {
     }
 
     // Should this be a tile function?
+    // NOTE: This is returning a Vector which requires allocations, look into an iterator version of this which would be harder to write
+    // but should perform better (and in the past pathfinding was the perf bottleneck)
     pub fn road_successors(&self, pos: &Position) -> Vec<(Position, u32)> {
         match self.get_tile(pos) {
             Some(Tile::Road(road)) => road

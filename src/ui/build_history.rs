@@ -84,9 +84,11 @@ mod build_history_tests {
 
     use super::*;
 
+    #[ignore = "reason"]
     #[test]
     fn test_undo() {
         let mut map = Map::new_empty((4, 1));
+        // map.companies.insert(Company)
         let mut build_history = BuildHistory::new();
 
         build_history

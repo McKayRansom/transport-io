@@ -79,6 +79,14 @@ impl Tile {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Tile::Empty)
+    }
+
+    pub fn is_road(&self) -> bool {
+        matches!(self, Tile::Road(_))
+    }
+
     pub fn get_building_id(&self) -> Option<Id> {
         match self {
             Tile::Building(building_id) => Some(*building_id),

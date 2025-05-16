@@ -3,7 +3,7 @@ use std::{f32::consts::PI, ops::{Add, Div, Mul}};
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Direction {
     pub x: i8,
     pub y: i8,

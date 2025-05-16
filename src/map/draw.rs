@@ -158,7 +158,7 @@ fn draw_route_segment(
             let (path, _cost) = path?;
             let mut previous: Option<(Rect, usize)> = None;
             let mut previous_path_pos: Option<Position> = None;
-            let mut have_drawn = false;
+            // let mut have_drawn = false;
             // if let Some(pos) = path.first() {
                 // if let Some(entry) = route_cache.get_mut(&sort_pos(&previous_position, pos)) {
                 //     if *have_drawn_segment == true {
@@ -167,11 +167,11 @@ fn draw_route_segment(
                 // }
             // }
             for pos in path.iter() {
-                let mut rect: Rect = (*pos).into();
+                let rect: Rect = (*pos).into();
                 let entry = route_cache
                     .entry(sort_pos(&previous_path_pos.unwrap_or(*pos), pos))
                     .or_insert(0);
-                if let Some((mut previous, prev_entry)) = previous {
+                if let Some((mut previous, _prev_entry)) = previous {
                     let spacing = *entry as f32 * ROUTE_SPACING;
                     let mut adjusted_rect = rect;
                     if previous_path_pos.unwrap().y == pos.y {
@@ -187,7 +187,7 @@ fn draw_route_segment(
                         // previous.x += prev_spacing;
                     }
                     tileset.draw_line(&previous, &adjusted_rect, ROUTE_THICKNESS, color);
-                    have_drawn = true;
+                    // have_drawn = true;
                     // *have_drawn_segment = true;
                     // save the adjusted rect to make turns propery
                     // rect = adjusted_rect;

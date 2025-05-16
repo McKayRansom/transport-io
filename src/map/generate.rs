@@ -1,10 +1,14 @@
 use noise::NoiseFn;
 
-use super::{build::{self, BuildAction, BuildActionBuilding, BuildResult}, building::Building, company::Company, tile::Tile, Direction, Map, Position};
-
+use super::{
+    build::{self, BuildAction, BuildActionBuilding, BuildResult},
+    building::Building,
+    company::Company,
+    tile::Tile,
+    Direction, Map, Position,
+};
 
 impl Map {
-
     pub fn new_generate(size: (i16, i16)) -> Self {
         let mut map = Self::new_empty(size);
 
@@ -14,7 +18,6 @@ impl Map {
 
         map
     }
-
 
     fn generate_center_roads(&mut self, pos: Position) -> BuildResult {
         build::action_two_way_road(pos + Direction::LEFT * 5, pos + Direction::RIGHT * 5)
@@ -31,22 +34,16 @@ impl Map {
     fn new_city_generate(&mut self, pos: Position, name: String) -> BuildResult {
         let city_id = self.new_city(pos, name);
 
-        self.generate_center_roads(pos)?;
+        // self.generate_center_roads(pos)?;
 
-        for dir in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
-            BuildActionBuilding::new(self, Building::new_house(pos + dir.into(), city_id))
-                .execute(self)?;
-        }
+        // for dir in [(1, 1), (1, -1), (-1, 1), (-1, -1)] {
+        //     BuildActionBuilding::new(self, Building::new_house(pos + dir.into(), city_id))
+        //         .execute(self)?;
+        // }
 
-        let mut building_to_add: Vec<Building> = Vec::new();
-        for _ in 0..10 {
-            let city = self.cities.hash_map.get(&city_id).unwrap();
-            if let Some(building) = city.grow_building(&self.grid) {
-                building_to_add.push(building);
-            }
-        }
-        for building in building_to_add {
-            let _ = BuildActionBuilding::new(self, building).execute(self);
+        let city = self.cities.hash_map.get_mut(&city_id).unwrap();
+        for _ in 0..64 {
+            city.grow(&mut self.grid);
         }
 
         Ok(0)
