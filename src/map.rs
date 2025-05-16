@@ -15,7 +15,7 @@ mod company;
 pub mod draw;
 mod generate;
 pub mod levels;
-mod route;
+pub mod route;
 pub use {company::Money, company::DEFAULT_COMPANY};
 pub mod vehicle;
 use route::{Route, RouteDir};

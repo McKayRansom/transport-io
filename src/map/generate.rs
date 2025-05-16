@@ -1,8 +1,7 @@
 use noise::NoiseFn;
 
 use super::{
-    build::{self, BuildAction, BuildActionBuilding, BuildResult},
-    building::Building,
+    build::{self, BuildAction, BuildResult},
     company::Company,
     tile::Tile,
     Direction, Map, Position,

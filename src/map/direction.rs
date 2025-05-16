@@ -106,6 +106,7 @@ impl Direction {
             f: true,
         }
     }
+
 }
 
 impl From<(i8, i8)> for Direction {
