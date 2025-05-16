@@ -1,4 +1,3 @@
-
 use macroquad::prelude::rand;
 use serde::{Deserialize, Serialize};
 
@@ -67,10 +66,12 @@ impl Route {
      */
     pub fn closest_stop(&self, pos: Position) -> Option<(RouteStop, usize)> {
         let mut closest_stop: Option<(RouteStop, usize)> = None;
-        let closest_dist: u32 = 256; // max distance?
+        let mut closest_dist: u32 = 256; // max distance?
         for (index, stop) in self.stops.iter().enumerate() {
-            if closest_stop.is_none_or(|(stop, _index)| stop.pos.distance(&pos) < closest_dist) {
+            let dist = stop.pos.distance(&pos);
+            if closest_stop.is_none_or(|(stop, _index)| dist < closest_dist) {
                 closest_stop = Some((*stop, index));
+                closest_dist = dist;
             }
         }
         closest_stop
@@ -81,31 +82,43 @@ impl Route {
             // TODO: Special loop case here
             return None;
         }
-        // self.stops.insert(index, id);
-        let (_closest_stop, closest_index) = self.closest_stop(new_stop.pos)?;
-        let distance_prev: Option<u32> = if closest_index > 0 {
-            Some(self.stops[closest_index - 1].pos.distance(&new_stop.pos))
-        } else {
-            None
-        };
-        let distance_next: Option<u32> = if closest_index + 1 < self.stops.len() {
-            Some(self.stops[closest_index + 1].pos.distance(&new_stop.pos))
-        } else {
-            None
-        };
-        if distance_prev.is_none() {
-            self.stops.insert(0, new_stop);
-        } else if distance_next.is_none() {
+        self.desired_vehicles += 1;
+
+        if self.stops.len() < 2 {
             self.stops.push(new_stop);
-        } else {
-            if distance_next.unwrap() < distance_prev.unwrap() {
-                self.stops.insert(closest_index + 1, new_stop);
-            } else {
-                self.stops.insert(closest_index, new_stop);
-            }
+            return Some(());
         }
 
-        self.desired_vehicles += 1;
+        // self.stops.insert(index, id);
+        let Some((closest_stop, closest_index)) = self.closest_stop(new_stop.pos) else {
+            panic!();
+        };
+
+        let prev_pos: Option<Position> = if closest_index > 0 {
+            Some(self.stops[closest_index - 1].pos)
+        } else {
+            None
+        };
+        let next_pos: Option<Position> = if closest_index + 1 < self.stops.len() {
+            Some(self.stops[closest_index + 1].pos)
+        } else {
+            None
+        };
+
+        // I had to do this math on paper lol, it's wild
+        let distance_if_after = prev_pos.unwrap_or(closest_stop.pos).distance(&closest_stop.pos)
+            // + closest_stop.pos.distance(&new_stop.pos) // CANCELS OUT
+            + new_stop.pos.distance(&next_pos.unwrap_or(new_stop.pos));
+
+        let distance_if_before = prev_pos.unwrap_or(new_stop.pos).distance(&new_stop.pos)
+            // + new_stop.pos.distance(&closest_stop.pos) // CANCELS OUT
+            + closest_stop.pos.distance(&next_pos.unwrap_or(closest_stop.pos));
+
+        if distance_if_before < distance_if_after {
+            self.stops.insert(closest_index, new_stop);
+        } else {
+            self.stops.insert(closest_index + 1, new_stop);
+        }
         Some(())
     }
 
@@ -195,7 +208,13 @@ mod route_tests {
         //     },
         // );
 
-        assert_eq!(route.get_stop(0), Some(RouteStop { station: 0, pos: Position::new(0, 0) }));
+        assert_eq!(
+            route.get_stop(0),
+            Some(RouteStop {
+                station: 0,
+                pos: Position::new(0, 0)
+            })
+        );
         assert_eq!(route.get_stop(1), None);
     }
 

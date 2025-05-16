@@ -15,7 +15,7 @@ use super::{
     city::City,
     grid::Grid,
     position::PIXEL_SIZE,
-    route::{Route, RouteDir},
+    route::{Route, RouteDir, RouteStop},
     tile::{Road, Tile},
     vehicle::Vehicle,
     Direction, Map, Position, Tick,
@@ -108,9 +108,9 @@ pub fn draw_route(
 ) {
     let mut prev_pos: Option<Position> = None;
     // let mut have_drawn_segment: bool = false;
-    for stop_id in &r.stops {
+    for stop in &r.stops {
         draw_route_segment(
-            *stop_id,
+            stop,
             index,
             map,
             tileset,
@@ -134,23 +134,23 @@ fn sort_pos(pos1: &Position, pos2: &Position) -> (Position, Position) {
 }
 
 fn draw_route_segment(
-    stop_id: u64,
+    stop: &RouteStop,
     index: usize,
     map: &Map,
     tileset: &Tileset,
     route_cache: &mut RouteCache,
     prev_pos: &mut Option<Position>,
 ) -> Option<()> {
-    let building = map.get_building(&stop_id)?;
+    // let building = map.get_building(&stop_id)?;
 
     if let Some(previous_position) = prev_pos {
         let mut color = SpawnerColors::from_number(index as u64).color();
         color.a = 0.7;
-        let path = map.grid.find_path(*previous_position, &stop_id);
+        let path = map.grid.find_road_path(previous_position, &stop.pos);
         if path.is_none() {
             tileset.draw_line(
                 &(*previous_position).into(),
-                &(building.pos.into()),
+                &(stop.pos.into()),
                 ROUTE_THICKNESS,
                 color,
             );
@@ -199,7 +199,7 @@ fn draw_route_segment(
             // tileset.draw_circle(&previous.unwrap().0, ROUTE_STOP_THICKNESS, color);
         }
     }
-    *prev_pos = Some(building.pos);
+    *prev_pos = Some(stop.pos);
     // tileset.draw_circle(&rect, 15., color);
     Some(())
 }

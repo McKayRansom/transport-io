@@ -72,7 +72,7 @@ pub struct GameView {
 
 impl GameView {
     pub fn new(unlocked: Unlocked) -> Self {
-        GameView {
+        let mut view = GameView {
             draw_profiler: false,
 
             mouse_pressed: false,
@@ -107,7 +107,11 @@ impl GameView {
                 MenuItem::new(PauseMenuSelect::Restart, "Restart".to_string()),
             ]),
             selected: None,
-        }
+        };
+
+        view.view_toolbar.set_selected(0);
+
+        view
     }
 
     fn update_mouse(&mut self, ctx: &mut Context, map: &mut Map) -> Option<()> {

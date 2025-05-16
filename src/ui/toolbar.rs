@@ -86,6 +86,10 @@ impl<V> Toolbar<V> {
         self.selected = None;
     }
 
+    pub fn set_selected(&mut self, index: usize) {
+        self.selected = Some(index)
+    }
+
     pub fn draw(&mut self, ctx: &mut Context, x: f32, y: f32) {
         if self.kind == ToolbarType::Veritcal {
             self.rect.w = TOOLBAR_SPACE;

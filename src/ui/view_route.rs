@@ -47,15 +47,21 @@ impl ViewRoute {
                     ctx.tileset.camera,
                     ctx.tileset.zoom,
                 );
+                let color = SpawnerColors::from_number(*route_numer as u64).color();
                 if let Some((stop, _index)) = map.routes[*route_numer].closest_stop(pos) {
                     let start: Rect = stop.pos.into();
                     let end: Rect = pos.into();
-                    ctx.tileset.draw_line(
-                        &start,
-                        &end,
-                        10.,
-                        SpawnerColors::from_number(*route_numer as u64).color(),
-                    );
+                    ctx.tileset.draw_line(&start, &end, 10., color);
+                } else if map.grid.get_tile(&pos).is_some_and(|tile| {
+                    if let Tile::Road(road) = tile {
+                        road.station.is_some()
+                    } else {
+                        false
+                    }
+                }) {
+                    ctx.tileset.draw_circle(&pos.into(), 16., color);
+                } else {
+                    ctx.tileset.draw_circle(&pos.into(), 10., color);
                 }
             }
         }
