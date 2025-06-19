@@ -1,11 +1,15 @@
 
 # Transport IO Game
 
+Game pitch: Transport-IO is the largest? bigest? bestest?
+
 Transport-IO is a transportation simulation game. Build road networks, railways, canals, and airports across a map with diverse terrain including cities, mountains, rivers, and oceans. Route busses, metros, ferries, and flights to deliver people and cargo to dynamically generated destinations.
 
 Try it live at -> https://mckayransom.github.io/transport-io/
 
 ## Alpha target features
+DECIDE ON Highways VS Mini Motorways vs Mini Metro vs OpenTTD
+
 The transport-IO 0.1 alpha focuses on building road networks:
  - [ ] Build roads with realistic traffic modeling, including acceleration, route planning, and congestion.
  - [x] Create GOATED intersections using ROUNDABOUTS™ 

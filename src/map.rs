@@ -262,13 +262,16 @@ impl Map {
         let mut to_remove: Vec<(Id, Status)> = Vec::new();
         for (id, vehicle) in self.vehicles.hash_map.iter_mut() {
             let status = vehicle.update(&mut self.grid, self.tick);
-            if status != Status::EnRoute {
-                // TODO: Should busses still be delted if they are hopelessly late?
-                if let Some((route_id, dir)) = vehicle.route_info {
+            match status {
+                Status::EnRoute => { /* Do nothing, vehicle is doing fine */ }
+                Status::ReachedDestination => {
+                    let (route_id, dir) = vehicle.route_info.unwrap();
                     if dir == RouteDir::HouseHackWhy {
+                        // delete cars once the reach their destination
                         to_remove.push((*id, status));
                         continue;
                     }
+                    // find next destination for bus
                     if let Some(route) = self.routes.get(route_id) {
                         if let Some((next_station, dir)) =
                             route.get_next_stop(vehicle.destination, dir)
@@ -292,7 +295,9 @@ impl Map {
                             vehicle.find_path(&self.grid);
                         }
                     }
-                } else {
+                }
+                Status::HopelesslyLate => {
+                    /* remove vehicle */
                     to_remove.push((*id, status));
                 }
             }
@@ -307,6 +312,10 @@ impl Map {
                     {
                         building.update_arrived(status == Status::ReachedDestination);
                         building.my_vehicle = None;
+                    }
+                } else {
+                    if let Some(route) = self.routes.get_mut(route_info.0) {
+                        route.remove_vehicle(id);
                     }
                 }
             }

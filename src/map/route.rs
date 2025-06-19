@@ -153,7 +153,7 @@ impl Route {
 
     pub fn update(
         &mut self,
-        index: usize,
+        id: usize,
         grid: &mut Grid,
         vehicles: &mut VehicleHashMap,
     ) -> Option<()> {
@@ -169,14 +169,20 @@ impl Route {
         let mut vehicle = Vehicle::new(vehicles.id, building.pos, next_stop, grid).ok()?;
 
         vehicle.company = self.company;
-        vehicle.route_info = Some((index, dir));
-        vehicle.color = SpawnerColors::from_number(index as u64);
+        vehicle.route_info = Some((id, dir));
+        vehicle.color = SpawnerColors::from_number(id as u64);
 
         let id = vehicles.insert(vehicle);
 
         self.vehicles.push(id);
 
         Some(())
+    }
+    
+    pub(crate) fn remove_vehicle(&mut self, id: u64) {
+        if let Some(pos) = self.vehicles.iter().position(|&v| v == id) {
+            self.vehicles.remove(pos);
+        }
     }
 }
 

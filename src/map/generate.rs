@@ -51,7 +51,10 @@ impl Map {
     fn generate(&mut self) -> BuildResult {
         let size: Position = Position::new(0, 0) + self.grid.size();
         let grid_center: Position = size / 2;
-        self.new_city_generate(grid_center, "CityVille".to_string())?;
+        // self.new_city_generate(grid_center, "CityVille".to_string())?;
+
+        // self.new_city_generate((100, 100).into(), "Second City".to_string())?;
+        // self.new_city_generate((40, 100).into(), "Third City".to_string())?;
 
         let perlin_noise = noise::Perlin::new(1234);
 

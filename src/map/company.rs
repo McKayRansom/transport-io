@@ -9,7 +9,7 @@ pub struct Company {
     money: Money,
 }
 
-pub const STARTING_MONEY: Money = 1000;
+pub const STARTING_MONEY: Money = 20000;
 pub const DEFAULT_COMPANY: Id = 1;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -41,6 +41,9 @@ impl Company {
             None => Err(MoneyError::InsufficientFunds),
         }
     }
+
+    // charge maint costs how often?
+    // pub fn update(&mut self)
 }
 
 #[cfg(test)]
